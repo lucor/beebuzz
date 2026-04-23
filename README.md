@@ -1,12 +1,13 @@
 # BeeBuzz
 
-BeeBuzz is a web push notification system with an installable client, a hosted beta, and a CLI for sending messages fast.
+BeeBuzz is a web push notification system for servers and apps, built to deliver the alerts you care about with a small, auditable stack.
+It includes a web app, an installable Hive client as PWA, and optional end-to-end encrypted delivery.
 
 ## Start Here
 
+- Read the docs: <https://beebuzz.app/docs>
 - Use the hosted BeeBuzz beta: <https://beebuzz.app/docs/quickstart>
 - Run BeeBuzz locally for development: <https://beebuzz.app/docs/local-dev>
-- Hosted public docs: <https://beebuzz.app/docs> (available in the SaaS deployment mode)
 
 ## Beta Focus
 
