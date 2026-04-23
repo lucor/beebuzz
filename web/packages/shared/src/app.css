@@ -1,0 +1,195 @@
+@source "./";
+@plugin '@tailwindcss/typography';
+@plugin "daisyui" {
+	themes: false;
+}
+
+@plugin "daisyui/theme" {
+	name: 'beebuzz';
+	default: true;
+	--font-sans:
+		'ui-sans-serif', '-apple-system', 'system-ui', 'Segoe UI', 'Helvetica Neue', sans-serif;
+	--font-mono:
+		'ui-monospace', 'SF Mono-Regular', 'SF Mono', 'Cascadia Code', 'Menlo', 'Courier New', monospace;
+	--color-base-100: oklch(100% 0 0);
+	--color-base-200: oklch(97% 0 0);
+	--color-base-300: oklch(92% 0 0);
+	--color-base-content: oklch(20% 0 0);
+	--color-primary: oklch(85% 0.199 91.936);
+	--color-primary-content: oklch(42% 0.095 57.708);
+	--color-secondary: oklch(75% 0.183 55.934);
+	--color-secondary-content: oklch(40% 0.123 38.172);
+	--color-accent: oklch(0% 0 0);
+	--color-accent-content: oklch(100% 0 0);
+	--color-neutral: oklch(37% 0.01 67.558);
+	--color-neutral-content: oklch(92% 0.003 48.717);
+	--color-info: oklch(74% 0.16 232.661);
+	--color-info-content: oklch(39% 0.09 240.876);
+	--color-success: oklch(76% 0.177 163.223);
+	--color-success-content: oklch(37% 0.077 168.94);
+	--color-warning: oklch(82% 0.189 84.429);
+	--color-warning-content: oklch(41% 0.112 45.904);
+	--color-error: oklch(70% 0.191 22.216);
+	--color-error-content: oklch(39% 0.141 25.723);
+	--radius-selector: 1rem;
+	--radius-field: 0.5rem;
+	--radius-box: 1rem;
+	--size-selector: 0.25rem;
+	--size-field: 0.25rem;
+	--border: 1px;
+	--depth: 1;
+	--noise: 0;
+}
+
+@layer base {
+	html {
+		font-family: var(--font-sans);
+	}
+
+	body {
+		@apply bg-base-200 text-base-content;
+	}
+
+	code,
+	pre,
+	kbd,
+	samp {
+		font-family: var(--font-mono);
+	}
+}
+
+@layer components {
+	.app-content {
+		@apply max-w-[720px] mx-auto p-4 pb-[max(2rem,env(safe-area-inset-bottom))] pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))];
+	}
+
+	.bb-page {
+		@apply min-h-screen min-h-dvh bg-base-200 flex items-center justify-center px-4 py-10;
+	}
+
+	.docs-terminal {
+		@apply my-6 overflow-hidden rounded-box border border-base-300 bg-neutral text-neutral-content shadow-sm;
+	}
+
+	.docs-terminal-bar {
+		@apply flex items-center justify-between gap-3 border-b border-base-300/60 bg-neutral/80 px-4 py-3;
+	}
+
+	.docs-terminal-title {
+		@apply text-xs font-mono uppercase tracking-[0.2em] text-neutral-content/70;
+	}
+
+	.docs-terminal-dots {
+		@apply inline-flex items-center gap-1.5;
+	}
+
+	.docs-terminal-dot {
+		@apply h-2.5 w-2.5 rounded-full;
+	}
+
+	.docs-terminal-body {
+		@apply mockup-code rounded-t-none bg-neutral px-4 py-4;
+	}
+
+	.docs-terminal-body::before {
+		display: none;
+	}
+
+	.docs-terminal-body pre {
+		@apply whitespace-pre overflow-x-auto;
+	}
+
+	.docs-terminal-body code {
+		@apply font-mono text-sm;
+	}
+
+	.docs-terminal-copy {
+		@apply text-neutral-content hover:bg-neutral-content/10 relative;
+	}
+
+	.docs-terminal-copy [data-copy-icon] {
+		@apply absolute inset-0 m-auto;
+	}
+
+	.docs-terminal-copy [data-copy-icon='check'] {
+		@apply hidden;
+	}
+
+	.docs-terminal-copy:focus-visible {
+		@apply outline outline-2 outline-offset-2 outline-primary;
+	}
+}
+
+* {
+	-webkit-tap-highlight-color: rgba(245, 158, 11, 0.2);
+}
+
+html {
+	scroll-behavior: smooth;
+}
+
+body {
+	margin: 0;
+	padding: 0;
+	min-height: 100vh;
+	min-height: 100dvh;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	*,
+	*::before,
+	*::after {
+		animation-duration: 0.01ms !important;
+		animation-iteration-count: 1 !important;
+		transition-duration: 0.01ms !important;
+	}
+	html {
+		scroll-behavior: auto;
+	}
+}
+
+/* Prose Typography DaisyUI Override */
+.prose {
+	@apply text-base-content;
+}
+
+.prose :where(h1):not(:where([class~='not-prose'] *)) {
+	@apply text-4xl font-bold mb-6 mt-8;
+}
+
+.prose :where(h2):not(:where([class~='not-prose'] *)) {
+	@apply text-3xl font-bold mb-4 mt-6 border-b border-base-300 pb-2;
+}
+
+.prose :where(h3):not(:where([class~='not-prose'] *)) {
+	@apply text-2xl font-semibold mb-3 mt-5;
+}
+
+.prose :where(a):not(:where([class~='not-prose'] *)) {
+	@apply link link-neutral font-medium;
+}
+
+.prose :where(code):not(:where([class~='not-prose'] *)) {
+	@apply bg-base-200 px-2 py-0.5 rounded font-mono text-sm;
+}
+
+.prose :where(code)::before,
+.prose :where(code)::after {
+	content: none;
+}
+
+.prose :where(pre):not(:where([class~='not-prose'] *)) {
+	@apply bg-base-200 border border-base-300 rounded-lg;
+}
+
+.prose :where(blockquote):not(:where([class~='not-prose'] *)) {
+	@apply border-l-4 border-primary pl-4 italic text-base-content/80;
+}
+
+.prose .not-prose a {
+	@apply link link-neutral font-medium;
+}
+
+.prose :where(table):not(:where([class~='not-prose'] *)) {
+	@apply w-full border border-base-300 rounded-lg;
+}

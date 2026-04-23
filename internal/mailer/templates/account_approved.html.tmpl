@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your BeeBuzz account has been approved</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+            background-color: #f5f5f5;
+            color: #333333;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            padding: 40px;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            margin-top: 20px;
+            margin-bottom: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 32px;
+            border-bottom: 1px solid #e5e7eb;
+            padding-bottom: 24px;
+        }
+
+        .logo {
+            display: inline-block;
+            font-size: 24px;
+            font-weight: 700;
+            color: #1a1a1a;
+            margin-bottom: 8px;
+        }
+
+        .content {
+            margin-bottom: 32px;
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 24px;
+            font-weight: 600;
+            color: #1a1a1a;
+            margin-bottom: 16px;
+        }
+
+        p {
+            color: #555555;
+            margin-bottom: 16px;
+            font-size: 14px;
+        }
+
+        .status-box {
+            background-color: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            border-radius: 8px;
+            padding: 24px;
+            margin: 24px 0;
+        }
+
+        .status-title {
+            color: #16a34a;
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 12px 24px;
+            background-color: #16a34a;
+            color: #ffffff;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 600;
+            margin-top: 16px;
+        }
+
+        .footer {
+            border-top: 1px solid #e5e7eb;
+            padding-top: 24px;
+            text-align: center;
+            color: #888888;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f5f5f5;">
+        <tr>
+            <td align="center">
+                <div class="container">
+                    <div class="header">
+                        <div class="logo">BeeBuzz</div>
+                    </div>
+
+                    <div class="content">
+                        <h1>Account Approved</h1>
+
+                        <div class="status-box">
+                            <div class="status-title">Your account is now active</div>
+                            <p>You can now sign in and start using BeeBuzz.</p>
+                            <a href="{{.LoginURL}}" class="btn">Sign In</a>
+                        </div>
+
+                        <p style="margin-bottom: 0;">Enjoy seamless push notifications for your applications.</p>
+                    </div>
+
+                    <div class="footer">
+                        <p style="margin-top: 8px; color: #aaaaaa;">Automated message, do not reply.</p>
+                    </div>
+                </div>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>

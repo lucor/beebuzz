@@ -1,0 +1,45 @@
+version: 2
+
+project_name: beebuzz
+
+before:
+  hooks:
+    - go test ./cmd/beebuzz
+
+builds:
+  - id: beebuzz
+    main: ./cmd/beebuzz
+    binary: beebuzz
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - darwin
+      - linux
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w -X main.version={{.Version}}
+
+archives:
+  - id: beebuzz
+    ids:
+      - beebuzz
+    formats:
+      - tar.gz
+    name_template: >-
+      {{ .ProjectName }}_
+      {{- .Version }}_
+      {{- .Os }}_
+      {{- .Arch }}
+
+checksum:
+  name_template: checksums.txt
+
+changelog:
+  use: git
+
+release:
+  github:
+    owner: lucor
+    name: beebuzz

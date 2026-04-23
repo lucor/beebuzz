@@ -1,0 +1,10 @@
+.git
+.github
+node_modules
+data/
+tmp/
+bin/
+build/
+docs/
+.env
+*.md

@@ -1,0 +1,2160 @@
+openapi: 3.1.0
+info:
+  title: BeeBuzz API
+  version: 0.9.0
+  description: |
+    First-pass OpenAPI contract generated from the current BeeBuzz backend handlers.
+    It documents the API as implemented today so request/response semantics can be
+    reviewed before release.
+servers:
+  - url: /
+tags:
+  - name: Health
+  - name: Auth
+  - name: User
+  - name: Usage
+  - name: Topics
+  - name: Devices
+  - name: Tokens
+  - name: Push
+  - name: Webhooks
+  - name: Admin
+  - name: Attachments
+paths:
+  /health:
+    get:
+      tags: [Health]
+      operationId: getRootHealth
+      summary: Get service health
+      x-audience: [public]
+      x-stability: stable
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+  /v1/health:
+    get:
+      tags: [Health]
+      operationId: getApiHealth
+      summary: Get API health
+      x-audience: [public]
+      x-stability: stable
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+  /v1/vapid-public-key:
+    get:
+      tags: [Push]
+      operationId: getVapidPublicKey
+      summary: Get the VAPID public key
+      x-audience: [hive]
+      x-stability: stable
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VAPIDPublicKeyResponse"
+  /v1/auth/login:
+    post:
+      tags: [Auth]
+      operationId: login
+      summary: Start OTP login
+      x-audience: [site]
+      x-stability: stable
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "204":
+          description: OTP challenge accepted
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          description: Too many auth attempts
+          headers:
+            Retry-After:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /v1/auth/otp/verify:
+    post:
+      tags: [Auth]
+      operationId: verifyOtp
+      summary: Verify OTP and create a session
+      x-audience: [site]
+      x-stability: stable
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VerifyOTPRequest"
+      responses:
+        "200":
+          description: OTP verified
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+              description: Session and logged-in cookies are set on success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /v1/auth/logout:
+    post:
+      tags: [Auth]
+      operationId: logout
+      summary: Revoke the current session
+      x-audience: [site]
+      x-stability: stable
+      security:
+        - cookieAuth: []
+      responses:
+        "204":
+          description: Logged out
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+              description: Session and logged-in cookies are cleared on success
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /v1/me:
+    get:
+      tags: [User]
+      operationId: getMe
+      summary: Get current user profile
+      x-audience: [site]
+      x-stability: stable
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /v1/me/usage:
+    get:
+      tags: [Usage]
+      operationId: getAccountUsage
+      summary: Get account usage analytics
+      x-audience: [site]
+      x-stability: stable
+      security:
+        - cookieAuth: []
+      parameters:
+        - in: query
+          name: days
+          schema:
+            type: integer
+            minimum: 0
+            maximum: 90
+          description: 0 means all time, otherwise 1 to 90
+      responses:
+        "200":
+          description: Account usage data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountUsageResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /v1/topics:
+    get:
+      tags: [Topics]
+      operationId: listTopics
+      summary: List topics
+      x-audience: [site]
+      x-stability: stable
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Topic list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TopicsListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+    post:
+      tags: [Topics]
+      operationId: createTopic
+      summary: Create a topic
+      x-audience: [site]
+      x-stability: stable
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTopicRequest"
+      responses:
+        "201":
+          description: Topic created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TopicResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /v1/topics/{topicID}:
+    patch:
+      tags: [Topics]
+      operationId: updateTopic
+      summary: Update a topic
+      x-audience: [site]
+      x-stability: stable
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: "#/components/parameters/TopicID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateTopicRequest"
+      responses:
+        "204":
+          description: Topic updated
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "500":
+          $ref: "#/components/responses/InternalError"
+    delete:
+      tags: [Topics]
+      operationId: deleteTopic
+      summary: Delete a topic
+      x-audience: [site]
+      x-stability: stable
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: "#/components/parameters/TopicID"
+      responses:
+        "204":
+          description: Topic deleted
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /v1/devices:
+    get:
+      tags: [Devices]
+      operationId: listDevices
+      summary: List devices
+      description: Device responses expose topic IDs in the `topic_ids` array.
+      x-audience: [site]
+      x-stability: stable
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Device list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DevicesListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+    post:
+      tags: [Devices]
+      operationId: createDevice
+      summary: Create a device and pairing code
+      x-audience: [site]
+      x-stability: stable
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateDeviceRequest"
+      responses:
+        "201":
+          description: Device created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreatedDeviceResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /v1/devices/{deviceID}:
+    patch:
+      tags: [Devices]
+      operationId: updateDevice
+      summary: Update a device
+      x-audience: [site]
+      x-stability: stable
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: "#/components/parameters/DeviceID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateDeviceRequest"
+      responses:
+        "204":
+          description: Device updated
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "500":
+          $ref: "#/components/responses/InternalError"
+    delete:
+      tags: [Devices]
+      operationId: deleteDevice
+      summary: Delete a device
+      x-audience: [site]
+      x-stability: stable
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: "#/components/parameters/DeviceID"
+      responses:
+        "204":
+          description: Device deleted
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /v1/devices/{deviceID}/pairing-code:
+    post:
+      tags: [Devices]
+      operationId: regeneratePairingCode
+      summary: Regenerate a device pairing code
+      x-audience: [site]
+      x-stability: stable
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: "#/components/parameters/DeviceID"
+      responses:
+        "200":
+          description: Pairing code regenerated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PairingCodeResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /v1/devices/{deviceID}/unpair:
+    post:
+      tags: [Devices]
+      operationId: unpairDevice
+      summary: Remove a device push subscription
+      x-audience: [site]
+      x-stability: stable
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: "#/components/parameters/DeviceID"
+      responses:
+        "204":
+          description: Device unpaired
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /v1/pairing:
+    post:
+      tags: [Devices]
+      operationId: pairDevice
+      summary: Pair a device with a push subscription
+      x-audience: [hive]
+      x-stability: stable
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PairRequest"
+      responses:
+        "200":
+          description: Device paired
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PairResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /v1/pairing/{deviceID}:
+    get:
+      tags: [Devices]
+      operationId: getPairingStatus
+      summary: Get the pairing status for a paired device
+      x-audience: [hive]
+      x-stability: stable
+      parameters:
+        - in: path
+          name: deviceID
+          required: true
+          schema:
+            type: string
+        - in: header
+          name: Authorization
+          required: true
+          schema:
+            type: string
+          description: Bearer device token returned by `POST /v1/pairing`
+      responses:
+        "200":
+          description: Pairing status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PairingStatusResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /v1/tokens:
+    get:
+      tags: [Tokens]
+      operationId: listApiTokens
+      summary: List API tokens
+      description: API token responses expose topic IDs in the `topic_ids` array.
+      x-audience: [site]
+      x-stability: stable
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: API token list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APITokensListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+    post:
+      tags: [Tokens]
+      operationId: createApiToken
+      summary: Create an API token
+      x-audience: [site]
+      x-stability: stable
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateAPITokenRequest"
+      responses:
+        "201":
+          description: API token created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreatedAPITokenResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /v1/tokens/{tokenID}:
+    patch:
+      tags: [Tokens]
+      operationId: updateApiToken
+      summary: Update an API token
+      x-audience: [site]
+      x-stability: stable
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: "#/components/parameters/TokenID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateAPITokenRequest"
+      responses:
+        "204":
+          description: API token updated
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "500":
+          $ref: "#/components/responses/InternalError"
+    delete:
+      tags: [Tokens]
+      operationId: revokeApiToken
+      summary: Revoke an API token
+      x-audience: [site]
+      x-stability: stable
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: "#/components/parameters/TokenID"
+      responses:
+        "204":
+          description: API token revoked
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /v1/push:
+    post:
+      tags: [Push]
+      operationId: sendPushDefaultTopic
+      summary: Send a push notification to the default topic
+      x-audience: [public]
+      x-stability: stable
+      description: |
+        JSON and multipart requests accept `priority` values `normal` or `high`.
+        Octet-stream requests use the `X-Priority` header with the same values.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/XPriority"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SendRequest"
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/SendMultipartRequest"
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+      responses:
+        "200":
+          description: Notification send result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SendResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          description: Validation or attachment processing error
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/ValidationErrorResponse"
+                  - $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                validation_error:
+                  value:
+                    code: validation_error
+                    errors:
+                      - title: is required
+                attachment_processing_failed:
+                  value:
+                    code: attachment_processing_failed
+                    message: Failed to process attachment
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "502":
+          description: Push delivery failed for all devices
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                code: push_delivery_failed
+                message: Push delivery failed for all devices
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /v1/push/{topic}:
+    post:
+      tags: [Push]
+      operationId: sendPushForTopic
+      summary: Send a push notification to a specific topic
+      x-audience: [public]
+      x-stability: stable
+      description: |
+        JSON and multipart requests accept `priority` values `normal` or `high`.
+        Octet-stream requests use the `X-Priority` header with the same values.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: topic
+          required: true
+          schema:
+            type: string
+        - $ref: "#/components/parameters/XPriority"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SendRequest"
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/SendMultipartRequest"
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+      responses:
+        "200":
+          description: Notification send result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SendResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          description: Validation or attachment processing error
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/ValidationErrorResponse"
+                  - $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                validation_error:
+                  value:
+                    code: validation_error
+                    errors:
+                      - title: is required
+                attachment_processing_failed:
+                  value:
+                    code: attachment_processing_failed
+                    message: Failed to process attachment
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "502":
+          description: Push delivery failed for all devices
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                code: push_delivery_failed
+                message: Push delivery failed for all devices
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /v1/push/keys:
+    get:
+      tags: [Push]
+      operationId: listDeviceKeys
+      summary: Get paired device age public keys
+      x-audience: [public]
+      x-stability: stable
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Device keys
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KeysResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /v1/webhooks:
+    get:
+      tags: [Webhooks]
+      operationId: listWebhooks
+      summary: List webhooks
+      description: Webhook responses expose topic IDs in the `topic_ids` array.
+      x-audience: [site]
+      x-stability: stable
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Webhook list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WebhooksListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+    post:
+      tags: [Webhooks]
+      operationId: createWebhook
+      summary: Create a webhook
+      x-audience: [site]
+      x-stability: stable
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateWebhookRequest"
+      responses:
+        "201":
+          description: Webhook created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreatedWebhookResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /v1/webhooks/{webhookID}:
+    patch:
+      tags: [Webhooks]
+      operationId: updateWebhook
+      summary: Update a webhook
+      x-audience: [site]
+      x-stability: stable
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: "#/components/parameters/WebhookID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateWebhookRequest"
+      responses:
+        "204":
+          description: Webhook updated
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "500":
+          $ref: "#/components/responses/InternalError"
+    delete:
+      tags: [Webhooks]
+      operationId: deleteWebhook
+      summary: Delete a webhook
+      x-audience: [site]
+      x-stability: stable
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: "#/components/parameters/WebhookID"
+      responses:
+        "204":
+          description: Webhook deleted
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /v1/webhooks/{webhookID}/token:
+    post:
+      tags: [Webhooks]
+      operationId: regenerateWebhookToken
+      summary: Regenerate a webhook token
+      x-audience: [site]
+      x-stability: stable
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: "#/components/parameters/WebhookID"
+      responses:
+        "200":
+          description: Token regenerated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RegenerateTokenResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /v1/webhooks/{token}:
+    post:
+      tags: [Webhooks]
+      operationId: receiveWebhook
+      summary: Receive an incoming webhook payload
+      x-audience: [public]
+      x-stability: stable
+      parameters:
+        - in: path
+          name: token
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+          text/plain:
+            schema:
+              type: string
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+      responses:
+        "200":
+          description: Webhook delivered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReceiveResponse"
+        "202":
+          description: Payload captured in inspect mode
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReceiveResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "502":
+          description: Webhook delivery failed for all topics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                code: webhook_delivery_failed
+                message: Webhook dispatch failed for all topics
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /v1/webhooks/inspect:
+    post:
+      tags: [Webhooks]
+      operationId: createInspectSession
+      summary: Create an inspect session for discovering payload paths
+      x-audience: [site]
+      x-stability: stable
+      description: |
+        Creates a temporary inspect session that captures the next webhook payload
+        without dispatching notifications. Use this to discover the correct
+        title_path and body_path values for custom webhooks.
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateInspectSessionRequest"
+      responses:
+        "201":
+          description: Inspect session created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InspectSessionResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "500":
+          $ref: "#/components/responses/InternalError"
+    get:
+      tags: [Webhooks]
+      operationId: getInspectSession
+      summary: Get the current inspect session status
+      x-audience: [site]
+      x-stability: stable
+      description: |
+        Returns the current inspect session status. Poll this endpoint
+        until the status changes to "captured" to get the payload.
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Inspect session status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InspectSessionStatusResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          description: No active inspect session found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /v1/webhooks/inspect/finalize:
+    post:
+      tags: [Webhooks]
+      operationId: finalizeInspectSession
+      summary: Finalize an inspect session and create the webhook
+      x-audience: [site]
+      x-stability: stable
+      description: |
+        Creates the actual webhook with the specified title_path and body_path.
+        The payload is validated against these paths before creating the webhook.
+        Returns the new webhook token (one-time reveal).
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FinalizeInspectRequest"
+      responses:
+        "201":
+          description: Webhook created from inspect session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreatedWebhookResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          description: Inspect session not found or expired
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          description: Payload extraction failed or no payload captured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /v1/attachments/{token}:
+    get:
+      tags: [Attachments]
+      operationId: getAttachment
+      summary: Download an attachment by opaque token
+      x-audience: [hive]
+      x-stability: stable
+      description: Public token-based download of the stored encrypted blob. Requests are rate-limited per attachment token.
+      parameters:
+        - in: path
+          name: token
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Attachment bytes
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /v1/admin/users:
+    get:
+      tags: [Admin]
+      operationId: listAdminUsers
+      summary: List users for the admin panel
+      x-audience: [admin]
+      x-stability: stable
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: User list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminUsersListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /v1/admin/users/{userID}:
+    patch:
+      tags: [Admin]
+      operationId: updateAdminUserStatus
+      summary: Update user account status
+      x-audience: [admin]
+      x-stability: stable
+      security:
+        - cookieAuth: []
+      parameters:
+        - in: path
+          name: userID
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateUserStatusRequest"
+      responses:
+        "200":
+          description: User updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminUserResponse"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                invalid_status:
+                  value:
+                    code: invalid_status
+                    message: "account_status must be one of: pending, active, blocked"
+                invalid_transition:
+                  value:
+                    code: invalid_transition
+                    message: "invalid status transition"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          description: Conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                code: concurrent_modification
+                message: User status has changed. Re-fetch current status before retrying.
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /v1/admin/dashboard:
+    get:
+      tags: [Admin]
+      operationId: getAdminDashboard
+      summary: Get platform dashboard metrics
+      x-audience: [admin]
+      x-stability: stable
+      security:
+        - cookieAuth: []
+      parameters:
+        - in: query
+          name: days
+          schema:
+            type: integer
+            minimum: 0
+            maximum: 90
+          description: 0 means all time, otherwise 1 to 90
+      responses:
+        "200":
+          description: Dashboard metrics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlatformDashboardResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalError"
+components:
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: beebuzz_session
+    bearerAuth:
+      type: http
+      scheme: bearer
+  parameters:
+    TopicID:
+      in: path
+      name: topicID
+      required: true
+      schema:
+        type: string
+    DeviceID:
+      in: path
+      name: deviceID
+      required: true
+      schema:
+        type: string
+    TokenID:
+      in: path
+      name: tokenID
+      required: true
+      schema:
+        type: string
+    WebhookID:
+      in: path
+      name: webhookID
+      required: true
+      schema:
+        type: string
+    XPriority:
+      in: header
+      name: X-Priority
+      required: false
+      schema:
+        type: string
+        enum: [normal, high]
+      description: |
+        Push delivery priority. Relevant for `application/octet-stream`
+        requests, where priority is passed via header instead of JSON body.
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Forbidden:
+      description: Forbidden
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    NotFound:
+      description: Not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Conflict:
+      description: Conflict
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    TooManyRequests:
+      description: Too many requests
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    PayloadTooLarge:
+      description: Payload too large
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    ValidationError:
+      description: Validation error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ValidationErrorResponse"
+    UnprocessableEntity:
+      description: Unprocessable entity
+      content:
+        application/json:
+          schema:
+            oneOf:
+              - $ref: "#/components/schemas/ValidationErrorResponse"
+              - $ref: "#/components/schemas/ErrorResponse"
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+  schemas:
+    ErrorResponse:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+          minLength: 1
+    ValidationErrorResponse:
+      type: object
+      required: [code, errors]
+      properties:
+        code:
+          type: string
+          enum: [validation_error]
+        errors:
+          type: array
+          minItems: 1
+          items:
+            type: string
+    HealthResponse:
+      type: object
+      required: [status, version]
+      properties:
+        status:
+          type: string
+          example: ok
+        version:
+          type: string
+    MessageResponse:
+      type: object
+      required: [message]
+      properties:
+        message:
+          type: string
+    UserResponse:
+      type: object
+      required: [id, email, is_admin, account_status, created_at, updated_at]
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+          format: email
+        is_admin:
+          type: boolean
+        account_status:
+          type: string
+          enum: [pending, active, blocked]
+        trial_started_at:
+          type:
+            - string
+            - "null"
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    LoginRequest:
+      type: object
+      required: [email, state]
+      properties:
+        email:
+          type: string
+          format: email
+        state:
+          type: string
+        reason:
+          type:
+            - string
+            - "null"
+    VerifyOTPRequest:
+      type: object
+      required: [otp, state]
+      properties:
+        otp:
+          type: string
+        state:
+          type: string
+    TopicResponse:
+      type: object
+      required: [id, name, created_at, updated_at]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        description:
+          type:
+            - string
+            - "null"
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    TopicsListResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/TopicResponse"
+    CreateTopicRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+    UpdateTopicRequest:
+      type: object
+      properties:
+        description:
+          type: string
+    DeviceResponse:
+      type: object
+      required: [id, name, description, is_active, pairing_status, topic_ids, created_at, updated_at]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        is_active:
+          type: boolean
+        pairing_status:
+          $ref: "#/components/schemas/PairingStatus"
+        paired_at:
+          type:
+            - string
+            - "null"
+          format: date-time
+        age_recipient:
+          type:
+            - string
+            - "null"
+        age_recipient_fingerprint:
+          type:
+            - string
+            - "null"
+        topic_ids:
+          type: array
+          items:
+            type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    DevicesListResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/DeviceResponse"
+    DeviceKeyDescriptor:
+      type: object
+      required: [device_id, device_name, paired_at, age_recipient, age_recipient_fingerprint]
+      properties:
+        device_id:
+          type: string
+        device_name:
+          type: string
+        paired_at:
+          type: string
+          format: date-time
+        age_recipient:
+          type: string
+        age_recipient_fingerprint:
+          type: string
+    CreatedDeviceResponse:
+      type: object
+      required: [device, pairing_code, pairing_url, qr_code, expires_at]
+      properties:
+        device:
+          $ref: "#/components/schemas/DeviceResponse"
+        pairing_code:
+          type: string
+        pairing_url:
+          type: string
+        qr_code:
+          type: string
+        expires_at:
+          type: string
+          format: date-time
+    PairingCodeResponse:
+      type: object
+      required: [pairing_code, pairing_url, qr_code, expires_at]
+      properties:
+        pairing_code:
+          type: string
+        pairing_url:
+          type: string
+        qr_code:
+          type: string
+        expires_at:
+          type: string
+          format: date-time
+    CreateDeviceRequest:
+      type: object
+      required: [name, topics]
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        topics:
+          type: array
+          items:
+            type: string
+    UpdateDeviceRequest:
+      type: object
+      required: [name, topics]
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        topics:
+          type: array
+          items:
+            type: string
+    PairRequest:
+      type: object
+      required: [pairing_code, endpoint, p256dh, auth, age_recipient]
+      properties:
+        pairing_code:
+          type: string
+        endpoint:
+          type: string
+        p256dh:
+          type: string
+        auth:
+          type: string
+        age_recipient:
+          type: string
+    PairResponse:
+      type: object
+      required: [device_id, device_token]
+      properties:
+        device_id:
+          type: string
+        device_token:
+          type: string
+    PairingStatusResponse:
+      type: object
+      required: [device_id, pairing_status]
+      properties:
+        device_id:
+          type: string
+        pairing_status:
+          $ref: "#/components/schemas/PairingStatus"
+    PairingStatus:
+      type: string
+      enum: [pending, paired, unpaired, subscription_gone]
+    APITokenResponse:
+      type: object
+      required: [id, name, last_four, created_at, is_active]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        description:
+          type:
+            - string
+            - "null"
+        last_four:
+          type: string
+        topic_ids:
+          type: array
+          items:
+            type: string
+          description: Topic IDs allowed for this token.
+        created_at:
+          type: string
+          format: date-time
+        expires_at:
+          type:
+            - string
+            - "null"
+          format: date-time
+        last_used_at:
+          type:
+            - string
+            - "null"
+          format: date-time
+        is_active:
+          type: boolean
+    APITokensListResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/APITokenResponse"
+    CreateAPITokenRequest:
+      type: object
+      required: [name, topics]
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        topics:
+          type: array
+          items:
+            type: string
+    UpdateAPITokenRequest:
+      type: object
+      required: [name, topics]
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        topics:
+          type: array
+          items:
+            type: string
+    CreatedAPITokenResponse:
+      type: object
+      required: [token, name]
+      properties:
+        token:
+          type: string
+        name:
+          type: string
+    WebhookResponse:
+      type: object
+      required: [id, name, payload_type, priority, is_active, created_at]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        description:
+          type:
+            - string
+            - "null"
+        payload_type:
+          type: string
+          enum: [beebuzz, custom]
+        title_path:
+          type: string
+        body_path:
+          type: string
+        priority:
+          type: string
+          enum: [normal, high]
+        is_active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        last_used_at:
+          type:
+            - string
+            - "null"
+          format: date-time
+        topic_ids:
+          type: array
+          items:
+            type: string
+          description: Topic IDs attached to this webhook.
+    WebhooksListResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/WebhookResponse"
+    CreateWebhookRequest:
+      oneOf:
+        - $ref: "#/components/schemas/CreateWebhookRequestBeebuzz"
+        - $ref: "#/components/schemas/CreateWebhookRequestCustom"
+      discriminator:
+        propertyName: payload_type
+        mapping:
+          beebuzz: "#/components/schemas/CreateWebhookRequestBeebuzz"
+          custom: "#/components/schemas/CreateWebhookRequestCustom"
+    UpdateWebhookRequest:
+      oneOf:
+        - $ref: "#/components/schemas/UpdateWebhookRequestBeebuzz"
+        - $ref: "#/components/schemas/UpdateWebhookRequestCustom"
+      discriminator:
+        propertyName: payload_type
+        mapping:
+          beebuzz: "#/components/schemas/UpdateWebhookRequestBeebuzz"
+          custom: "#/components/schemas/UpdateWebhookRequestCustom"
+    CreateWebhookRequestBeebuzz:
+      type: object
+      required: [name, payload_type, topics]
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        payload_type:
+          type: string
+          const: beebuzz
+        title_path:
+          type: string
+          maxLength: 0
+        body_path:
+          type: string
+          maxLength: 0
+        priority:
+          type: string
+          enum: [normal, high]
+          default: normal
+        topics:
+          type: array
+          items:
+            type: string
+    CreateWebhookRequestCustom:
+      type: object
+      required: [name, payload_type, title_path, body_path, topics]
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        payload_type:
+          type: string
+          const: custom
+        title_path:
+          type: string
+          minLength: 1
+          pattern: '^[A-Za-z0-9_]+(?:\[[0-9]+\])*(?:\.[A-Za-z0-9_]+(?:\[[0-9]+\])*)*$'
+          description: Dot-separated JSON path with optional numeric array indexes.
+        body_path:
+          type: string
+          minLength: 1
+          pattern: '^[A-Za-z0-9_]+(?:\[[0-9]+\])*(?:\.[A-Za-z0-9_]+(?:\[[0-9]+\])*)*$'
+          description: Dot-separated JSON path with optional numeric array indexes.
+        priority:
+          type: string
+          enum: [normal, high]
+          default: normal
+        topics:
+          type: array
+          items:
+            type: string
+    UpdateWebhookRequestBeebuzz:
+      type: object
+      required: [name, payload_type, topics]
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        payload_type:
+          type: string
+          const: beebuzz
+        title_path:
+          type: string
+          maxLength: 0
+        body_path:
+          type: string
+          maxLength: 0
+        priority:
+          type: string
+          enum: [normal, high]
+          default: normal
+        topics:
+          type: array
+          items:
+            type: string
+    UpdateWebhookRequestCustom:
+      type: object
+      required: [name, payload_type, title_path, body_path, topics]
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        payload_type:
+          type: string
+          const: custom
+        title_path:
+          type: string
+          minLength: 1
+          pattern: '^[A-Za-z0-9_]+(?:\[[0-9]+\])*(?:\.[A-Za-z0-9_]+(?:\[[0-9]+\])*)*$'
+          description: Dot-separated JSON path with optional numeric array indexes.
+        body_path:
+          type: string
+          minLength: 1
+          pattern: '^[A-Za-z0-9_]+(?:\[[0-9]+\])*(?:\.[A-Za-z0-9_]+(?:\[[0-9]+\])*)*$'
+          description: Dot-separated JSON path with optional numeric array indexes.
+        priority:
+          type: string
+          enum: [normal, high]
+          default: normal
+        topics:
+          type: array
+          items:
+            type: string
+    CreatedWebhookResponse:
+      type: object
+      required: [id, token, name]
+      properties:
+        id:
+          type: string
+        token:
+          type: string
+        name:
+          type: string
+    RegenerateTokenResponse:
+      type: object
+      required: [token]
+      properties:
+        token:
+          type: string
+    CreateInspectSessionRequest:
+      type: object
+      required: [name, topics]
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        priority:
+          type: string
+          enum: [normal, high]
+          default: normal
+        topics:
+          type: array
+          items:
+            type: string
+    InspectSessionResponse:
+      type: object
+      required: [token, url, status, expires_at]
+      properties:
+        token:
+          type: string
+          description: Temporary inspect token (beebuzz_whi_...)
+        url:
+          type: string
+          format: uri
+          description: Full webhook URL to send test payload
+        status:
+          type: string
+          enum: [waiting]
+        expires_at:
+          type: string
+          format: date-time
+    InspectSessionStatusResponse:
+      type: object
+      required: [status, expires_at]
+      properties:
+        status:
+          type: string
+          enum: [waiting, captured]
+        payload:
+          type: object
+          description: The captured webhook payload (only when status is "captured")
+        captured_at:
+          type: string
+          format: date-time
+        expires_at:
+          type: string
+          format: date-time
+    FinalizeInspectRequest:
+      type: object
+      required: [title_path, body_path]
+      properties:
+        title_path:
+          type: string
+          minLength: 1
+          pattern: '^[A-Za-z0-9_]+(?:\[[0-9]+\])*(?:\.[A-Za-z0-9_]+(?:\[[0-9]+\])*)*$'
+          description: Dot-separated JSON path with optional numeric array indexes for extracting title from payload.
+        body_path:
+          type: string
+          minLength: 1
+          pattern: '^[A-Za-z0-9_]+(?:\[[0-9]+\])*(?:\.[A-Za-z0-9_]+(?:\[[0-9]+\])*)*$'
+          description: Dot-separated JSON path with optional numeric array indexes for extracting body from payload.
+    ReceiveResponse:
+      type: object
+      required: [status, sent_count, total_count, failed_count]
+      properties:
+        status:
+          type: string
+          example: delivered
+          enum: [delivered, partial]
+        sent_count:
+          type: integer
+        total_count:
+          type: integer
+        failed_count:
+          type: integer
+    SendRequest:
+      type: object
+      required: [title]
+      properties:
+        title:
+          type: string
+          maxLength: 64
+        body:
+          type: string
+          maxLength: 256
+        priority:
+          type: string
+          enum: [normal, high]
+        attachment_url:
+          type: string
+          format: uri
+    SendMultipartRequest:
+      type: object
+      required: [title]
+      properties:
+        title:
+          type: string
+          maxLength: 64
+        body:
+          type: string
+          maxLength: 256
+        priority:
+          type: string
+          enum: [normal, high]
+        attachment:
+          type: string
+          format: binary
+    SendResponse:
+      type: object
+      required: [status, sent_count, total_count, failed_count]
+      properties:
+        status:
+          type: string
+          enum: [delivered, partial]
+        sent_count:
+          type: integer
+        total_count:
+          type: integer
+        failed_count:
+          type: integer
+        device_keys:
+          type: array
+          items:
+            $ref: "#/components/schemas/DeviceKeyDescriptor"
+    KeysResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/DeviceKeyDescriptor"
+    VAPIDPublicKeyResponse:
+      type: object
+      required: [key]
+      properties:
+        key:
+          type: string
+    AccountUsageDayResponse:
+      type: object
+      required:
+        [date, notifications_created, delivery_attempts, deliveries_succeeded, deliveries_failed, devices_lost, notifications_with_attachment, attachment_bytes_total, notifications_server_trusted, notifications_e2e, sources_cli, sources_webhook, sources_api]
+      properties:
+        date:
+          type: string
+          format: date
+        notifications_created:
+          type: integer
+        delivery_attempts:
+          type: integer
+        deliveries_succeeded:
+          type: integer
+        deliveries_failed:
+          type: integer
+        devices_lost:
+          type: integer
+        notifications_with_attachment:
+          type: integer
+        attachment_bytes_total:
+          type: integer
+        notifications_server_trusted:
+          type: integer
+        notifications_e2e:
+          type: integer
+        sources_cli:
+          type: integer
+        sources_webhook:
+          type: integer
+        sources_api:
+          type: integer
+    AccountUsageResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/AccountUsageDayResponse"
+    DailyUsageSummaryResponse:
+      type: object
+      required:
+        [date, notifications_created, delivery_attempts, deliveries_succeeded, deliveries_failed, notifications_with_attachment, attachment_bytes_total, notifications_server_trusted, notifications_e2e, sources_cli, sources_webhook, sources_api, devices_lost, updated_at]
+      properties:
+        date:
+          type: string
+          format: date
+        notifications_created:
+          type: integer
+        delivery_attempts:
+          type: integer
+        deliveries_succeeded:
+          type: integer
+        deliveries_failed:
+          type: integer
+        notifications_with_attachment:
+          type: integer
+        attachment_bytes_total:
+          type: integer
+        notifications_server_trusted:
+          type: integer
+        notifications_e2e:
+          type: integer
+        sources_cli:
+          type: integer
+        sources_webhook:
+          type: integer
+        sources_api:
+          type: integer
+        devices_lost:
+          type: integer
+        updated_at:
+          type: string
+          format: date-time
+    PlatformDashboardResponse:
+      type: object
+      required:
+        [notifications_created, delivery_attempts, deliveries_succeeded, deliveries_failed, delivery_success_rate, active_users, notifications_server_trusted, notifications_e2e, notifications_with_attachment, attachment_bytes_total, sources_cli, sources_webhook, sources_api, devices_lost, daily_breakdown]
+      properties:
+        notifications_created:
+          type: integer
+        delivery_attempts:
+          type: integer
+        deliveries_succeeded:
+          type: integer
+        deliveries_failed:
+          type: integer
+        delivery_success_rate:
+          type: number
+          format: double
+        active_users:
+          type: integer
+        notifications_server_trusted:
+          type: integer
+        notifications_e2e:
+          type: integer
+        notifications_with_attachment:
+          type: integer
+        attachment_bytes_total:
+          type: integer
+        sources_cli:
+          type: integer
+        sources_webhook:
+          type: integer
+        sources_api:
+          type: integer
+        devices_lost:
+          type: integer
+        daily_breakdown:
+          type: array
+          items:
+            $ref: "#/components/schemas/DailyUsageSummaryResponse"
+    AdminUserResponse:
+      type: object
+      required: [id, email, is_admin, account_status, created_at, updated_at]
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+          format: email
+        is_admin:
+          type: boolean
+        account_status:
+          type: string
+          enum: [pending, active, blocked]
+        signup_reason:
+          type:
+            - string
+            - "null"
+        trial_started_at:
+          type:
+            - string
+            - "null"
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    UpdateUserStatusRequest:
+      type: object
+      required: [account_status]
+      properties:
+        account_status:
+          type: string
+          enum: [pending, active, blocked]
+    AdminUsersListResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/AdminUserResponse"

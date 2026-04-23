@@ -1,0 +1,55 @@
+{
+	"id": "app.beebuzz.dev",
+	"name": "BeeBuzz DEV",
+	"short_name": "BeeBuzz DEV",
+	"description": "Web Push Notification System (Development)",
+	"lang": "en",
+	"dir": "ltr",
+	"start_url": "/",
+	"scope": "/",
+	"display": "standalone",
+	"display_override": ["standalone", "minimal-ui"],
+	"background_color": "#000000",
+	"theme_color": "#7FB5CC",
+	"orientation": "portrait-primary",
+	"categories": ["utilities", "productivity"],
+	"prefer_related_applications": false,
+	"launch_handler": {
+		"client_mode": "focus-existing"
+	},
+	"icons": [
+		{
+			"src": "/assets/dev/manifest-icon-192.maskable.png",
+			"sizes": "192x192",
+			"type": "image/png",
+			"purpose": "any maskable"
+		},
+		{
+			"src": "/assets/dev/manifest-icon-512.maskable.png",
+			"sizes": "512x512",
+			"type": "image/png",
+			"purpose": "any maskable"
+		},
+		{
+			"src": "/assets/dev/manifest-icon-1024.maskable.png",
+			"sizes": "1024x1024",
+			"type": "image/png",
+			"purpose": "any maskable"
+		}
+	],
+	"shortcuts": [
+		{
+			"name": "View Notifications",
+			"short_name": "Notifications",
+			"description": "View your notifications",
+			"url": "/",
+			"icons": [
+				{
+					"src": "/assets/dev/manifest-icon-192.maskable.png",
+					"sizes": "192x192",
+					"type": "image/png"
+				}
+			]
+		}
+	]
+}

@@ -1,0 +1,76 @@
+# .mise.toml - BeeBuzz Project Configuration
+[tools]
+go = "1.26"
+node = "24.14"
+pnpm = "latest"
+"go:github.com/air-verse/air" = "latest"
+"github:caddyserver/caddy" = "latest"
+"github:mattn/goreman" = "latest"
+"github:axllent/mailpit" = "latest"
+
+[env]
+# Load base env vars from .env (explicit [env] entries take precedence)
+_.file = ".env"
+# Mailer
+BEEBUZZ_MAILER_SMTP_ADDRESS = "localhost:1025"
+BEEBUZZ_MAILER_SMTP_USER = "dev"
+BEEBUZZ_MAILER_SMTP_PASSWORD = "dev"
+# Mailpit
+MP_SMTP_AUTH = "dev:dev"
+MP_SMTP_AUTH_ALLOW_INSECURE = "true"
+# Frontend
+VITE_BEEBUZZ_DEBUG = true
+
+[tasks.setup]
+description = "Initial project setup"
+run = [
+  "mise install",
+  "mkdir -p data bin",
+  "cd web && pnpm install",
+  "go mod download",
+  "echo 'Setup complete. Run \"mise run dev\" to start all services.'",
+]
+
+[tasks.dev-api]
+description = "Run Go API server with hot reload"
+run = "air -c ./.mise/.air.toml"
+
+[tasks.dev-site]
+description = "Run SvelteKit site app with hot reload"
+run = "cd web/apps/site && pnpm dev"
+
+[tasks.dev-hive]
+description = "Run SvelteKit hive app with hot reload"
+run = "cd web/apps/hive && pnpm dev"
+
+[tasks.dev-caddy]
+description = "Run Caddy reverse proxy with lancert.dev certs"
+run = "caddy run --config ./.mise/Caddyfile"
+
+[tasks.dev-mailpit]
+description = "Run Mailpit for email testing"
+run = "mailpit --smtp 0.0.0.0:1025 --listen 0.0.0.0:8025"
+
+[tasks.dev]
+description = "Run all development services (auto-detects IP, fetches certs)"
+run = """
+#!/usr/bin/env bash
+set -euo pipefail
+source .mise/setup-dev.sh
+cd .mise && goreman -f Procfile start
+"""
+
+[tasks.test-api]
+description = "Run Go tests"
+run = "go test ./..."
+
+[tasks.test-app]
+description = "Run Svelte tests"
+run = "cd web && pnpm test"
+
+[tasks.test]
+description = "Run all tests"
+run = [
+  "mise run test-api",
+  "mise run test-app"
+]

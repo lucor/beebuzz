@@ -1,0 +1,11 @@
+/beebuzz
+/beebuzz-server
+/bin
+/build
+/certs
+/data
+/public
+/tmp
+.env
+.mise/certs/
+

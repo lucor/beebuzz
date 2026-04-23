@@ -1,0 +1,218 @@
+name: Build and push Docker images
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE: ghcr.io/lucor/beebuzz
+  GOVULNCHECK_VERSION: v1.1.4
+  STATICCHECK_VERSION: v0.7.0
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      server: ${{ steps.filter.outputs.server }}
+      web: ${{ steps.filter.outputs.web }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Detect changed paths
+        id: filter
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "server=true" >> "$GITHUB_OUTPUT"
+            echo "web=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git fetch --depth=1 origin ${{ github.event.before }}
+          changed=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }})
+          server=false
+          web=false
+          while IFS= read -r file; do
+            case "$file" in
+              cmd/beebuzz/*) ;;
+              cmd/*|internal/*|go.mod|go.sum|deploy/server.Dockerfile) server=true ;;
+              web/*|deploy/Caddyfile|deploy/web.Dockerfile) web=true ;;
+            esac
+          done <<< "$changed"
+          echo "server=$server" >> "$GITHUB_OUTPUT"
+          echo "web=$web" >> "$GITHUB_OUTPUT"
+
+  test-server:
+    needs: changes
+    if: needs.changes.outputs.server == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        go-version: ['1.25', '1.26']
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup Go
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+        with:
+          go-version: ${{ matrix.go-version }}
+          check-latest: true
+
+      - name: Run govulncheck
+        if: matrix.go-version == '1.26'
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@${{ env.GOVULNCHECK_VERSION }}
+          govulncheck ./...
+
+      - name: Run staticcheck
+        if: matrix.go-version == '1.26'
+        run: |
+          go install honnef.co/go/tools/cmd/staticcheck@${{ env.STATICCHECK_VERSION }}
+          staticcheck ./...
+
+      - name: Run Go tests
+        run: go test ./...
+
+  test-web:
+    needs: changes
+    if: needs.changes.outputs.web == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
+        with:
+          version: 10.31.0
+          run_install: false
+
+      - name: Setup Node
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version-file: web/package.json
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+
+      - name: Install web dependencies
+        run: pnpm install --frozen-lockfile
+        working-directory: web
+
+      - name: Audit production dependencies
+        run: pnpm audit --prod
+        working-directory: web
+
+      - name: Run web check
+        run: pnpm run check
+        working-directory: web
+
+      - name: Run web lint
+        run: pnpm run lint
+        working-directory: web
+
+      - name: Run web tests
+        run: pnpm run test
+        working-directory: web
+
+  build-server:
+    needs: [changes, test-server]
+    if: needs.changes.outputs.server == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Set short SHA
+        run: echo "SHORT_SHA=${GITHUB_SHA::7}" >> "$GITHUB_ENV"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4.0.0
+
+      - name: Log in to GHCR
+        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4.1.0
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push server image
+        uses: docker/build-push-action@bcafcacb16a39f128d818304e6c9c0c18556b85f # v7.1.0
+        with:
+          context: .
+          file: deploy/server.Dockerfile
+          push: true
+          platforms: linux/amd64
+          build-args: COMMIT_SHA=${{ github.sha }}
+          cache-from: type=gha,scope=server
+          cache-to: type=gha,mode=max,scope=server
+          tags: |
+            ${{ env.IMAGE }}:server
+            ${{ env.IMAGE }}:server-${{ env.SHORT_SHA }}
+
+  build-web:
+    needs: [changes, test-web]
+    if: needs.changes.outputs.web == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Set short SHA
+        run: echo "SHORT_SHA=${GITHUB_SHA::7}" >> "$GITHUB_ENV"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4.0.0
+
+      - name: Log in to GHCR
+        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4.1.0
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push web image
+        uses: docker/build-push-action@bcafcacb16a39f128d818304e6c9c0c18556b85f # v7.1.0
+        with:
+          context: .
+          file: deploy/web.Dockerfile
+          push: true
+          platforms: linux/amd64
+          build-args: |
+            VITE_BEEBUZZ_DOMAIN=${{ vars.BEEBUZZ_DOMAIN }}
+            VITE_BEEBUZZ_DEBUG=${{ vars.VITE_BEEBUZZ_DEBUG }}
+            VITE_BEEBUZZ_DEPLOYMENT_MODE=${{ vars.VITE_BEEBUZZ_DEPLOYMENT_MODE }}
+          cache-from: type=gha,scope=web
+          cache-to: type=gha,mode=max,scope=web
+          tags: |
+            ${{ env.IMAGE }}:web
+            ${{ env.IMAGE }}:web-${{ env.SHORT_SHA }}
+
+  deploy-server:
+    needs: build-server
+    if: needs.build-server.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Dokploy server deploy
+        run: |
+          curl -fSs -o /dev/null -w "HTTP %{http_code}" \
+            -X POST "${{ secrets.DOKPLOY_URL }}/api/application.deploy" \
+            -H "x-api-key: ${{ secrets.DOKPLOY_API_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d "{\"applicationId\": \"${{ secrets.DOKPLOY_SERVER_APP_ID }}\", \"title\": \"${{ github.event.head_commit.title }}\"}"
+
+  deploy-web:
+    needs: build-web
+    if: needs.build-web.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Dokploy web deploy
+        run: |
+          curl -fSs -o /dev/null -w "HTTP %{http_code}" \
+            -X POST "${{ secrets.DOKPLOY_URL }}/api/application.deploy" \
+            -H "x-api-key: ${{ secrets.DOKPLOY_API_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d "{\"applicationId\": \"${{ secrets.DOKPLOY_WEB_APP_ID }}\", \"title\": \"${{ github.event.head_commit.title }}\"}"

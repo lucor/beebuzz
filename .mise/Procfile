@@ -1,0 +1,5 @@
+api: cd .. && mise run dev-api
+site: cd .. && mise run dev-site
+hive: cd .. && mise run dev-hive
+caddy: cd .. && mise run dev-caddy
+mailpit: cd .. && mise run dev-mailpit
