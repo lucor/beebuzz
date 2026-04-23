@@ -1,7 +1,7 @@
 # BeeBuzz
 
-BeeBuzz is a web push notification system for servers and apps, built to deliver the alerts you care about with a small, auditable stack.
-It includes a web app, an installable Hive client as PWA, and optional end-to-end encrypted delivery.
+Simple, private push notifications with real end-to-end encryption.
+BeeBuzz delivers alerts over Web Push with a small, auditable stack. In E2E mode, the server stores ciphertext instead of plaintext.
 
 ## Start Here
 
