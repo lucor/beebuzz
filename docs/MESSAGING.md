@@ -21,6 +21,13 @@ BeeBuzz supports two delivery modes:
 
 Push delivery is topic-based. If no topic is provided, BeeBuzz uses the default topic `general`.
 
+Notification analytics use stable source labels:
+
+- `api`: direct Push API requests
+- `cli`: BeeBuzz CLI sends
+- `webhook`: webhook-triggered sends
+- `internal`: BeeBuzz system-generated notifications, such as admin alerts for new signups
+
 ## Active Endpoints
 
 ### Push API
@@ -50,6 +57,10 @@ Returns the stored encrypted attachment blob for a previously issued attachment 
 Access remains token-based, but retrieval is rate-limited per attachment token to reduce abuse if a token leaks.
 
 ## Delivery Modes
+
+### System-generated notifications
+
+BeeBuzz can generate server-trusted notifications for operational platform events. System-generated notifications are configured by admins and are dispatched internally through the notification service layer; they do not use stored API tokens or a loopback HTTP call to `/v1/push`.
 
 ### 1. Server-trusted delivery
 

@@ -14,9 +14,10 @@ const (
 
 // Source constants.
 const (
-	SourceCLI     = "cli"
-	SourceWebhook = "webhook"
-	SourceAPI     = "api"
+	SourceCLI      = "cli"
+	SourceWebhook  = "webhook"
+	SourceAPI      = "api"
+	SourceInternal = "internal"
 )
 
 // Encryption mode constants.
@@ -61,6 +62,7 @@ type DailyUsageSummary struct {
 	SourcesCLI                 int    `db:"sources_cli"`
 	SourcesWebhook             int    `db:"sources_webhook"`
 	SourcesAPI                 int    `db:"sources_api"`
+	SourcesInternal            int    `db:"sources_internal"`
 	DevicesLost                int    `db:"devices_lost"`
 	CreatedAt                  int64  `db:"created_at"`
 	UpdatedAt                  int64  `db:"updated_at"`
@@ -80,6 +82,7 @@ type DailyUsageSummaryResponse struct {
 	SourcesCLI                  int       `json:"sources_cli"`
 	SourcesWebhook              int       `json:"sources_webhook"`
 	SourcesAPI                  int       `json:"sources_api"`
+	SourcesInternal             int       `json:"sources_internal"`
 	DevicesLost                 int       `json:"devices_lost"`
 	UpdatedAt                   time.Time `json:"updated_at"`
 }
@@ -99,6 +102,7 @@ func ToDailyUsageSummaryResponse(s *DailyUsageSummary) DailyUsageSummaryResponse
 		SourcesCLI:                  s.SourcesCLI,
 		SourcesWebhook:              s.SourcesWebhook,
 		SourcesAPI:                  s.SourcesAPI,
+		SourcesInternal:             s.SourcesInternal,
 		DevicesLost:                 s.DevicesLost,
 		UpdatedAt:                   time.UnixMilli(s.UpdatedAt).UTC(),
 	}
@@ -151,6 +155,7 @@ type PlatformDashboardResponse struct {
 	SourcesCLI                  int                         `json:"sources_cli"`
 	SourcesWebhook              int                         `json:"sources_webhook"`
 	SourcesAPI                  int                         `json:"sources_api"`
+	SourcesInternal             int                         `json:"sources_internal"`
 	DevicesLost                 int                         `json:"devices_lost"`
 	DailyBreakdown              []DailyUsageSummaryResponse `json:"daily_breakdown"`
 }
@@ -170,6 +175,7 @@ type AccountUsageDayResponse struct {
 	SourcesCLI                  int    `json:"sources_cli"`
 	SourcesWebhook              int    `json:"sources_webhook"`
 	SourcesAPI                  int    `json:"sources_api"`
+	SourcesInternal             int    `json:"sources_internal"`
 }
 
 // AccountUsageResponse is the HTTP response for the user account dashboard.
@@ -193,6 +199,7 @@ func ToAccountUsageDayResponse(s *DailyUsageSummary) AccountUsageDayResponse {
 		SourcesCLI:                  s.SourcesCLI,
 		SourcesWebhook:              s.SourcesWebhook,
 		SourcesAPI:                  s.SourcesAPI,
+		SourcesInternal:             s.SourcesInternal,
 	}
 }
 
@@ -225,6 +232,7 @@ func ToAccountUsageResponse(summaries []DailyUsageSummary, fromMs, toMs int64) A
 				SourcesCLI:                  0,
 				SourcesWebhook:              0,
 				SourcesAPI:                  0,
+				SourcesInternal:             0,
 			})
 		}
 	}

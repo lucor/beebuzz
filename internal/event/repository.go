@@ -51,9 +51,9 @@ func (r *Repository) InsertEvent(ctx context.Context, ev *NotificationEvent) err
 			notifications_total, notifications_server_trusted, notifications_e2e,
 			notifications_delivered, notifications_failed,
 			attachments_count, attachments_bytes_total,
-			sources_cli, sources_webhook, sources_api,
+			sources_cli, sources_webhook, sources_api, sources_internal,
 			devices_lost, created_at, updated_at
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT(user_id, day_start_ms) DO UPDATE SET
 			notifications_total      = notifications_total + excluded.notifications_total,
 			notifications_server_trusted = notifications_server_trusted + excluded.notifications_server_trusted,
@@ -65,13 +65,14 @@ func (r *Repository) InsertEvent(ctx context.Context, ev *NotificationEvent) err
 			sources_cli              = sources_cli + excluded.sources_cli,
 			sources_webhook          = sources_webhook + excluded.sources_webhook,
 			sources_api              = sources_api + excluded.sources_api,
+			sources_internal         = sources_internal + excluded.sources_internal,
 			devices_lost             = devices_lost + excluded.devices_lost,
 			updated_at               = excluded.updated_at`,
 		ev.UserID, DayStartMs(time.UnixMilli(ev.CreatedAt)),
 		delta.NotificationsTotal, delta.NotificationsServerTrusted, delta.NotificationsE2E,
 		delta.NotificationsDelivered, delta.NotificationsFailed,
 		delta.AttachmentsCount, delta.AttachmentsBytesTotal,
-		delta.SourcesCLI, delta.SourcesWebhook, delta.SourcesAPI,
+		delta.SourcesCLI, delta.SourcesWebhook, delta.SourcesAPI, delta.SourcesInternal,
 		delta.DevicesLost, now, now,
 	)
 	if err != nil {
@@ -111,6 +112,8 @@ func (r *Repository) eventToDelta(ev *NotificationEvent) DailyUsageSummary {
 				d.SourcesWebhook = 1
 			case SourceAPI:
 				d.SourcesAPI = 1
+			case SourceInternal:
+				d.SourcesInternal = 1
 			}
 		}
 
@@ -135,7 +138,7 @@ func (r *Repository) GetDailySummaries(ctx context.Context, userID string, fromM
 			notifications_total, notifications_server_trusted, notifications_e2e,
 			notifications_delivered, notifications_failed,
 			attachments_count, attachments_bytes_total,
-			sources_cli, sources_webhook, sources_api,
+			sources_cli, sources_webhook, sources_api, sources_internal,
 			devices_lost, created_at, updated_at
 		 FROM daily_usage_summary
 		 WHERE user_id = ? AND day_start_ms >= ? AND day_start_ms <= ?
@@ -194,6 +197,7 @@ type PlatformSummaryRow struct {
 	SourcesCLI                 int   `db:"sources_cli"`
 	SourcesWebhook             int   `db:"sources_webhook"`
 	SourcesAPI                 int   `db:"sources_api"`
+	SourcesInternal            int   `db:"sources_internal"`
 	DevicesLost                int   `db:"devices_lost"`
 	ActiveUsers                int   `db:"active_users"`
 }
@@ -213,6 +217,7 @@ func (r *Repository) GetPlatformSummary(ctx context.Context, fromMs, toMs int64)
 			COALESCE(SUM(sources_cli), 0) AS sources_cli,
 			COALESCE(SUM(sources_webhook), 0) AS sources_webhook,
 			COALESCE(SUM(sources_api), 0) AS sources_api,
+			COALESCE(SUM(sources_internal), 0) AS sources_internal,
 			COALESCE(SUM(devices_lost), 0) AS devices_lost,
 			COUNT(DISTINCT user_id) AS active_users
 		 FROM daily_usage_summary
@@ -242,6 +247,7 @@ func (r *Repository) GetPlatformDailyBreakdown(ctx context.Context, fromMs, toMs
 			COALESCE(SUM(sources_cli), 0) AS sources_cli,
 			COALESCE(SUM(sources_webhook), 0) AS sources_webhook,
 			COALESCE(SUM(sources_api), 0) AS sources_api,
+			COALESCE(SUM(sources_internal), 0) AS sources_internal,
 			COALESCE(SUM(devices_lost), 0) AS devices_lost,
 			MIN(created_at) AS created_at,
 			MAX(updated_at) AS updated_at

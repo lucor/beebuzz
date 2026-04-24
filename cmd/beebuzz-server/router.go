@@ -19,6 +19,7 @@ import (
 	"lucor.dev/beebuzz/internal/health"
 	"lucor.dev/beebuzz/internal/middleware"
 	"lucor.dev/beebuzz/internal/notification"
+	systemnotifications "lucor.dev/beebuzz/internal/system/notifications"
 	"lucor.dev/beebuzz/internal/token"
 	"lucor.dev/beebuzz/internal/topic"
 	"lucor.dev/beebuzz/internal/user"
@@ -57,6 +58,7 @@ func NewRouter(
 	userHandler *user.Handler,
 	topicHandler *topic.Handler,
 	adminHandler *admin.Handler,
+	systemNotificationsHandler *systemnotifications.Handler,
 	eventHandler *event.Handler,
 	notificationHandler *notification.Handler,
 	deviceHandler *device.Handler,
@@ -150,6 +152,8 @@ func NewRouter(
 				adminR.Get("/admin/users", adminHandler.ListUsers)
 				adminR.Patch("/admin/users/{userID}", adminHandler.UpdateUserStatus)
 				adminR.Get("/admin/dashboard", eventHandler.Dashboard)
+				adminR.Get("/admin/system/notifications", systemNotificationsHandler.GetSettings)
+				adminR.Patch("/admin/system/notifications", systemNotificationsHandler.UpdateSettings)
 			})
 		})
 	})

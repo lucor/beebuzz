@@ -27,6 +27,7 @@ import (
 	"lucor.dev/beebuzz/internal/migrations"
 	"lucor.dev/beebuzz/internal/monitoring"
 	"lucor.dev/beebuzz/internal/notification"
+	systemnotifications "lucor.dev/beebuzz/internal/system/notifications"
 	"lucor.dev/beebuzz/internal/token"
 	"lucor.dev/beebuzz/internal/topic"
 	"lucor.dev/beebuzz/internal/user"
@@ -50,17 +51,18 @@ const (
 
 // appServices collects the domain services used by handlers and background jobs.
 type appServices struct {
-	db            health.DBPinger
-	adminSvc      *admin.Service
-	attachmentSvc *attachment.Service
-	authSvc       *auth.Service
-	deviceSvc     *device.Service
-	eventSvc      *event.Service
-	notifSvc      *notification.Service
-	tokenSvc      *token.Service
-	topicSvc      *topic.Service
-	userSvc       *user.Service
-	webhookSvc    *webhook.Service
+	db             health.DBPinger
+	adminSvc       *admin.Service
+	attachmentSvc  *attachment.Service
+	authSvc        *auth.Service
+	deviceSvc      *device.Service
+	eventSvc       *event.Service
+	notifSvc       *notification.Service
+	systemNotifSvc *systemnotifications.Service
+	tokenSvc       *token.Service
+	topicSvc       *topic.Service
+	userSvc        *user.Service
+	webhookSvc     *webhook.Service
 }
 
 // runServe bootstraps and runs the HTTP server lifecycle.
@@ -169,6 +171,12 @@ func buildServices(db *sqlx.DB, cfg *config.Config, log *slog.Logger, m mailer.M
 	notifEventTracker := &notificationEventTrackerAdapter{eventSvc: eventSvc}
 	notifSvc := notification.NewService(notifDeviceAdapter, notifAttachmentAdapter, notifEventTracker, vapidKeys, cfg.VAPIDSubject, log)
 
+	systemNotifRepo := systemnotifications.NewRepository(db)
+	systemNotifTopics := &systemNotificationTopicProviderAdapter{topicSvc: topicSvc}
+	systemNotifDelivery := &systemNotificationDeliveryAdapter{notifSvc: notifSvc, log: log}
+	systemNotifSvc := systemnotifications.NewService(systemNotifRepo, systemNotifTopics, systemNotifDelivery, log)
+	authSvc.SetSignupNotifier(systemNotifSvc)
+
 	webhookRepo := webhook.NewRepository(db)
 	webhookInspectStore := webhook.NewInspectStore()
 	webhookDispatcher := &webhookDispatcherAdapter{notifSvc: notifSvc}
@@ -176,17 +184,18 @@ func buildServices(db *sqlx.DB, cfg *config.Config, log *slog.Logger, m mailer.M
 	webhookSvc := webhook.NewService(webhookRepo, webhookInspectStore, webhookDispatcher, webhookTopicValidator, log)
 
 	return &appServices{
-		db:            db,
-		adminSvc:      adminSvc,
-		attachmentSvc: attachmentSvc,
-		authSvc:       authSvc,
-		deviceSvc:     deviceSvc,
-		eventSvc:      eventSvc,
-		notifSvc:      notifSvc,
-		tokenSvc:      tokenSvc,
-		topicSvc:      topicSvc,
-		userSvc:       userSvc,
-		webhookSvc:    webhookSvc,
+		db:             db,
+		adminSvc:       adminSvc,
+		attachmentSvc:  attachmentSvc,
+		authSvc:        authSvc,
+		deviceSvc:      deviceSvc,
+		eventSvc:       eventSvc,
+		notifSvc:       notifSvc,
+		systemNotifSvc: systemNotifSvc,
+		tokenSvc:       tokenSvc,
+		topicSvc:       topicSvc,
+		userSvc:        userSvc,
+		webhookSvc:     webhookSvc,
 	}, nil
 }
 
@@ -210,6 +219,7 @@ func buildHTTPHandler(services *appServices, cfg *config.Config, log *slog.Logge
 	userHandler := user.NewHandler(services.userSvc, log)
 	topicHandler := topic.NewHandler(services.topicSvc, log)
 	adminHandler := admin.NewHandler(services.adminSvc, log)
+	systemNotificationsHandler := systemnotifications.NewHandler(services.systemNotifSvc, log)
 	eventHandler := event.NewHandler(services.eventSvc, log)
 	pushAuth := &pushAuthorizerAdapter{tokenSvc: services.tokenSvc}
 	keyProvider := &keyProviderAdapter{deviceSvc: services.deviceSvc}
@@ -230,6 +240,7 @@ func buildHTTPHandler(services *appServices, cfg *config.Config, log *slog.Logge
 		userHandler,
 		topicHandler,
 		adminHandler,
+		systemNotificationsHandler,
 		eventHandler,
 		notificationHandler,
 		deviceHandler,

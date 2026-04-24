@@ -85,8 +85,7 @@ Example:
 | Version | Name | Description |
 |---|---|---|
 | 1 | `000001_init_schema` | Full initial schema including analytics, account status fields, and webhook priority |
-| 2 | `000002_device_pairing_status` | Add canonical device pairing state to the `devices` table and backfill existing rows |
-| 3 | `000003_device_token` | Add hashed device authentication token storage for Hive pairing health checks |
+| 2 | `000002_system_notifications` | Add system notification settings and internal notification analytics source |
 
 ## Current Schema Notes
 
@@ -113,6 +112,7 @@ Main tables today include:
 - `attachments`
 - `notification_events`
 - `daily_usage_summary`
+- `system_notification_settings`
 
 ## Operational Notes
 

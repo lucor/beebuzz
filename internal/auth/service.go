@@ -25,6 +25,11 @@ type TopicInitializer interface {
 	CreateDefaultTopic(ctx context.Context, userID string) error
 }
 
+// SignupNotifier receives account creation events without coupling auth to consumers.
+type SignupNotifier interface {
+	NotifySignupCreated(ctx context.Context, createdUserID string, accountStatus core.AccountStatus)
+}
+
 // Service provides authentication business logic.
 type Service struct {
 	repo                *Repository
@@ -35,6 +40,7 @@ type Service struct {
 	globalThrottle      *GlobalAuthThrottle
 	emailThrottle       *EmailThrottle
 	topicInitializer    TopicInitializer
+	signupNotifier      SignupNotifier
 	log                 *slog.Logger
 }
 
@@ -69,6 +75,11 @@ func (s *Service) SetGlobalThrottle(throttle *GlobalAuthThrottle) {
 // SetEmailThrottle installs the login-email throttle used to silently absorb abuse.
 func (s *Service) SetEmailThrottle(throttle *EmailThrottle) {
 	s.emailThrottle = throttle
+}
+
+// SetSignupNotifier installs the optional system notification hook for new accounts.
+func (s *Service) SetSignupNotifier(notifier SignupNotifier) {
+	s.signupNotifier = notifier
 }
 
 // RequestAuth initiates authentication for the given email.
@@ -107,6 +118,9 @@ func (s *Service) RequestAuth(ctx context.Context, email string, state string, r
 			if err := s.topicInitializer.CreateDefaultTopic(ctx, user.ID); err != nil {
 				logger.Warn("failed to create default topic, will be retried on first access", "error", err)
 			}
+		}
+		if s.signupNotifier != nil {
+			s.signupNotifier.NotifySignupCreated(ctx, user.ID, user.AccountStatus)
 		}
 	}
 

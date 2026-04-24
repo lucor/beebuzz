@@ -6,7 +6,16 @@
 	import { logout } from '@beebuzz/shared/services/auth';
 	import { ApiError } from '@beebuzz/shared/errors';
 	import { BeeBuzzLogo } from '@beebuzz/shared/components';
-	import { Menu, X, LogOut, Users, ShieldAlert, LayoutDashboard, type Icon } from '@lucide/svelte';
+	import {
+		BellRing,
+		Menu,
+		X,
+		LogOut,
+		Users,
+		ShieldAlert,
+		LayoutDashboard,
+		type Icon
+	} from '@lucide/svelte';
 
 	let { children }: { children: import('svelte').Snippet } = $props();
 
@@ -22,7 +31,8 @@
 
 	const navItems: NavItem[] = [
 		{ label: 'Dashboard', href: '/admin', icon: LayoutDashboard },
-		{ label: 'Users', href: '/admin/users', icon: Users }
+		{ label: 'Users', href: '/admin/users', icon: Users },
+		{ label: 'System Notifications', href: '/admin/system/notifications', icon: BellRing }
 	];
 
 	/** Handles admin logout. */

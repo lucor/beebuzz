@@ -158,6 +158,7 @@ func (s *Service) GetPlatformDashboard(ctx context.Context, days int) (*Platform
 		SourcesCLI:                  summary.SourcesCLI,
 		SourcesWebhook:              summary.SourcesWebhook,
 		SourcesAPI:                  summary.SourcesAPI,
+		SourcesInternal:             summary.SourcesInternal,
 		DevicesLost:                 summary.DevicesLost,
 		DailyBreakdown:              dailyBreakdown,
 	}, nil
