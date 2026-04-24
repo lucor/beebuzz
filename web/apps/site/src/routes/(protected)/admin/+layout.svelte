@@ -5,13 +5,16 @@
 	import { toast } from '@beebuzz/shared/stores';
 	import { logout } from '@beebuzz/shared/services/auth';
 	import { ApiError } from '@beebuzz/shared/errors';
-	import { BeeBuzzLogo } from '@beebuzz/shared/components';
+	import { BeeBuzzLogo, HealthStatus } from '@beebuzz/shared/components';
+	import { auth } from '@beebuzz/shared/stores';
 	import {
 		BellRing,
 		Menu,
 		X,
 		LogOut,
+		User,
 		Users,
+		ArrowLeft,
 		ShieldAlert,
 		LayoutDashboard,
 		type Icon
@@ -34,6 +37,10 @@
 		{ label: 'Users', href: '/admin/users', icon: Users },
 		{ label: 'System Notifications', href: '/admin/system/notifications', icon: BellRing }
 	];
+
+	const accountOverviewHref = resolve('/account/overview');
+	const profileHref = resolve('/account/profile');
+	let accountMenuOpen = $state(false);
 
 	/** Handles admin logout. */
 	const handleLogout = async () => {
@@ -84,7 +91,50 @@
 			</a>
 		</div>
 
-		<div class="navbar-end"></div>
+		<div class="navbar-end gap-2">
+			<div
+				class="hidden sm:flex items-center rounded-full border border-base-300 bg-base-100 px-3 py-1.5 text-sm text-base-content/70"
+			>
+				<HealthStatus />
+			</div>
+
+			<div class="dropdown dropdown-end">
+				<button
+					type="button"
+					tabindex="0"
+					class="btn btn-ghost btn-circle border border-base-300"
+					aria-label="Open account menu"
+					aria-expanded={accountMenuOpen}
+					onclick={() => (accountMenuOpen = !accountMenuOpen)}
+					onblur={() => (accountMenuOpen = false)}
+				>
+					<User size={20} />
+				</button>
+
+				<ul
+					class="dropdown-content menu z-50 mt-3 w-64 rounded-xl border border-base-300 bg-base-100 p-2 shadow-xl"
+				>
+					<li class="menu-title px-3 py-2">
+						<span class="truncate text-xs font-medium text-base-content/75">
+							{auth.user?.email ?? 'Account'}
+						</span>
+					</li>
+					<li>
+						<a href={profileHref} onclick={() => (accountMenuOpen = false)}>
+							<User size={16} aria-hidden="true" />
+							Profile
+						</a>
+					</li>
+					<li aria-hidden="true" class="pointer-events-none my-1 border-t border-base-300"></li>
+					<li>
+						<button type="button" onclick={handleLogout}>
+							<LogOut size={16} aria-hidden="true" />
+							Logout
+						</button>
+					</li>
+				</ul>
+			</div>
+		</div>
 	</nav>
 
 	<!-- Main Layout with Sidebar -->
@@ -106,6 +156,23 @@
 		>
 			<div class="flex min-h-full flex-col">
 				<ul class="menu w-full flex-1 gap-2 p-4 md:p-8 text-base-content">
+					<li class="menu-title px-2">
+						<span>Account</span>
+					</li>
+					<li>
+						<a
+							href={accountOverviewHref}
+							class="rounded-lg transition-colors hover:bg-base-300"
+							onclick={() => (sidebarOpen = false)}
+						>
+							<ArrowLeft size={20} aria-hidden="true" />
+							<span>Back to Account</span>
+						</a>
+					</li>
+					<li aria-hidden="true" class="pointer-events-none my-2 border-t border-base-300"></li>
+					<li class="menu-title px-2">
+						<span>Admin</span>
+					</li>
 					{#each navItems as item (item.href)}
 						<li>
 							<a
@@ -124,15 +191,8 @@
 					{/each}
 				</ul>
 
-				<div class="mt-auto border-t border-base-300 p-4">
-					<button
-						type="button"
-						class="btn btn-ghost btn-sm w-full justify-start text-error"
-						onclick={handleLogout}
-					>
-						<LogOut size={16} />
-						Logout
-					</button>
+				<div class="mt-auto border-t border-base-300 p-4 text-xs text-base-content/60">
+					Admin tools
 				</div>
 			</div>
 		</aside>

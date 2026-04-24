@@ -716,8 +716,14 @@
 							<Plus size={16} />
 							Add Your First Device
 						</button>
-						<a href="/docs/quickstart#2-pair-your-first-device" class="btn btn-ghost btn-sm">
+						<a
+							href="/docs/quickstart"
+							class="btn btn-ghost btn-sm"
+							target="_blank"
+							rel="noopener noreferrer"
+						>
 							Learn how
+							<ExternalLink size={14} />
 						</a>
 					</div>
 				</div>
