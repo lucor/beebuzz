@@ -2,7 +2,8 @@ name: Build and push Docker images
 
 on:
   push:
-    branches: [main]
+    tags:
+      - "beebuzz@*"
   workflow_dispatch:
 
 env:
@@ -12,39 +13,7 @@ env:
   STATICCHECK_VERSION: v0.7.0
 
 jobs:
-  changes:
-    runs-on: ubuntu-latest
-    outputs:
-      server: ${{ steps.filter.outputs.server }}
-      web: ${{ steps.filter.outputs.web }}
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-
-      - name: Detect changed paths
-        id: filter
-        run: |
-          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
-            echo "server=true" >> "$GITHUB_OUTPUT"
-            echo "web=true" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          git fetch --depth=1 origin ${{ github.event.before }}
-          changed=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }})
-          server=false
-          web=false
-          while IFS= read -r file; do
-            case "$file" in
-              cmd/beebuzz/*) ;;
-              cmd/*|internal/*|go.mod|go.sum|deploy/server.Dockerfile) server=true ;;
-              web/*|deploy/Caddyfile|deploy/web.Dockerfile) web=true ;;
-            esac
-          done <<< "$changed"
-          echo "server=$server" >> "$GITHUB_OUTPUT"
-          echo "web=$web" >> "$GITHUB_OUTPUT"
-
   test-server:
-    needs: changes
-    if: needs.changes.outputs.server == 'true'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -75,8 +44,6 @@ jobs:
         run: go test ./...
 
   test-web:
-    needs: changes
-    if: needs.changes.outputs.web == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -115,8 +82,7 @@ jobs:
         working-directory: web
 
   build-server:
-    needs: [changes, test-server]
-    if: needs.changes.outputs.server == 'true'
+    needs: test-server
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -152,8 +118,7 @@ jobs:
             ${{ env.IMAGE }}:server-${{ env.SHORT_SHA }}
 
   build-web:
-    needs: [changes, test-web]
-    if: needs.changes.outputs.web == 'true'
+    needs: test-web
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -193,7 +158,6 @@ jobs:
 
   deploy-server:
     needs: build-server
-    if: needs.build-server.result == 'success'
     runs-on: ubuntu-latest
     steps:
       - name: Trigger Dokploy server deploy
@@ -202,11 +166,10 @@ jobs:
             -X POST "${{ secrets.DOKPLOY_URL }}/api/application.deploy" \
             -H "x-api-key: ${{ secrets.DOKPLOY_API_TOKEN }}" \
             -H "Content-Type: application/json" \
-            -d "{\"applicationId\": \"${{ secrets.DOKPLOY_SERVER_APP_ID }}\", \"title\": \"${{ github.event.head_commit.title }}\"}"
+            -d "{\"applicationId\": \"${{ secrets.DOKPLOY_SERVER_APP_ID }}\", \"title\": \"${{ github.ref_name }}\"}"
 
   deploy-web:
     needs: build-web
-    if: needs.build-web.result == 'success'
     runs-on: ubuntu-latest
     steps:
       - name: Trigger Dokploy web deploy
@@ -215,4 +178,4 @@ jobs:
             -X POST "${{ secrets.DOKPLOY_URL }}/api/application.deploy" \
             -H "x-api-key: ${{ secrets.DOKPLOY_API_TOKEN }}" \
             -H "Content-Type: application/json" \
-            -d "{\"applicationId\": \"${{ secrets.DOKPLOY_WEB_APP_ID }}\", \"title\": \"${{ github.event.head_commit.title }}\"}"
+            -d "{\"applicationId\": \"${{ secrets.DOKPLOY_WEB_APP_ID }}\", \"title\": \"${{ github.ref_name }}\"}"

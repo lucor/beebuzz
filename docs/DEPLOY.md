@@ -35,9 +35,38 @@ At runtime:
 - Caddy listens on HTTP only inside the `web` container
 - BeeBuzz cookies use `.{domain}` for cross-subdomain session sharing
 
+## Release Process
+
+BeeBuzz uses an on-demand, tag-driven release model. Merging to `main` runs CI tests only; deployment happens when a `beebuzz@<short_sha>` tag is pushed.
+
+### How to release
+
+```bash
+git checkout main && git pull origin main
+SHORT_SHA=$(git rev-parse --short HEAD)
+git tag "beebuzz@${SHORT_SHA}"
+git push origin "beebuzz@${SHORT_SHA}"
+```
+
+This triggers three workflows:
+
+1. **`docker.yml`** — runs tests, builds both Docker images, pushes to GHCR, and triggers Dokploy deploy.
+2. **`release.yml`** — creates a GitHub Release with auto-generated notes from merged PRs since the previous tag.
+3. **`cli-release.yml`** — only triggered by `v*` tags (see below).
+
+A `workflow_dispatch` trigger is available on `docker.yml` as an escape hatch for manual rebuilds without a tag.
+
+### CI on Pull Requests
+
+`.github/workflows/ci.yml` runs server and web tests on every PR targeting `main`. Tests are path-filtered: server tests run only when backend files change, web tests only when frontend files change.
+
+### CLI releases
+
+The `beebuzz` CLI is released independently via `v*` semver tags (e.g., `v0.9.0`). GoReleaser builds cross-platform binaries and publishes them as GitHub Releases. CLI releases are decoupled from server/web deploys.
+
 ## Image Builds
 
-Images are built by `.github/workflows/docker.yml`.
+Images are built by `.github/workflows/docker.yml` on `beebuzz@*` tag push or `workflow_dispatch`.
 
 ### Server image
 
