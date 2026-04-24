@@ -251,19 +251,27 @@
 		!onboardingLoading && (devices.length === 0 || tokens.length === 0)
 	);
 	let shouldShowUsage = $derived(!isOnboardingIncomplete || hasUsageData);
+	let shouldShowOnboardingHero = $derived(isOnboardingIncomplete && !hasUsageData);
 </script>
 
 <div class="space-y-6">
 	<div>
-		<h1 class="text-3xl font-bold text-base-content">Overview</h1>
-		<p class="mt-1 text-base-content/70">
-			Your notification activity over the last 7 days by default.
-		</p>
+		{#if shouldShowOnboardingHero}
+			<h1 class="text-3xl font-bold text-base-content">Welcome to BeeBuzz</h1>
+			<p class="mt-1 text-base-content/70">
+				Set up your first device and API token to start sending encrypted notifications.
+			</p>
+		{:else}
+			<h1 class="text-3xl font-bold text-base-content">Overview</h1>
+			<p class="mt-1 text-base-content/70">
+				Your notification activity over the selected time range.
+			</p>
+		{/if}
 	</div>
 
 	{#if isOnboardingIncomplete}
 		<div class="card bg-primary/5 border border-primary/20 p-6">
-			<h2 class="mb-4 text-lg font-bold text-base-content">Getting Started</h2>
+			<h2 class="mb-4 text-lg font-bold text-base-content">Getting started</h2>
 			<div class="space-y-3">
 				<a
 					href="/account/devices"

@@ -740,10 +740,10 @@
 						</button>
 						{#if isSaasMode}
 							<a
-								href={`${SITE_URL}/docs/quickstart#3-create-an-api-token`}
+								href={`${SITE_URL}/docs/quickstart`}
 								class="btn btn-ghost btn-sm"
 								target="_blank"
-								rel="noreferrer"
+								rel="noopener noreferrer"
 							>
 								Learn how
 								<ExternalLink size={14} />
