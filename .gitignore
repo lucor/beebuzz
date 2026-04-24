@@ -8,4 +8,5 @@
 /tmp
 .env
 .mise/certs/
+AGENTS.local.md
 

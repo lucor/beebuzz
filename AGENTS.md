@@ -5,9 +5,10 @@ Start here when working in this repository.
 ## How To Use This Guide
 
 1. Read this file first to identify the right source documents for the task.
-2. Read [docs/STYLE.md](docs/STYLE.md) on every task, then read only the area-specific docs that match the code you are changing.
-3. When behavior, contracts, or operational policy change, update the owning document in the same task instead of leaving the new rule implicit in code.
-4. Follow repo-wide conventions from [docs/STYLE.md](docs/STYLE.md): simple required path params can be checked in handlers, bearer/header credential extraction must go through shared middleware rather than custom parsing in handlers, and repeated frontend state/reason strings must be centralized as named constants instead of duplicated inline.
+2. If `AGENTS.local.md` exists in the repository root, read it and follow its rules. Local rules take precedence over this file.
+3. Read [docs/STYLE.md](docs/STYLE.md) on every task, then read only the area-specific docs that match the code you are changing.
+4. When behavior, contracts, or operational policy change, update the owning document in the same task instead of leaving the new rule implicit in code.
+5. Follow repo-wide conventions from [docs/STYLE.md](docs/STYLE.md): simple required path params can be checked in handlers, bearer/header credential extraction must go through shared middleware rather than custom parsing in handlers, and repeated frontend state/reason strings must be centralized as named constants instead of duplicated inline.
 
 ## Source Of Truth Order
 
