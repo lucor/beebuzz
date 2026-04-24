@@ -28,6 +28,11 @@ func (s *Service) GetTopics(ctx context.Context, userID string) ([]Topic, error)
 	return s.repo.GetByUser(ctx, userID)
 }
 
+// GetTopicByID retrieves a topic owned by the user.
+func (s *Service) GetTopicByID(ctx context.Context, userID, topicID string) (*Topic, error) {
+	return s.repo.GetByID(ctx, userID, topicID)
+}
+
 // CreateTopic creates a new topic after validating the name.
 func (s *Service) CreateTopic(ctx context.Context, userID, name, description string) (*Topic, error) {
 	if name == defaultTopicName {

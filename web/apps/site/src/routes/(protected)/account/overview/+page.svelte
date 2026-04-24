@@ -9,6 +9,7 @@
 	import { ApiError } from '@beebuzz/shared/errors';
 	import { onMount } from 'svelte';
 	import {
+		BellRing,
 		CircleAlert,
 		Check,
 		CircleCheckBig,
@@ -116,7 +117,8 @@
 				e2e: 0,
 				sourcesCli: 0,
 				sourcesWebhook: 0,
-				sourcesApi: 0
+				sourcesApi: 0,
+				sourcesInternal: 0
 			};
 		}
 
@@ -133,7 +135,8 @@
 				e2e: acc.e2e + day.notifications_e2e,
 				sourcesCli: acc.sourcesCli + day.sources_cli,
 				sourcesWebhook: acc.sourcesWebhook + day.sources_webhook,
-				sourcesApi: acc.sourcesApi + day.sources_api
+				sourcesApi: acc.sourcesApi + day.sources_api,
+				sourcesInternal: acc.sourcesInternal + day.sources_internal
 			}),
 			{
 				created: 0,
@@ -147,7 +150,8 @@
 				e2e: 0,
 				sourcesCli: 0,
 				sourcesWebhook: 0,
-				sourcesApi: 0
+				sourcesApi: 0,
+				sourcesInternal: 0
 			}
 		);
 	});
@@ -170,7 +174,9 @@
 		return totals.attachments / totals.created;
 	});
 
-	let totalSources = $derived(totals.sourcesCli + totals.sourcesWebhook + totals.sourcesApi);
+	let totalSources = $derived(
+		totals.sourcesCli + totals.sourcesWebhook + totals.sourcesApi + totals.sourcesInternal
+	);
 	let trustedShare = $derived.by(() => {
 		if (totals.created === 0) return 0;
 		return totals.serverTrusted / totals.created;
@@ -221,6 +227,14 @@
 				share: totalSources === 0 ? 0 : totals.sourcesApi / totalSources,
 				icon: CodeXml,
 				barClass: 'bg-indigo-500/70'
+			},
+			{
+				key: 'internal',
+				label: 'Internal',
+				value: totals.sourcesInternal,
+				share: totalSources === 0 ? 0 : totals.sourcesInternal / totalSources,
+				icon: BellRing,
+				barClass: 'bg-amber-500/75'
 			}
 		];
 	});

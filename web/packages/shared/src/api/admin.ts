@@ -26,6 +26,7 @@ export interface DailyBreakdown {
 	sources_cli: number;
 	sources_webhook: number;
 	sources_api: number;
+	sources_internal: number;
 	devices_lost: number;
 	updated_at: string;
 }
@@ -44,12 +45,28 @@ export interface PlatformDashboard {
 	sources_cli: number;
 	sources_webhook: number;
 	sources_api: number;
+	sources_internal: number;
 	devices_lost: number;
 	daily_breakdown: DailyBreakdown[];
 }
 
 export interface AdminUsersListResponse {
 	data: AdminUser[];
+}
+
+export interface SystemNotificationSettings {
+	enabled: boolean;
+	recipient_user_id?: string;
+	topic_id?: string;
+	signup_created_enabled: boolean;
+	created_at?: string;
+	updated_at?: string;
+}
+
+export interface UpdateSystemNotificationSettings {
+	enabled: boolean;
+	topic_id: string;
+	signup_created_enabled: boolean;
 }
 
 /**
@@ -68,5 +85,11 @@ export const adminApi = {
 		api.patch<{ data: AdminUser }>(`/admin/users/${userId}`, { account_status: accountStatus }),
 
 	/** Fetch platform dashboard data (`0` = all time, `1` = today). */
-	getDashboard: (days: number = 30) => api.get<PlatformDashboard>(`/admin/dashboard?days=${days}`)
+	getDashboard: (days: number = 30) => api.get<PlatformDashboard>(`/admin/dashboard?days=${days}`),
+
+	getSystemNotificationSettings: () =>
+		api.get<SystemNotificationSettings>('/admin/system/notifications'),
+
+	updateSystemNotificationSettings: (settings: UpdateSystemNotificationSettings) =>
+		api.patch<SystemNotificationSettings>('/admin/system/notifications', settings)
 };

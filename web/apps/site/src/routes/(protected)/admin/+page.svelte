@@ -7,6 +7,7 @@
 		type DashboardTimeRange
 	} from '@beebuzz/shared/utils/dashboard-chart';
 	import {
+		BellRing,
 		CircleAlert,
 		CircleCheckBig,
 		CodeXml,
@@ -79,7 +80,12 @@
 
 	let totalSources = $derived.by(() => {
 		if (!dashboard) return 0;
-		return dashboard.sources_cli + dashboard.sources_webhook + dashboard.sources_api;
+		return (
+			dashboard.sources_cli +
+			dashboard.sources_webhook +
+			dashboard.sources_api +
+			dashboard.sources_internal
+		);
 	});
 
 	let trustedShare = $derived.by(() => {
@@ -145,6 +151,14 @@
 				share: totalSources === 0 ? 0 : dashboard.sources_api / totalSources,
 				icon: CodeXml,
 				barClass: 'bg-indigo-500/70'
+			},
+			{
+				key: 'internal',
+				label: 'Internal',
+				value: dashboard.sources_internal,
+				share: totalSources === 0 ? 0 : dashboard.sources_internal / totalSources,
+				icon: BellRing,
+				barClass: 'bg-amber-500/75'
 			}
 		];
 	});

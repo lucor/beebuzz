@@ -23,6 +23,7 @@ internal/
 ├── notification/  # Push notification dispatch (VAPID)
 ├── admin/         # Admin panel domain
 ├── event/         # Notification event tracking and analytics
+├── system/        # Platform-generated operational policies, grouped by area
 ├── token/         # API token management
 ├── health/        # Health check endpoint
 ├── push/          # Web Push delivery internals
@@ -371,6 +372,8 @@ authSvc := auth.NewService(authRepo, m, cfg.URL, authTopicInit, log)
 3. Register routes in `cmd/beebuzz-server/router.go`
 4. For cross-domain deps: define interface in the consuming domain, implement adapter in `cmd/beebuzz-server/adapter.go`
 
+`internal/system/<area>` is reserved for platform-generated operational policy, such as deciding whether an internal BeeBuzz event should produce a user-facing notification. It must not become a generic utility namespace. Delivery mechanics still belong to the owning delivery domain, for example `internal/notification`.
+
 ---
 
 ## Token / Security Utilities
@@ -390,6 +393,7 @@ secure.Verify(raw, hash)  // constant-time comparison
 If you change any of the following, update the relevant section of this document in the same task:
 
 - add, remove, or rename a domain package under `internal/`
+- add, remove, or rename a system area under `internal/system/`
 - add or change a response helper or sentinel error in `internal/core/`
 - add or change a sentinel error in any domain package
 - add or change an adapter in `cmd/beebuzz-server/adapter.go`

@@ -16,6 +16,7 @@ export interface AccountUsageDay {
 	sources_cli: number;
 	sources_webhook: number;
 	sources_api: number;
+	sources_internal: number;
 }
 
 export interface AccountUsage {

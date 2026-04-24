@@ -1226,6 +1226,59 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "500":
           $ref: "#/components/responses/InternalError"
+  /v1/admin/system/notifications:
+    get:
+      tags: [Admin]
+      operationId: getAdminSystemNotifications
+      summary: Get system notification settings
+      x-audience: [admin]
+      x-stability: experimental
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: System notification settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SystemNotificationSettingsResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalError"
+    patch:
+      tags: [Admin]
+      operationId: updateAdminSystemNotifications
+      summary: Update system notification settings
+      x-audience: [admin]
+      x-stability: experimental
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateSystemNotificationSettingsRequest"
+      responses:
+        "200":
+          description: System notification settings updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SystemNotificationSettingsResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "500":
+          $ref: "#/components/responses/InternalError"
 components:
   securitySchemes:
     cookieAuth:
@@ -2004,7 +2057,7 @@ components:
     AccountUsageDayResponse:
       type: object
       required:
-        [date, notifications_created, delivery_attempts, deliveries_succeeded, deliveries_failed, devices_lost, notifications_with_attachment, attachment_bytes_total, notifications_server_trusted, notifications_e2e, sources_cli, sources_webhook, sources_api]
+        [date, notifications_created, delivery_attempts, deliveries_succeeded, deliveries_failed, devices_lost, notifications_with_attachment, attachment_bytes_total, notifications_server_trusted, notifications_e2e, sources_cli, sources_webhook, sources_api, sources_internal]
       properties:
         date:
           type: string
@@ -2032,6 +2085,8 @@ components:
         sources_webhook:
           type: integer
         sources_api:
+          type: integer
+        sources_internal:
           type: integer
     AccountUsageResponse:
       type: object
@@ -2044,7 +2099,7 @@ components:
     DailyUsageSummaryResponse:
       type: object
       required:
-        [date, notifications_created, delivery_attempts, deliveries_succeeded, deliveries_failed, notifications_with_attachment, attachment_bytes_total, notifications_server_trusted, notifications_e2e, sources_cli, sources_webhook, sources_api, devices_lost, updated_at]
+        [date, notifications_created, delivery_attempts, deliveries_succeeded, deliveries_failed, notifications_with_attachment, attachment_bytes_total, notifications_server_trusted, notifications_e2e, sources_cli, sources_webhook, sources_api, sources_internal, devices_lost, updated_at]
       properties:
         date:
           type: string
@@ -2071,6 +2126,8 @@ components:
           type: integer
         sources_api:
           type: integer
+        sources_internal:
+          type: integer
         devices_lost:
           type: integer
         updated_at:
@@ -2079,7 +2136,7 @@ components:
     PlatformDashboardResponse:
       type: object
       required:
-        [notifications_created, delivery_attempts, deliveries_succeeded, deliveries_failed, delivery_success_rate, active_users, notifications_server_trusted, notifications_e2e, notifications_with_attachment, attachment_bytes_total, sources_cli, sources_webhook, sources_api, devices_lost, daily_breakdown]
+        [notifications_created, delivery_attempts, deliveries_succeeded, deliveries_failed, delivery_success_rate, active_users, notifications_server_trusted, notifications_e2e, notifications_with_attachment, attachment_bytes_total, sources_cli, sources_webhook, sources_api, sources_internal, devices_lost, daily_breakdown]
       properties:
         notifications_created:
           type: integer
@@ -2107,6 +2164,8 @@ components:
         sources_webhook:
           type: integer
         sources_api:
+          type: integer
+        sources_internal:
           type: integer
         devices_lost:
           type: integer
@@ -2158,3 +2217,31 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/AdminUserResponse"
+    SystemNotificationSettingsResponse:
+      type: object
+      required: [enabled, signup_created_enabled]
+      properties:
+        enabled:
+          type: boolean
+        recipient_user_id:
+          type: string
+        topic_id:
+          type: string
+        signup_created_enabled:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    UpdateSystemNotificationSettingsRequest:
+      type: object
+      required: [enabled, topic_id, signup_created_enabled]
+      properties:
+        enabled:
+          type: boolean
+        topic_id:
+          type: string
+        signup_created_enabled:
+          type: boolean
