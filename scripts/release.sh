@@ -106,7 +106,7 @@ esac
 
 # --- Release -------------------------------------------------------------
 
-git tag "$TAG"
+git tag -a "$TAG" -m "$TAG"
 git push origin "$TAG"
 echo ""
 echo "Released ${TAG}"
