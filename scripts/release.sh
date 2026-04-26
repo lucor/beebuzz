@@ -64,6 +64,38 @@ echo ""
 echo "================================"
 echo ""
 
+# --- GitHub Release Notes Preview ----------------------------------------
+
+echo ""
+echo "--------------------------------"
+echo "  GitHub Release Notes Preview"
+echo "--------------------------------"
+echo ""
+
+if ! command -v gh >/dev/null 2>&1; then
+  echo "  Warning: 'gh' CLI not installed. Cannot preview GitHub release notes."
+elif ! gh auth status >/dev/null 2>&1; then
+  echo "  Warning: 'gh' CLI not authenticated."
+  echo "  Run 'gh auth login' to enable GitHub release notes preview."
+else
+  GH_API_ARGS=(-f target_commitish="$LOCAL" -f tag_name="$TAG")
+  if [ -n "$PREV" ]; then
+    GH_API_ARGS+=(-f previous_tag_name="$PREV")
+  fi
+
+  GH_NOTES=$(gh api repos/:owner/:repo/releases/generate-notes "${GH_API_ARGS[@]}" --jq '.body' 2>/dev/null) || GH_NOTES=""
+
+  if [ -n "$GH_NOTES" ]; then
+    echo "$GH_NOTES"
+  else
+    echo "  (Could not fetch generated notes from GitHub API)"
+  fi
+fi
+
+echo ""
+echo "--------------------------------"
+echo ""
+
 # --- Confirmation --------------------------------------------------------
 
 read -r -p "Create and push tag ${TAG}? [y/N] " CONFIRM
