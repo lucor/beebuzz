@@ -42,11 +42,10 @@ BeeBuzz uses an on-demand, tag-driven release model. Merging to `main` runs CI t
 ### How to release
 
 ```bash
-git checkout main && git pull origin main
-SHORT_SHA=$(git rev-parse --short HEAD)
-git tag "beebuzz@${SHORT_SHA}"
-git push origin "beebuzz@${SHORT_SHA}"
+./scripts/release.sh
 ```
+
+The script previews the tag and commits since the last release, then prompts for confirmation before creating and pushing the tag.
 
 This triggers three workflows:
 
