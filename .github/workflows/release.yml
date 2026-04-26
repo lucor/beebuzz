@@ -16,7 +16,19 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Find previous beebuzz tag
+        id: prev-tag
+        run: |
+          PREV=$(git tag --list 'beebuzz@*' --sort=-creatordate | sed -n '2p')
+          echo "tag=${PREV}" >> "$GITHUB_OUTPUT"
+
       - name: Create GitHub Release
-        run: gh release create "${{ github.ref_name }}" --generate-notes
+        run: |
+          ARGS=(--generate-notes)
+          if [ -n "$PREV_TAG" ]; then
+            ARGS+=(--notes-start-tag "$PREV_TAG")
+          fi
+          gh release create "${{ github.ref_name }}" "${ARGS[@]}"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PREV_TAG: ${{ steps.prev-tag.outputs.tag }}
