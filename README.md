@@ -98,9 +98,9 @@ BeeBuzz is currently optimized for two workflows:
 
 Detailed production self-hosting docs will come later.
 
-The hosted beta is free during validation. The hosted SaaS is expected to move
-to a simple annual fee later, with details published before billing starts.
-Self-hosting remains available under the AGPL license.
+Hosted access is free during beta. After beta, the hosted service will move to a
+single paid plan, priced to keep the project sustainable. Self-hosting remains
+free, open source, and available under the AGPL license.
 
 ## License
 
