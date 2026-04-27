@@ -70,10 +70,10 @@ At this point you have:
 
 BeeBuzz has **two** sending modes. The main choice is whether BeeBuzz can read the notification content.
 
-| Mode | Best for | How you send | What BeeBuzz can see |
-|---|---|---|---|
-| Trusted mode (server-trusted) | Fastest first test, apps/scripts, and external-service integrations | Direct Push API with a bearer token, or a [webhook URL](/docs/webhooks) for external services | Plaintext notification content |
-| End-to-end mode | Encrypted delivery from sender to device | BeeBuzz CLI (`application/octet-stream`) | Ciphertext only; BeeBuzz only sees routing/storage metadata |
+| Mode                          | Best for                                                            | How you send                                                                                  | What BeeBuzz can see                                        |
+| ----------------------------- | ------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
+| Trusted mode (server-trusted) | Fastest first test, apps/scripts, and external-service integrations | Direct Push API with a bearer token, or a [webhook URL](/docs/webhooks) for external services | Plaintext notification content                              |
+| End-to-end mode               | Encrypted delivery from sender to device                            | BeeBuzz CLI (`application/octet-stream`)                                                      | Ciphertext only; BeeBuzz only sees routing/storage metadata |
 
 > Need a stable URL for Home Assistant, CI, or another service that can POST to HTTPS but does not fit direct API auth well? Use [Webhooks](/docs/webhooks). Webhooks are a **trusted-mode integration**, not a separate privacy mode.
 
