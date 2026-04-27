@@ -17,6 +17,7 @@
 			icon: Zap,
 			items: [
 				{ label: 'Quickstart', href: '/docs/quickstart' },
+				{ label: 'Webhooks', href: '/docs/webhooks' },
 				{ label: 'Local Dev', href: '/docs/local-dev' },
 				{ label: 'Browser Support', href: '/docs/browser-support' }
 			]
