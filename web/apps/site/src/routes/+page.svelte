@@ -172,13 +172,13 @@
 
 					{#if isSaasMode}
 						<p class="mt-4 text-sm leading-6 text-base-content/65">
-							Hosted access is free during beta. After beta, the hosted service will move to a single
-							paid plan, priced to keep the project sustainable. Self-hosting remains free and open
-							source.
+							Hosted access is free during beta. After beta, the hosted service will move to a
+							single paid plan, priced to keep the project sustainable. Self-hosting remains free
+							and open source.
 						</p>
 						<p class="mt-2 text-sm leading-6 text-base-content/65">
-							If your email is already approved, you can sign in now. Otherwise the same flow submits
-							your access request.
+							If your email is already approved, you can sign in now. Otherwise the same flow
+							submits your access request.
 						</p>
 					{/if}
 
