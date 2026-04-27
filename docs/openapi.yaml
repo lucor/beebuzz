@@ -2219,7 +2219,7 @@ components:
             $ref: "#/components/schemas/AdminUserResponse"
     SystemNotificationSettingsResponse:
       type: object
-      required: [enabled, signup_created_enabled]
+      required: [enabled, signup_created_enabled, recipient_has_active_device_for_topic]
       properties:
         enabled:
           type: boolean
@@ -2229,6 +2229,13 @@ components:
           type: string
         signup_created_enabled:
           type: boolean
+        recipient_has_active_device_for_topic:
+          type: boolean
+          description: |
+            Best-effort flag computed at read time. True when the recipient
+            admin has at least one paired device subscribed to the configured
+            topic. Used by the admin UI to warn about a misconfiguration that
+            would silently drop deliveries.
         created_at:
           type: string
           format: date-time

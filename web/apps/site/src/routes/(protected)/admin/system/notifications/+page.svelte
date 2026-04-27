@@ -12,6 +12,12 @@
 	let signupCreatedEnabled = $state(false);
 	let selectedTopicID = $state('');
 	let recipientUserID = $state('');
+	let recipientHasActiveDeviceForTopic = $state(false);
+	// Tracks the topic the server actually computed the device flag against, so
+	// we only show the "no paired device" warning when the dropdown still
+	// matches the persisted selection.
+	let persistedTopicID = $state('');
+	let persistedEnabled = $state(false);
 
 	onMount(async () => {
 		await loadSettings();
@@ -30,6 +36,9 @@
 			signupCreatedEnabled = settings.signup_created_enabled;
 			selectedTopicID = settings.topic_id ?? '';
 			recipientUserID = settings.recipient_user_id ?? '';
+			recipientHasActiveDeviceForTopic = settings.recipient_has_active_device_for_topic;
+			persistedTopicID = settings.topic_id ?? '';
+			persistedEnabled = settings.enabled;
 		} catch (err) {
 			toast.error(
 				err instanceof ApiError ? err.userMessage : 'Failed to load system notifications'
@@ -53,6 +62,9 @@
 				signup_created_enabled: signupCreatedEnabled
 			});
 			recipientUserID = settings.recipient_user_id ?? '';
+			recipientHasActiveDeviceForTopic = settings.recipient_has_active_device_for_topic;
+			persistedTopicID = settings.topic_id ?? '';
+			persistedEnabled = settings.enabled;
 			toast.success('System notification settings saved');
 		} catch (err) {
 			toast.error(err instanceof ApiError ? err.userMessage : 'Failed to save settings');
@@ -140,6 +152,15 @@
 				{#if enabled && selectedTopicID === ''}
 					<div class="alert alert-warning">
 						<span>Select a topic before enabling system notifications.</span>
+					</div>
+				{/if}
+
+				{#if persistedEnabled && persistedTopicID !== '' && persistedTopicID === selectedTopicID && !recipientHasActiveDeviceForTopic}
+					<div class="alert alert-warning">
+						<span>
+							No paired device is subscribed to this topic for the recipient admin. System
+							notifications will be silently dropped until a device is paired and subscribed.
+						</span>
 					</div>
 				{/if}
 

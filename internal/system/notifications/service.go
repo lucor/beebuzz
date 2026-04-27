@@ -12,25 +12,33 @@ const signupCreatedTitle = "New BeeBuzz signup"
 
 // Service owns system notification policy and dispatch decisions.
 type Service struct {
-	repo     *Repository
-	topics   TopicProvider
-	delivery Delivery
-	log      *slog.Logger
+	repo          *Repository
+	topics        TopicProvider
+	delivery      Delivery
+	subscriptions DeviceSubscriptionChecker
+	log           *slog.Logger
 }
 
 // NewService creates a system notifications service.
-func NewService(repo *Repository, topics TopicProvider, delivery Delivery, log *slog.Logger) *Service {
+func NewService(repo *Repository, topics TopicProvider, delivery Delivery, subscriptions DeviceSubscriptionChecker, log *slog.Logger) *Service {
 	return &Service{
-		repo:     repo,
-		topics:   topics,
-		delivery: delivery,
-		log:      log,
+		repo:          repo,
+		topics:        topics,
+		delivery:      delivery,
+		subscriptions: subscriptions,
+		log:           log,
 	}
 }
 
-// GetSettings returns the current singleton settings.
+// GetSettings returns the current singleton settings, enriched with the
+// best-effort RecipientHasActiveDeviceForTopic flag for the admin UI.
 func (s *Service) GetSettings(ctx context.Context) (*Settings, error) {
-	return s.repo.GetSettings(ctx)
+	settings, err := s.repo.GetSettings(ctx)
+	if err != nil {
+		return nil, err
+	}
+	s.fillRecipientDeviceFlag(ctx, settings)
+	return settings, nil
 }
 
 // UpdateSettings validates and stores settings for the current admin user.
@@ -49,12 +57,46 @@ func (s *Service) UpdateSettings(ctx context.Context, adminUserID string, input 
 		}
 	}
 
-	return s.repo.UpsertSettings(ctx, Settings{
+	settings, err := s.repo.UpsertSettings(ctx, Settings{
 		Enabled:              input.Enabled,
 		RecipientUserID:      adminUserID,
 		TopicID:              input.TopicID,
 		SignupCreatedEnabled: input.SignupCreatedEnabled,
 	})
+	if err != nil {
+		return nil, err
+	}
+	s.fillRecipientDeviceFlag(ctx, settings)
+	return settings, nil
+}
+
+// fillRecipientDeviceFlag sets RecipientHasActiveDeviceForTopic on the given
+// settings. The check is skipped (flag stays false) when there is no topic
+// configured. Lookup failures are logged but not propagated: this flag is a
+// UI hint, never a gate.
+func (s *Service) fillRecipientDeviceFlag(ctx context.Context, settings *Settings) {
+	if settings == nil || s.subscriptions == nil {
+		return
+	}
+	if settings.RecipientUserID == "" || settings.TopicID == "" {
+		return
+	}
+
+	topic, err := s.topics.GetTopicByID(ctx, settings.RecipientUserID, settings.TopicID)
+	if err != nil {
+		s.log.Warn("failed to resolve topic for system notification device check", "error", err)
+		return
+	}
+	if topic == nil {
+		return
+	}
+
+	hasDevice, err := s.subscriptions.HasActiveDeviceForTopic(ctx, settings.RecipientUserID, topic.Name)
+	if err != nil {
+		s.log.Warn("failed to check active device for system notification topic", "error", err)
+		return
+	}
+	settings.RecipientHasActiveDeviceForTopic = hasDevice
 }
 
 // NotifySignupCreated sends the configured notification for a newly created account.
