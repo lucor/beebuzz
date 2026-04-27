@@ -11,7 +11,7 @@
 		MAX_DISPLAY_NAME_SOFT_LEN,
 		MAX_DESCRIPTION_LEN
 	} from '@beebuzz/shared';
-	import { PUSH_URL, SITE_URL } from '@beebuzz/shared/config';
+	import { API_URL, PUSH_URL, SITE_URL } from '@beebuzz/shared/config';
 	import { isSaasMode } from '$lib/config/deployment';
 
 	const TEST_NOTIFICATION_TITLE = 'BeeBuzz test notification';
@@ -197,7 +197,7 @@
 		testNotificationSuccess = null;
 
 		try {
-			const response = await fetch(PUSH_URL, {
+			const response = await fetch(`${API_URL}/v1/push`, {
 				method: 'POST',
 				headers: {
 					Authorization: `Bearer ${createdToken.token}`,
