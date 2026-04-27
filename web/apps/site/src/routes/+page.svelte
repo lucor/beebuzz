@@ -11,15 +11,20 @@
 		ShieldCheck,
 		Zap
 	} from '@lucide/svelte';
-	import { BeeBuzzLogo } from '@beebuzz/shared/components';
+	import { BeeBuzzLogo, isLoggedIn } from '@beebuzz/shared';
+	import { onMount } from 'svelte';
 
 	import { isSaasMode } from '$lib/config/deployment';
 	import PublicFooter from '$lib/components/PublicFooter.svelte';
 
+	let loggedIn = $state(false);
+
+	onMount(() => {
+		loggedIn = isLoggedIn();
+	});
+
 	const GITHUB_REPO_URL = 'https://github.com/lucor/beebuzz';
-	const STATUS_URL = 'https://status.beebuzz.app';
 	const QUICKSTART_PATH = '/docs/quickstart';
-	const CONTACT_PATH = '/contact';
 
 	type UseCase = {
 		title: string;
@@ -102,17 +107,6 @@
 						<a href={resolve(QUICKSTART_PATH)} class="transition-colors hover:text-base-content"
 							>Quickstart</a
 						>
-						<a href={resolve(CONTACT_PATH)} class="transition-colors hover:text-base-content"
-							>Contact</a
-						>
-						<a
-							href={STATUS_URL}
-							target="_blank"
-							rel="noopener noreferrer"
-							class="transition-colors hover:text-base-content"
-						>
-							Status
-						</a>
 					{/if}
 					<a
 						href={GITHUB_REPO_URL}
@@ -122,6 +116,14 @@
 					>
 						GitHub
 					</a>
+					{#if isSaasMode}
+						<a
+							href={resolve(loggedIn ? '/account/overview' : '/login')}
+							class="transition-colors hover:text-base-content"
+						>
+							{loggedIn ? 'Dashboard' : 'Sign in'}
+						</a>
+					{/if}
 				</nav>
 			</div>
 		</header>
@@ -150,7 +152,7 @@
 								href={resolve('/login')}
 								class="btn btn-primary btn-lg gap-2 text-base font-semibold"
 							>
-								Get Started
+								Request beta access
 								<ArrowRight class="h-5 w-5" />
 							</a>
 							<a href={resolve(QUICKSTART_PATH)} class="btn btn-outline btn-lg">
