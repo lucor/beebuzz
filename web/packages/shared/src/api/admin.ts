@@ -59,6 +59,13 @@ export interface SystemNotificationSettings {
 	recipient_user_id?: string;
 	topic_id?: string;
 	signup_created_enabled: boolean;
+	/**
+	 * Best-effort flag computed at read time: true when the recipient admin
+	 * has at least one paired device subscribed to the configured topic.
+	 * Used by the admin UI to warn about a misconfiguration that would
+	 * silently drop deliveries (TotalSent=0).
+	 */
+	recipient_has_active_device_for_topic: boolean;
 	created_at?: string;
 	updated_at?: string;
 }

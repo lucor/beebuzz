@@ -174,7 +174,8 @@ func buildServices(db *sqlx.DB, cfg *config.Config, log *slog.Logger, m mailer.M
 	systemNotifRepo := systemnotifications.NewRepository(db)
 	systemNotifTopics := &systemNotificationTopicProviderAdapter{topicSvc: topicSvc}
 	systemNotifDelivery := &systemNotificationDeliveryAdapter{notifSvc: notifSvc, log: log}
-	systemNotifSvc := systemnotifications.NewService(systemNotifRepo, systemNotifTopics, systemNotifDelivery, log)
+	systemNotifSubscriptions := &systemNotificationDeviceSubscriptionAdapter{deviceSvc: deviceSvc}
+	systemNotifSvc := systemnotifications.NewService(systemNotifRepo, systemNotifTopics, systemNotifDelivery, systemNotifSubscriptions, log)
 	authSvc.SetSignupNotifier(systemNotifSvc)
 
 	webhookRepo := webhook.NewRepository(db)

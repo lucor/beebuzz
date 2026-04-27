@@ -21,7 +21,20 @@ func (p *testTopicProvider) GetTopicByID(ctx context.Context, userID, topicID st
 	return &Topic{ID: t.ID, UserID: t.UserID, Name: t.Name}, nil
 }
 
+type testDeviceSubscriptions struct {
+	withDevice map[string]bool // key: userID + "|" + topicName
+}
+
+func (c *testDeviceSubscriptions) HasActiveDeviceForTopic(_ context.Context, userID, topicName string) (bool, error) {
+	return c.withDevice[userID+"|"+topicName], nil
+}
+
 func newTestService(t *testing.T) (*Service, *topic.Service, context.Context) {
+	t.Helper()
+	return newTestServiceWith(t, nil)
+}
+
+func newTestServiceWith(t *testing.T, subs DeviceSubscriptionChecker) (*Service, *topic.Service, context.Context) {
 	t.Helper()
 
 	db := testutil.NewDBWithUsers(t, "admin-1", "other-1")
@@ -30,6 +43,7 @@ func newTestService(t *testing.T) (*Service, *topic.Service, context.Context) {
 		NewRepository(db),
 		&testTopicProvider{svc: topicSvc},
 		nil,
+		subs,
 		slog.Default(),
 	)
 
@@ -97,5 +111,40 @@ func TestUpdateSettingsRequiresTopicWhenEnabled(t *testing.T) {
 	_, err := svc.UpdateSettings(ctx, "admin-1", UpdateSettingsRequest{Enabled: true})
 	if err != ErrTopicRequired {
 		t.Fatalf("UpdateSettings() error = %v, want %v", err, ErrTopicRequired)
+	}
+}
+
+func TestGetSettingsReportsRecipientDevicePresence(t *testing.T) {
+	subs := &testDeviceSubscriptions{withDevice: map[string]bool{}}
+	svc, topicSvc, ctx := newTestServiceWith(t, subs)
+	topicRow, err := topicSvc.CreateTopic(ctx, "admin-1", "ops", "Operational alerts")
+	if err != nil {
+		t.Fatalf("CreateTopic() error = %v", err)
+	}
+	if _, err := svc.UpdateSettings(ctx, "admin-1", UpdateSettingsRequest{
+		Enabled:              true,
+		TopicID:              topicRow.ID,
+		SignupCreatedEnabled: true,
+	}); err != nil {
+		t.Fatalf("UpdateSettings() error = %v", err)
+	}
+
+	// Recipient has no paired device on the topic: flag must be false.
+	got, err := svc.GetSettings(ctx)
+	if err != nil {
+		t.Fatalf("GetSettings() error = %v", err)
+	}
+	if got.RecipientHasActiveDeviceForTopic {
+		t.Fatalf("RecipientHasActiveDeviceForTopic = true, want false when no device is paired")
+	}
+
+	// Once a device is registered for the recipient on that topic, the flag flips.
+	subs.withDevice["admin-1|ops"] = true
+	got, err = svc.GetSettings(ctx)
+	if err != nil {
+		t.Fatalf("GetSettings() error = %v", err)
+	}
+	if !got.RecipientHasActiveDeviceForTopic {
+		t.Fatalf("RecipientHasActiveDeviceForTopic = false, want true once a device is paired")
 	}
 }
