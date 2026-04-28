@@ -24,7 +24,8 @@
 		"format": "prettier --write .",
 		"test": "vitest run",
 		"test:watch": "vitest",
-		"test:e2e": "playwright test"
+		"test:e2e": "playwright test",
+		"demo:quickstart": "cd .. && bash scripts/quickstart-demo.sh"
 	},
 	"devDependencies": {
 		"@eslint/compat": "^2.0.5",

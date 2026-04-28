@@ -37,6 +37,7 @@ const (
 	envMailerSender        = "BEEBUZZ_MAILER_SENDER"
 	envMailerReplyTo       = "BEEBUZZ_MAILER_REPLY_TO"
 	envSentryDSN           = "BEEBUZZ_SENTRY_DSN"
+	envPushStub            = "BEEBUZZ_PUSH_STUB"
 )
 
 // defaults
@@ -85,6 +86,7 @@ type Config struct {
 	PushURL             string       // Base URL of the push endpoint (https://push.{domain})
 	HookURL             string       // Base URL of the webhook endpoint (https://hook.{domain})
 	SentryDSN           string       // Sentry/GlitchTip DSN (empty = disabled)
+	PushStub            bool         // Enable push-stub mode for local/dev testing (NEVER in production)
 }
 
 // Load reads the .env file (if present) and loads configuration from environment variables.
@@ -126,6 +128,7 @@ func Load() (*Config, error) {
 		BootstrapAdminEmail: getEnv(envBootstrapAdminEmail, ""),
 		Env:                 getEnv(envEnv, defaultEnv),
 		SentryDSN:           getEnv(envSentryDSN, ""),
+		PushStub:            getEnvBool(envPushStub, false),
 		Mailer: &Mailer{
 			SMTPAddress:  getEnv(envMailerSMTPAddress, ""),
 			SMTPUser:     getEnv(envMailerSMTPUser, ""),

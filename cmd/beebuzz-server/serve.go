@@ -63,6 +63,7 @@ type appServices struct {
 	topicSvc       *topic.Service
 	userSvc        *user.Service
 	webhookSvc     *webhook.Service
+	pushStubBroker *notification.PushStubBroker
 }
 
 // runServe bootstraps and runs the HTTP server lifecycle.
@@ -171,6 +172,12 @@ func buildServices(db *sqlx.DB, cfg *config.Config, log *slog.Logger, m mailer.M
 	notifEventTracker := &notificationEventTrackerAdapter{eventSvc: eventSvc}
 	notifSvc := notification.NewService(notifDeviceAdapter, notifAttachmentAdapter, notifEventTracker, vapidKeys, cfg.VAPIDSubject, log)
 
+	var pushStubBroker *notification.PushStubBroker
+	if cfg.PushStub && cfg.Env != config.EnvProduction {
+		pushStubBroker = notification.NewPushStubBroker(log)
+		notifSvc.SetPushStubBroker(pushStubBroker)
+	}
+
 	systemNotifRepo := systemnotifications.NewRepository(db)
 	systemNotifTopics := &systemNotificationTopicProviderAdapter{topicSvc: topicSvc}
 	systemNotifDelivery := &systemNotificationDeliveryAdapter{notifSvc: notifSvc, log: log}
@@ -197,6 +204,7 @@ func buildServices(db *sqlx.DB, cfg *config.Config, log *slog.Logger, m mailer.M
 		topicSvc:       topicSvc,
 		userSvc:        userSvc,
 		webhookSvc:     webhookSvc,
+		pushStubBroker: pushStubBroker,
 	}, nil
 }
 
@@ -230,6 +238,11 @@ func buildHTTPHandler(services *appServices, cfg *config.Config, log *slog.Logge
 	attachmentHandler := attachment.NewHandler(services.attachmentSvc, log)
 	tokenHandler := token.NewHandler(services.tokenSvc, log)
 
+	var pushStubHandler http.HandlerFunc
+	if services.pushStubBroker != nil {
+		pushStubHandler = notification.NewPushStubHandler(services.pushStubBroker, log)
+	}
+
 	realIP := middleware.NewRealIP(cfg.ProxySubnet)
 	ipHasher := middleware.NewIPHasher(cfg.IPHashSalt)
 	requestID := middleware.NewRequestID(cfg.RequestIDHeader)
@@ -248,6 +261,7 @@ func buildHTTPHandler(services *appServices, cfg *config.Config, log *slog.Logge
 		webhookHandler,
 		attachmentHandler,
 		tokenHandler,
+		pushStubHandler,
 		cfg,
 		log,
 	)

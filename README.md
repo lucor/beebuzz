@@ -1,107 +1,135 @@
-# BeeBuzz
+<div align="center">
+    <img src="docs/assets/readme/beebuzz-logo.svg" alt="BeeBuzz logo" width="96">
+</div>
 
-Simple, private push notifications for servers, scripts, apps, and webhooks.
+<h1 align="center">Private push notifications for your own devices</h1>
 
-BeeBuzz is a focused Web Push delivery system for alerts that should reach your own
-paired devices without becoming another chat surface. It supports both fast
-server-trusted notifications and real end-to-end encrypted delivery, where message
-content is encrypted before it reaches BeeBuzz and the server stores ciphertext
-instead of plaintext.
+<p align="center">
+  Send alerts from servers, scripts, apps, and webhooks without turning notification delivery into a chat system.
+</p>
 
-## Why BeeBuzz
+BeeBuzz is a focused Web Push delivery system for machine-to-person alerts. It
+supports two delivery modes:
 
-- **Private alerting**: send high-signal machine-to-person notifications to paired devices.
-- **Two delivery modes**: start quickly with trusted delivery, or use E2E mode when content privacy matters.
-- **Real E2E push flow**: in E2E mode, the CLI encrypts locally for paired device keys and Hive decrypts locally on the receiving device.
-- **Small auditable stack**: Go, SQLite, SvelteKit, Web Push, and a Hive PWA receiver.
-- **Focused scope**: BeeBuzz is not a team chat, inbox, or general messaging platform.
+- **Server-trusted notifications** for fast HTTP, webhook, and third-party service integrations.
+- **End-to-end encrypted notifications** for senders you control, where the CLI encrypts locally and BeeBuzz stores only ciphertext.
 
-## Architecture
+BeeBuzz is built around paired personal devices, short-lived delivery state, and
+a small auditable stack: Go, SQLite, SvelteKit, Web Push, and Hive, its PWA
+receiver.
 
-BeeBuzz is split into a few small pieces:
+## Quickstart Demo
+
+Hosted beta flow, shown on the real stack with Site and Hive side by side.
+
+<https://github.com/user-attachments/assets/edcd0981-119a-47e8-a947-91c70f888782>
+
+<p align="center">
+  Sign in, create a pairing code, pair Hive, create a token, and deliver the first notification.
+</p>
+
+## BeeBuzz.app
+
+[BeeBuzz.app](https://beebuzz.app) is the hosted BeeBuzz SaaS.
+
+Hosted access is currently a beta for approved users. During the beta you can:
+
+- sign in after approval
+- pair a device with [Hive](https://hive.beebuzz.app)
+- create API tokens scoped to topics
+- send trusted-mode notifications over HTTP
+- create webhook URLs for external services
+- install the CLI and send end-to-end encrypted notifications
+
+Hosted access is free during beta. After beta, the hosted service is expected to
+move to a single paid plan so the project can stay sustainable. Self-hosting
+remains free, open source, and available under the AGPL license.
+
+Start here: [BeeBuzz quickstart](https://beebuzz.app/docs/quickstart).
+
+## How It Works
+
+BeeBuzz has two delivery modes because not every sender can encrypt before
+calling the server.
+
+<table>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="docs/assets/readme/trusted-flow.svg" alt="Server-trusted BeeBuzz delivery flow">
+    </td>
+    <td width="50%" valign="top">
+      <img src="docs/assets/readme/e2e-flow.svg" alt="End-to-end encrypted BeeBuzz delivery flow">
+    </td>
+  </tr>
+</table>
+
+In both modes, Web Push transport is encrypted in transit between BeeBuzz and
+the receiving browser. The difference is what the BeeBuzz server can read:
+trusted mode gives BeeBuzz plaintext notification content; E2E mode gives
+BeeBuzz only ciphertext plus routing and delivery metadata. In trusted mode,
+BeeBuzz validates the payload, handles short-lived attachment data when present,
+and dispatches the notification to paired devices.
+
+## Try It
+
+Use trusted mode when the sender can trust BeeBuzz with the notification content:
+
+```bash
+curl https://push.beebuzz.app \
+  -H "Authorization: Bearer $TOKEN" \
+  -F title="Hello from BeeBuzz" \
+  -F body="Trusted mode test"
+```
+
+Install the CLI from a [GitHub release](https://github.com/lucor/beebuzz/releases)
+or with Go:
+
+```bash
+go install lucor.dev/beebuzz/cmd/beebuzz@latest
+```
+
+Then connect the CLI and send an encrypted notification:
+
+```bash
+beebuzz connect
+beebuzz send "Hello from BeeBuzz"
+```
+
+In E2E mode, the CLI fetches paired device public keys, encrypts the payload
+locally with [age](https://age-encryption.org), and uploads ciphertext as
+`application/octet-stream`. Hive fetches and decrypts the notification on the
+receiving device.
+
+## What's Inside
 
 - **Server**: Go + SQLite API for accounts, topics, API tokens, devices, attachments, and Web Push dispatch.
 - **Site**: SvelteKit web app for sign-in, device pairing, API tokens, webhook setup, and administration.
 - **Hive**: PWA receiver that handles Web Push, stores pairing state locally, and decrypts E2E notifications on-device.
 - **CLI**: sender for end-to-end encrypted notifications from terminals, scripts, and automation.
 
-## Delivery Modes
+## Documentation
 
-### Server-trusted
-
-Use JSON or multipart requests when the sender trusts the BeeBuzz server with the
-notification payload.
-
-```text
-sender -> BeeBuzz API -> Web Push -> Hive
-```
-
-BeeBuzz authenticates the API token, reads and validates the payload, optionally
-handles an attachment, then sends a Web Push notification to subscribed devices.
-This is the fastest path for tests, simple integrations, and webhooks.
-
-### End-to-end encrypted
-
-Use the CLI or an `application/octet-stream` request when notification content
-should stay opaque to BeeBuzz.
-
-```text
-CLI -> encrypt locally for paired devices -> BeeBuzz stores ciphertext -> Hive fetches and decrypts locally
-```
-
-The CLI fetches paired device public keys, encrypts the notification locally with
-age/X25519, and sends only ciphertext to BeeBuzz. The server stores the opaque
-blob temporarily and pushes a small envelope containing the notification ID,
-attachment token, and server acceptance time. Hive receives the envelope, fetches
-the blob, and decrypts the final notification locally.
-
-## Try It
-
-- Read the docs: <https://beebuzz.app/docs>
-- Use the hosted BeeBuzz beta: <https://beebuzz.app/docs/quickstart>
-- Run BeeBuzz locally for development: <https://beebuzz.app/docs/local-dev>
-
-Install the CLI from a [GitHub release](https://github.com/lucor/beebuzz/releases) (no Go required) or with Go:
-
-```bash
-go install lucor.dev/beebuzz/cmd/beebuzz@latest
-```
-
-Send an encrypted notification after connecting the CLI:
-
-```bash
-beebuzz send "Hello from BeeBuzz"
-```
-
-## Security Model
-
-In E2E mode:
-
-- BeeBuzz should not recover notification plaintext from stored blobs alone.
-- BeeBuzz stores paired device public recipients, not device private identities.
-- A database compromise alone should not reveal stored E2E message plaintext or device private keys.
-
-E2E protects message content, not metadata. BeeBuzz still sees operational metadata
-such as users, topics, device mappings, timestamps, delivery results, and whether
-E2E mode was used. It also does not protect against a compromised endpoint or an
-actively malicious server serving malicious client code or replacing recipient keys.
-
-See [docs/E2E_ENCRYPTION.md](docs/E2E_ENCRYPTION.md) and
-[docs/THREAT_MODEL.md](docs/THREAT_MODEL.md) for the full model.
+- [Quickstart](https://beebuzz.app/docs/quickstart)
+- [Browser support](https://beebuzz.app/docs/browser-support)
+- [Local development](https://beebuzz.app/docs/local-dev)
+- [Webhooks](https://beebuzz.app/docs/webhooks)
+- [E2E encryption model](docs/E2E_ENCRYPTION.md)
+- [Threat model](docs/THREAT_MODEL.md)
+- [OpenAPI contract](docs/openapi.yaml)
+- [Development posts](https://lucor.dev/tags/beebuzz)
 
 ## Project Status
 
 BeeBuzz is currently optimized for two workflows:
 
-1. get approved for the hosted beta and send your first notification in seconds
+1. get approved for the hosted beta and send your first notification quickly
 2. run the stack locally with a fast development loop
 
 Detailed production self-hosting docs will come later.
 
-Hosted access is free during beta. After beta, the hosted service will move to a
-single paid plan, priced to keep the project sustainable. Self-hosting remains
-free, open source, and available under the AGPL license.
-
 ## License
 
-BeeBuzz is licensed under the GNU Affero General Public License v3.0 only.
+BeeBuzz is licensed under the GNU Affero General Public License v3.0 only. See
+[LICENSE](LICENSE).
+
+Third-party dependencies are tracked in the Go and frontend dependency manifests.

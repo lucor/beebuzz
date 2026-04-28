@@ -1279,6 +1279,30 @@ paths:
           $ref: "#/components/responses/ValidationError"
         "500":
           $ref: "#/components/responses/InternalError"
+  /_stub/push/next:
+    get:
+      tags: [Push]
+      operationId: getNextPushStubEvent
+      summary: Long-poll the next captured push event (push-stub mode)
+      description: |
+        Returns the next push event captured by the push-stub broker.
+        Intended for local development and automated test flows only.
+        Rejects non-loopback clients.
+      x-audience: [internal]
+      x-stability: internal
+      responses:
+        "200":
+          description: A captured push event
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PushStubEvent"
+        "204":
+          description: No event available within the long-poll timeout
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalError"
 components:
   securitySchemes:
     cookieAuth:
@@ -2252,3 +2276,16 @@ components:
           type: string
         signup_created_enabled:
           type: boolean
+    PushStubEvent:
+      type: object
+      required: [endpoint, device_id, data]
+      properties:
+        endpoint:
+          type: string
+          description: The push endpoint that would have received the notification.
+        device_id:
+          type: string
+          description: The target device identifier.
+        data:
+          type: string
+          description: The JS-visible payload (post-transport-decryption).
