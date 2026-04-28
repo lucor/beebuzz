@@ -13,7 +13,7 @@
 	};
 </script>
 
-<main class="flex items-center justify-center min-h-dvh bg-[#FDF7ED] px-4">
+<main class="flex items-center justify-center min-h-dvh bg-base-100 px-4">
 	<div class="w-full max-w-md">
 		<!-- Header -->
 		<div class="text-center mb-8">
@@ -23,26 +23,26 @@
 		</div>
 
 		<!-- Card -->
-		<div class="bg-white rounded-lg shadow-md border border-[#E6E1D8] p-8">
+		<div class="rounded-lg border border-base-300 bg-base-100 p-8 shadow-md">
 			<div class="flex items-center justify-center mb-4">
 				<div class="p-3 bg-red-100 rounded-full">
 					<BellOff size={32} class="text-red-500" />
 				</div>
 			</div>
 
-			<h2 class="text-lg font-bold text-[#2D3748] text-center mb-2">Notifications Blocked</h2>
+			<h2 class="text-lg font-bold text-base-content text-center mb-2">Notifications Blocked</h2>
 
-			<p class="text-[#6B7280] text-sm text-center mb-6">
+			<p class="text-base-content/70 text-sm text-center mb-6">
 				BeeBuzz needs notification permission to deliver messages. You have blocked notifications
 				for this site.
 			</p>
 
-			<div class="bg-[#FDF7ED] rounded-lg p-4 mb-6">
-				<p class="text-sm font-semibold text-[#2D3748] mb-2 flex items-center gap-2">
+			<div class="rounded-lg bg-base-200 p-4 mb-6">
+				<p class="text-sm font-semibold text-base-content mb-2 flex items-center gap-2">
 					<Settings size={16} />
 					How to re-enable
 				</p>
-				<ol class="text-xs text-[#6B7280] space-y-1 list-decimal list-inside">
+				<ol class="text-xs text-base-content/70 space-y-1 list-decimal list-inside">
 					<li>Open your browser settings</li>
 					<li>Find "Site Settings" or "Permissions"</li>
 					<li>Locate this site and allow notifications</li>

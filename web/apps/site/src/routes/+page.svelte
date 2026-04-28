@@ -347,7 +347,7 @@
 							<div
 								class="flex h-12 w-12 items-center justify-center rounded-2xl bg-warning/15 text-warning"
 							>
-								<svelte:component this={useCase.icon} class="h-6 w-6" />
+								<useCase.icon class="h-6 w-6" />
 							</div>
 							<h3 class="mt-5 text-xl font-semibold text-base-content">{useCase.title}</h3>
 							<p class="mt-3 text-sm leading-7 text-base-content/70">{useCase.description}</p>
