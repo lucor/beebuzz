@@ -1,8 +1,10 @@
-<p align="center">
-  <img src="web/packages/shared/src/assets/beebuzz-logo-img.svg" alt="BeeBuzz logo image" width="96">
-  <br>
-  <img src="web/packages/shared/src/assets/beebuzz-logo-text.svg" alt="BeeBuzz logo text" width="240">
-</p>
+<div align="center">
+  <div style="background-color: #ffffff; padding: 24px; border-radius: 16px; display: inline-block;">
+    <img src="web/packages/shared/src/assets/beebuzz-logo-img.svg" alt="BeeBuzz logo image" width="96">
+    <br>
+    <img src="web/packages/shared/src/assets/beebuzz-logo-text.svg" alt="BeeBuzz logo text" width="240">
+  </div>
+</div>
 
 <h1 align="center">Private push notifications for your own devices</h1>
 
