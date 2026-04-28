@@ -65,6 +65,7 @@ func NewRouter(
 	webhookHandler *webhook.Handler,
 	attachmentHandler *attachment.Handler,
 	tokenHandler *token.Handler,
+	pushStubHandler http.HandlerFunc,
 	cfg *config.Config,
 	log *slog.Logger,
 ) http.Handler {
@@ -157,6 +158,10 @@ func NewRouter(
 			})
 		})
 	})
+
+	if pushStubHandler != nil {
+		r.Get("/_stub/push/next", pushStubHandler)
+	}
 
 	return r
 }

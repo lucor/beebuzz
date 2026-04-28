@@ -1,0 +1,47 @@
+<svg width="560" height="500" viewBox="0 0 560 500" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">BeeBuzz end-to-end encrypted mode flow</title>
+  <desc id="desc">A vertical flow showing a local CLI sender, BeeBuzz server storing ciphertext, Web Push provider, and Hive decrypting on the receiving device.</desc>
+  <rect x="1" y="1" width="558" height="498" rx="10" fill="#f9fafb" stroke="#e5e7eb" stroke-width="2"/>
+
+  <circle cx="44" cy="48" r="7" fill="#7aa610"/>
+  <text x="64" y="53" fill="#5a7a05" font-family="IBM Plex Mono, ui-monospace, SFMono-Regular, Menlo, monospace" font-size="14" font-weight="600" letter-spacing="1.8">END-TO-END MODE</text>
+
+  <line x1="54" y1="112" x2="54" y2="408" stroke="#e5e7eb" stroke-width="2"/>
+
+  <g transform="translate(38 94)">
+    <rect width="32" height="32" rx="8" fill="#f0f7d4" stroke="#c8e07a"/>
+    <text x="16" y="21" text-anchor="middle" fill="#5a7a05" font-family="IBM Plex Mono, ui-monospace, SFMono-Regular, Menlo, monospace" font-size="10" font-weight="700">CLI</text>
+    <text x="52" y="15" fill="#5a7a05" font-family="IBM Plex Mono, ui-monospace, SFMono-Regular, Menlo, monospace" font-size="14" font-weight="600" letter-spacing=".5">Sender</text>
+    <text x="52" y="42" fill="#6b7280" font-family="system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="15">Fetches paired device public keys and encrypts</text>
+    <text x="52" y="64" fill="#6b7280" font-family="system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="15">the payload locally before upload.</text>
+    <rect x="52" y="82" width="184" height="24" rx="3" fill="#f0f7d4" stroke="#c8e07a"/>
+    <text x="66" y="99" fill="#5a7a05" font-family="IBM Plex Mono, ui-monospace, SFMono-Regular, Menlo, monospace" font-size="11" letter-spacing=".8">ENCRYPTS LOCALLY</text>
+  </g>
+
+  <g transform="translate(38 204)">
+    <rect width="32" height="32" rx="8" fill="#f0f7d4" stroke="#c8e07a"/>
+    <text x="16" y="21" text-anchor="middle" fill="#5a7a05" font-family="IBM Plex Mono, ui-monospace, SFMono-Regular, Menlo, monospace" font-size="10" font-weight="700">BB</text>
+    <text x="52" y="15" fill="#5a7a05" font-family="IBM Plex Mono, ui-monospace, SFMono-Regular, Menlo, monospace" font-size="14" font-weight="600" letter-spacing=".5">BeeBuzz server</text>
+    <text x="52" y="42" fill="#6b7280" font-family="system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="15">Stores opaque ciphertext and sends a minimal</text>
+    <text x="52" y="64" fill="#6b7280" font-family="system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="15">delivery envelope through Web Push.</text>
+    <rect x="52" y="82" width="190" height="24" rx="3" fill="#f0f7d4" stroke="#c8e07a"/>
+    <text x="66" y="99" fill="#5a7a05" font-family="IBM Plex Mono, ui-monospace, SFMono-Regular, Menlo, monospace" font-size="11" letter-spacing=".8">OPAQUE CIPHERTEXT</text>
+  </g>
+
+  <g transform="translate(38 314)">
+    <rect width="32" height="32" rx="8" fill="#f0f7d4" stroke="#c8e07a"/>
+    <text x="16" y="21" text-anchor="middle" fill="#5a7a05" font-family="IBM Plex Mono, ui-monospace, SFMono-Regular, Menlo, monospace" font-size="10" font-weight="700">WP</text>
+    <text x="52" y="15" fill="#5a7a05" font-family="IBM Plex Mono, ui-monospace, SFMono-Regular, Menlo, monospace" font-size="14" font-weight="600" letter-spacing=".5">Web Push provider</text>
+    <text x="52" y="42" fill="#6b7280" font-family="system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="15">Push transport remains encrypted in transit;</text>
+    <text x="52" y="64" fill="#6b7280" font-family="system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="15">the provider sees only opaque bytes.</text>
+    <rect x="52" y="82" width="196" height="24" rx="3" fill="#f0f7d4" stroke="#c8e07a"/>
+    <text x="66" y="99" fill="#5a7a05" font-family="IBM Plex Mono, ui-monospace, SFMono-Regular, Menlo, monospace" font-size="11" letter-spacing=".8">VAPID · WEB PUSH</text>
+  </g>
+
+  <g transform="translate(38 424)">
+    <rect width="32" height="32" rx="8" fill="#f0f7d4" stroke="#c8e07a"/>
+    <text x="16" y="21" text-anchor="middle" fill="#5a7a05" font-family="IBM Plex Mono, ui-monospace, SFMono-Regular, Menlo, monospace" font-size="10" font-weight="700">HV</text>
+    <text x="52" y="15" fill="#5a7a05" font-family="IBM Plex Mono, ui-monospace, SFMono-Regular, Menlo, monospace" font-size="14" font-weight="600" letter-spacing=".5">Hive device</text>
+    <text x="52" y="42" fill="#6b7280" font-family="system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="15">Downloads ciphertext and decrypts on device.</text>
+  </g>
+</svg>

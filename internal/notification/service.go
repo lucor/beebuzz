@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"sync/atomic"
 	"time"
 
 	"filippo.io/age"
@@ -46,6 +47,21 @@ type Service struct {
 	vapidKeys  *VAPIDKeys
 	subject    string // VAPID subject per RFC 8292 (https://... or mailto:...)
 	log        *slog.Logger
+	// pushStubBroker, when non-nil, short-circuits real Web Push delivery and
+	// publishes the raw payload to a local broker. Used by test drivers to
+	// inject pushes directly into the service worker via CDP.
+	// MUST stay nil in production.
+	//
+	// Stored via atomic.Pointer so SetPushStubBroker can be called from a
+	// goroutine other than the one running sendRawPush without races.
+	pushStubBroker atomic.Pointer[PushStubBroker]
+}
+
+// SetPushStubBroker enables push-stub capture. Pass nil to disable.
+// When set, sendRawPush publishes payloads to the broker instead of contacting
+// the real push provider.
+func (s *Service) SetPushStubBroker(b *PushStubBroker) {
+	s.pushStubBroker.Store(b)
 }
 
 // NewService creates a new notification service.
@@ -415,6 +431,15 @@ func (s *Service) sendPush(ctx context.Context, sub PushSub, payload Notificatio
 
 // sendRawPush sends raw bytes as a web push notification to a single subscription.
 func (s *Service) sendRawPush(ctx context.Context, sub PushSub, data []byte, urgency webpush.Urgency) (int, error) {
+	if broker := s.pushStubBroker.Load(); broker != nil {
+		broker.Publish(PushStubEvent{
+			Endpoint: sub.Endpoint,
+			DeviceID: sub.DeviceID,
+			Data:     string(data),
+		})
+		return http.StatusCreated, nil
+	}
+
 	subscription := &webpush.Subscription{
 		Endpoint: sub.Endpoint,
 		Keys: webpush.Keys{

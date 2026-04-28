@@ -7,6 +7,6 @@
 /public
 /tmp
 .env
+.DS_Store
 .mise/certs/
 AGENTS.local.md
-

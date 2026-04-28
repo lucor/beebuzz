@@ -277,6 +277,16 @@ During push delivery:
 - attachment retrieval is token-based and does not require a session cookie
 - E2E mode depends on paired device age public keys
 
+## Push-Stub Mode (Development Only)
+
+When `BEEBUZZ_PUSH_STUB` is enabled (non-production environments only), the server does not dispatch notifications through real Web Push providers. Instead, it captures the raw push payload in an in-memory broker and exposes it via a long-polling endpoint:
+
+- `GET /_stub/push/next`
+
+This endpoint is restricted to loopback clients as defense-in-depth. It returns `200 OK` with a `PushStubEvent` when a payload is available, or `204 No Content` after a short timeout so clients can retry. Test drivers use this flow to inject pushes directly into the Hive service worker via Chrome DevTools Protocol, bypassing FCM/VAPID entirely.
+
+**Never enable push-stub in production.**
+
 ## Agent Maintenance Rule
 
 If you change any of the following, update the relevant section of this document in the same task:
@@ -287,3 +297,4 @@ If you change any of the following, update the relevant section of this document
 - change webhook payload modes, dispatch, or priority handling
 - change push delivery failure handling or subscription cleanup
 - change the Hive service worker notification receive or decrypt flow
+- change push-stub capture behavior, broker limits, or the `/_stub/push/next` endpoint
