@@ -390,7 +390,7 @@
 </script>
 
 {#if !ready}
-	<main class="flex min-h-dvh items-center justify-center bg-[#FDF7ED] px-4">
+	<main class="flex min-h-dvh items-center justify-center bg-base-100 px-4">
 		{#if startupError}
 			<div class="w-full max-w-md rounded-2xl border border-warning/30 bg-base-100 p-6 shadow-sm">
 				<div class="flex items-start gap-3">

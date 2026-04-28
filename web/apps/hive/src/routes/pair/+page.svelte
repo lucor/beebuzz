@@ -34,7 +34,7 @@
 </script>
 
 {#if onboarding.state === 'checking'}
-	<main class="flex items-center justify-center min-h-dvh bg-[#FDF7ED]">
+	<main class="flex items-center justify-center min-h-dvh bg-base-100">
 		<span class="loading loading-spinner loading-lg text-primary"></span>
 	</main>
 {:else if onboarding.state === 'unsupported'}

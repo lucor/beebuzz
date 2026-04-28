@@ -26,7 +26,7 @@
 	});
 </script>
 
-<main class="flex items-center justify-center min-h-dvh bg-[#FDF7ED] px-4">
+<main class="flex items-center justify-center min-h-dvh bg-base-100 px-4">
 	<div class="w-full max-w-md">
 		<!-- Header -->
 		<div class="text-center mb-8">
@@ -36,16 +36,16 @@
 		</div>
 
 		<!-- Card -->
-		<div class="bg-white rounded-lg shadow-md border border-[#E6E1D8] p-8">
+		<div class="rounded-lg border border-base-300 bg-base-100 p-8 shadow-md">
 			<div class="flex items-center justify-center mb-4">
 				<div class="p-3 bg-red-100 rounded-full">
 					<CircleAlert size={32} class="text-red-500" />
 				</div>
 			</div>
 
-			<h2 class="text-lg font-bold text-[#2D3748] text-center mb-2">Browser Not Supported</h2>
+			<h2 class="text-lg font-bold text-base-content text-center mb-2">Browser Not Supported</h2>
 
-			<p class="text-[#6B7280] text-sm text-center mb-6">
+			<p class="text-base-content/70 text-sm text-center mb-6">
 				Your browser does not support the features required by BeeBuzz.
 			</p>
 
@@ -60,9 +60,9 @@
 				</div>
 			{/if}
 
-			<div class="bg-[#FDF7ED] rounded-lg p-4">
-				<p class="text-sm font-semibold text-[#2D3748] mb-3">Supported browsers</p>
-				<ul class="text-sm text-[#6B7280] space-y-2">
+			<div class="rounded-lg bg-base-200 p-4">
+				<p class="text-sm font-semibold text-base-content mb-3">Supported browsers</p>
+				<ul class="text-sm text-base-content/70 space-y-2">
 					<li class="flex items-center gap-2">
 						<Globe size={16} class="flex-shrink-0" />
 						<span>Chrome / Edge (desktop and Android)</span>

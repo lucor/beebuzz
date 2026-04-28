@@ -31,6 +31,9 @@
 	const handleClose = () => {
 		onClose?.();
 	};
+
+	// Stable id for aria-labelledby so the dialog has an accessible name.
+	const titleId = `settings-modal-title-${Math.random().toString(36).slice(2, 10)}`;
 </script>
 
 {#if open}
@@ -38,6 +41,7 @@
 		class="modal"
 		open
 		aria-modal="true"
+		aria-labelledby={titleId}
 		oncancel={(e) => {
 			e.preventDefault();
 			handleClose();
@@ -48,7 +52,7 @@
 		>
 			<div class="flex items-start justify-between gap-4">
 				<div>
-					<h3 class="text-lg font-bold text-base-content">{title}</h3>
+					<h3 id={titleId} class="text-lg font-bold text-base-content">{title}</h3>
 					{#if description}
 						<p class="text-sm text-base-content/70 mt-1">{description}</p>
 					{/if}
