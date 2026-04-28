@@ -24,9 +24,7 @@ receiver.
 
 Hosted beta flow, shown on the real stack with Site and Hive side by side.
 
-<p align="center">
-  <a href="quickstart-demo.mp4">Open the quickstart demo (MP4)</a>
-</p>
+<https://github.com/user-attachments/assets/edcd0981-119a-47e8-a947-91c70f888782>
 
 <p align="center">
   Sign in, create a pairing code, pair Hive, create a token, and deliver the first notification.
