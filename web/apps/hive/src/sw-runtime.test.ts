@@ -313,6 +313,65 @@ describe('service worker runtime', () => {
 		expect(deps.saveNotification).not.toHaveBeenCalled();
 	});
 
+	it('resolves an E2E envelope by fetching and decrypting the stored payload', async () => {
+		const envelopeBytes = new TextEncoder().encode(
+			JSON.stringify({
+				beebuzz: {
+					id: 'n-e2e-1',
+					token: 'attachment-token',
+					sent_at: '2026-04-20T13:30:00.000Z'
+				}
+			})
+		);
+		const buffer = envelopeBytes.buffer.slice(
+			envelopeBytes.byteOffset,
+			envelopeBytes.byteOffset + envelopeBytes.byteLength
+		);
+		const fetchSpy = vi.fn(() =>
+			Promise.resolve(
+				new Response('ciphertext', {
+					status: 200
+				})
+			)
+		);
+		const deps = createDeps({
+			fetch: fetchSpy,
+			decryptPayload: vi.fn(() =>
+				Promise.resolve(
+					JSON.stringify({
+						title: 'Encrypted',
+						body: 'Secret message',
+						topic: 'alerts'
+					})
+				)
+			)
+		});
+		const event: PushEventLike = {
+			data: { arrayBuffer: () => buffer },
+			waitUntil: () => {}
+		};
+
+		await handlePushEvent(deps, event);
+
+		expect(fetchSpy).toHaveBeenCalledWith(
+			'https://api.beebuzz.test/v1/attachments/attachment-token'
+		);
+		expect(deps.saveNotification).toHaveBeenCalledWith({
+			id: 'n-e2e-1',
+			title: 'Encrypted',
+			body: 'Secret message',
+			topic: 'alerts',
+			sentAt: '2026-04-20T13:30:00.000Z',
+			topicId: undefined,
+			attachment: undefined,
+			priority: undefined
+		});
+		expect(deps.showNotification).toHaveBeenCalledWith(
+			'Encrypted',
+			expect.objectContaining({ body: 'Secret message' })
+		);
+	});
+
 	it('tells the user to re-pair when the device key is missing', async () => {
 		const ageHeader = new TextEncoder().encode('age-encryption.org/v1\ncorrupted-data');
 		const buffer = ageHeader.buffer.slice(
