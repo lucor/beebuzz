@@ -7,7 +7,8 @@ import {
 	handleNotificationClickEvent,
 	handlePushEvent,
 	handlePushSubscriptionChangeEvent,
-	type NotificationAttachmentEnvelope
+	type NotificationAttachmentEnvelope,
+	type ServiceWorkerRuntimeDeps
 } from './sw-runtime';
 
 declare const self: ServiceWorkerGlobalScope;
@@ -69,7 +70,7 @@ function saveNotificationToStorage(input: {
 	);
 }
 
-const runtimeDeps = {
+const runtimeDeps: ServiceWorkerRuntimeDeps = {
 	debug: DEBUG,
 	locationOrigin: self.location.origin,
 	beebuzzDomain: BEEBUZZ_DOMAIN,
@@ -87,7 +88,7 @@ const runtimeDeps = {
 	skipWaiting: () => self.skipWaiting(),
 	getPushSubscription: () => self.registration.pushManager.getSubscription(),
 	decryptPayload,
-	fetch
+	fetch: (input, init) => self.fetch(input, init)
 };
 
 self.addEventListener('push', (event: PushEvent) => {
