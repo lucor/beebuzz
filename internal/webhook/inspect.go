@@ -22,7 +22,6 @@ const (
 type InspectSession struct {
 	UserID      string
 	TokenHash   string
-	Token       string
 	Name        string
 	Description string
 	Priority    string
@@ -46,10 +45,10 @@ func NewInspectStore() *InspectStore {
 }
 
 // Create generates a new inspect session for the given user, replacing any previous one.
-func (s *InspectStore) Create(userID, name, description, priority string, topics []string) (*InspectSession, error) {
+func (s *InspectStore) Create(userID, name, description, priority string, topics []string) (string, *InspectSession, error) {
 	rawToken, err := secure.NewInspectToken()
 	if err != nil {
-		return nil, err
+		return "", nil, err
 	}
 
 	tokenHash := secure.Hash(rawToken)
@@ -57,7 +56,6 @@ func (s *InspectStore) Create(userID, name, description, priority string, topics
 	session := &InspectSession{
 		UserID:      userID,
 		TokenHash:   tokenHash,
-		Token:       rawToken,
 		Name:        name,
 		Description: description,
 		Priority:    priority,
@@ -72,7 +70,7 @@ func (s *InspectStore) Create(userID, name, description, priority string, topics
 	s.cleanupLocked()
 	s.sessions[userID] = session
 
-	return session, nil
+	return rawToken, session, nil
 }
 
 // GetByUserID returns the inspect session for the given user, or nil if not found or expired.

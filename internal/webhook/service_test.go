@@ -11,6 +11,7 @@ import (
 
 	"lucor.dev/beebuzz/internal/auth"
 	"lucor.dev/beebuzz/internal/push"
+	"lucor.dev/beebuzz/internal/secure"
 	"lucor.dev/beebuzz/internal/testutil"
 	"lucor.dev/beebuzz/internal/topic"
 )
@@ -204,6 +205,72 @@ func TestExtractPayload_UnsupportedType(t *testing.T) {
 	_, _, err := svc.extractPayload(wh, []byte(`{}`))
 	if err == nil {
 		t.Fatal("expected error for unsupported payload type")
+	}
+}
+
+func TestInspectStoreCreateReturnsRawTokenWithoutPersistingIt(t *testing.T) {
+	store := NewInspectStore()
+
+	rawToken, session, err := store.Create("user-1", "inspect", "desc", push.PriorityNormal, []string{"topic-1"})
+	if err != nil {
+		t.Fatalf("Create() error = %v, want nil", err)
+	}
+	if rawToken == "" {
+		t.Fatal("Create() rawToken = empty, want token")
+	}
+	if session == nil {
+		t.Fatal("Create() session = nil, want session")
+	}
+	if session.TokenHash != secure.Hash(rawToken) {
+		t.Fatalf("Create() tokenHash = %q, want hash of raw token", session.TokenHash)
+	}
+
+	stored := store.GetByUserID("user-1")
+	if stored == nil {
+		t.Fatal("GetByUserID() = nil, want session")
+	}
+	if stored.TokenHash != secure.Hash(rawToken) {
+		t.Fatalf("GetByUserID() tokenHash = %q, want hash of raw token", stored.TokenHash)
+	}
+}
+
+func TestCreateInspectSessionReturnsRawTokenAndStoresOnlyHash(t *testing.T) {
+	db := testutil.NewDB(t)
+	ctx := context.Background()
+
+	authRepo := auth.NewRepository(db)
+	topicRepo := topic.NewRepository(db)
+	repo := NewRepository(db)
+	topicSvc := topic.NewService(topicRepo, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	inspectStore := NewInspectStore()
+	svc := NewService(repo, inspectStore, noopDispatcher{}, topicSvc, slog.New(slog.NewTextHandler(io.Discard, nil)))
+
+	user, _, err := authRepo.GetOrCreateUser(ctx, "inspect-create@example.com")
+	if err != nil {
+		t.Fatalf("GetOrCreateUser: %v", err)
+	}
+	tp, err := topicRepo.Create(ctx, user.ID, "alerts", "")
+	if err != nil {
+		t.Fatalf("topic.Create: %v", err)
+	}
+
+	response, err := svc.CreateInspectSession(ctx, user.ID, "inspect", "desc", push.PriorityNormal, []string{tp.ID}, "https://hook.example.com")
+	if err != nil {
+		t.Fatalf("CreateInspectSession() error = %v, want nil", err)
+	}
+	if response.Token == "" {
+		t.Fatal("CreateInspectSession() token = empty, want token")
+	}
+	if response.URL != "https://hook.example.com/"+response.Token {
+		t.Fatalf("CreateInspectSession() url = %q, want token-based url", response.URL)
+	}
+
+	session := inspectStore.GetByUserID(user.ID)
+	if session == nil {
+		t.Fatal("GetByUserID() = nil, want session")
+	}
+	if session.TokenHash != secure.Hash(response.Token) {
+		t.Fatalf("stored tokenHash = %q, want hash of response token", session.TokenHash)
 	}
 }
 
