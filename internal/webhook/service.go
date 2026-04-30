@@ -240,14 +240,14 @@ func (s *Service) CreateInspectSession(ctx context.Context, userID, name, descri
 		return nil, ErrInvalidTopicSelection
 	}
 
-	session, err := s.inspectStore.Create(userID, name, description, priority, topics)
+	rawToken, session, err := s.inspectStore.Create(userID, name, description, priority, topics)
 	if err != nil {
 		return nil, err
 	}
 
 	return &InspectSessionResponse{
-		Token:     session.Token,
-		URL:       hookURL + "/" + session.Token,
+		Token:     rawToken,
+		URL:       hookURL + "/" + rawToken,
 		Status:    session.Status,
 		ExpiresAt: session.ExpiresAt,
 	}, nil
