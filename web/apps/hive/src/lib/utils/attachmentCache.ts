@@ -6,9 +6,6 @@ const attachmentCache = new Map<string, CachedAttachment>();
 
 export interface CachedAttachment {
 	dataUrl: string;
-	// Why: Safari can't reliably play video from data: URLs (no range requests),
-	// so video playback uses URL.createObjectURL(blob) instead of dataUrl.
-	blob: Blob;
 	mimeType: string;
 	timestamp: number;
 }
@@ -58,7 +55,6 @@ export async function fetchAndCacheAttachment(
 	const dataUrl = await blobToDataUrl(finalBlob);
 	const result: CachedAttachment = {
 		dataUrl,
-		blob: finalBlob,
 		mimeType: finalBlob.type || mimeType,
 		timestamp: Date.now()
 	};
@@ -70,11 +66,6 @@ export async function fetchAndCacheAttachment(
 /** Returns true if the MIME type represents an image. */
 export function isImageMime(mime: string): boolean {
 	return mime.startsWith('image/');
-}
-
-/** Returns true if the MIME type represents a video. */
-export function isVideoMime(mime: string): boolean {
-	return mime.startsWith('video/');
 }
 
 /** Clear attachment cache */
