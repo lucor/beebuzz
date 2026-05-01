@@ -2,6 +2,7 @@
 	import {
 		Image,
 		FileDown,
+		Video,
 		ChevronUp,
 		EllipsisVertical,
 		Check,
@@ -11,9 +12,10 @@
 	} from '@lucide/svelte';
 	import type { Notification, NotificationPriority } from '@beebuzz/shared/types';
 	import { notificationsStore, formatRelativeTime } from '$lib/stores/notifications.svelte';
-	import { fetchAndCacheAttachment, isImageMime } from '$lib/utils/attachmentCache';
+	import { fetchAndCacheAttachment, isImageMime, isVideoMime } from '$lib/utils/attachmentCache';
 	import type { CachedAttachment } from '$lib/utils/attachmentCache';
 	import { parseHttpsLinkSegments } from '$lib/utils/linkify';
+	import { tick } from 'svelte';
 
 	const PRIORITY_HIGH: NotificationPriority = 'high';
 
@@ -49,8 +51,13 @@
 
 	let cachedAttachment = $state<CachedAttachment | null>(null);
 	let showImageModal = $state(false);
+	let showVideoModal = $state(false);
 	let attachmentLoading = $state(false);
 	let imageDialog = $state<HTMLDialogElement | undefined>(undefined);
+	let videoDialog = $state<HTMLDialogElement | undefined>(undefined);
+	// Why: Safari can't reliably play <video> from data: URLs (no range requests).
+	// Create a blob URL on demand for the modal and revoke it on close.
+	let videoObjectUrl = $state<string | null>(null);
 
 	// Why: DaisyUI's focus-based dropdown breaks in Safari — focus leaves the
 	// trigger before onclick fires on menu items, swallowing the event.
@@ -85,6 +92,39 @@
 			imageDialog.close();
 		}
 	});
+
+	$effect(() => {
+		if (!videoDialog) return;
+		if (showVideoModal) {
+			videoDialog.showModal();
+		} else {
+			videoDialog.close();
+		}
+	});
+
+	/** Create the blob URL and open the video modal. */
+	function openVideoModal() {
+		if (!cachedAttachment) return;
+		if (!videoObjectUrl) {
+			videoObjectUrl = URL.createObjectURL(cachedAttachment.blob);
+		}
+		showVideoModal = true;
+	}
+
+	/**
+	 * Close the video modal and revoke the blob URL to free memory.
+	 * Awaits tick() so the <video> element unmounts before the URL is revoked,
+	 * avoiding a microtask window where the still-mounted element holds a
+	 * revoked src.
+	 */
+	async function closeVideoModal() {
+		showVideoModal = false;
+		await tick();
+		if (videoObjectUrl) {
+			URL.revokeObjectURL(videoObjectUrl);
+			videoObjectUrl = null;
+		}
+	}
 
 	function handleMarkRead() {
 		notificationsStore.markAsRead(notification.id);
@@ -121,6 +161,8 @@
 		if (!cachedAttachment) return;
 		if (isImageMime(cachedAttachment.mimeType)) {
 			showImageModal = true;
+		} else if (isVideoMime(cachedAttachment.mimeType)) {
+			openVideoModal();
 		} else {
 			const filename = notification.attachment?.filename || 'attachment.bin';
 			triggerDownload(cachedAttachment.dataUrl, filename);
@@ -135,8 +177,15 @@
 		}
 
 		const mimeType = notification.attachment?.mime || 'application/octet-stream';
+		const binary = atob(inlineData);
+		const bytes = new Uint8Array(binary.length);
+		for (let i = 0; i < binary.length; i++) {
+			bytes[i] = binary.charCodeAt(i);
+		}
+		const blob = new Blob([bytes], { type: mimeType });
 		return {
 			dataUrl: `data:${mimeType};base64,${inlineData}`,
+			blob,
 			mimeType,
 			timestamp: Date.now()
 		};
@@ -148,6 +197,9 @@
 		if (filename) return filename;
 		if (notification.attachment?.mime && isImageMime(notification.attachment.mime)) {
 			return 'Image attachment';
+		}
+		if (notification.attachment?.mime && isVideoMime(notification.attachment.mime)) {
+			return 'Video attachment';
 		}
 		return 'File attachment';
 	});
@@ -360,6 +412,8 @@
 			>
 				{#if notification.attachment?.mime && isImageMime(notification.attachment.mime)}
 					<Image size={16} />
+				{:else if notification.attachment?.mime && isVideoMime(notification.attachment.mime)}
+					<Video size={16} />
 				{:else}
 					<FileDown size={16} />
 				{/if}
@@ -373,7 +427,7 @@
 </div>
 
 <!-- Image modal — rendered outside the card to avoid inheriting opacity-60 on read messages -->
-<dialog bind:this={imageDialog} class="modal">
+<dialog bind:this={imageDialog} class="modal" onclose={() => (showImageModal = false)}>
 	<div class="modal-box max-w-4xl w-11/12 flex flex-col items-center">
 		<form method="dialog">
 			<button
@@ -389,6 +443,39 @@
 			alt="{notification.title} attachment"
 			class="rounded-lg max-w-full max-h-96"
 		/>
+	</div>
+	<form method="dialog" class="modal-backdrop"><button type="submit">close</button></form>
+</dialog>
+
+<!-- Video modal — iOS PWAs handle programmatic downloads poorly, so playable media opens inline -->
+<dialog bind:this={videoDialog} class="modal" onclose={closeVideoModal}>
+	<div class="modal-box max-w-4xl w-11/12 flex flex-col items-center">
+		<form method="dialog">
+			<button
+				type="submit"
+				class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2"
+				aria-label="Close video viewer"
+			>
+				✕
+			</button>
+		</form>
+		{#if showVideoModal && videoObjectUrl}
+			<video
+				src={videoObjectUrl}
+				controls
+				muted
+				playsinline
+				preload="metadata"
+				class="rounded-lg max-w-full max-h-[80vh]"
+			>
+				<a
+					href={cachedAttachment?.dataUrl || ''}
+					download={notification.attachment?.filename || 'attachment'}
+				>
+					Download video
+				</a>
+			</video>
+		{/if}
 	</div>
 	<form method="dialog" class="modal-backdrop"><button type="submit">close</button></form>
 </dialog>
