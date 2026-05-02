@@ -2,6 +2,7 @@
 	import {
 		Image,
 		FileDown,
+		Video,
 		ChevronUp,
 		EllipsisVertical,
 		Check,
@@ -11,9 +12,10 @@
 	} from '@lucide/svelte';
 	import type { Notification, NotificationPriority } from '@beebuzz/shared/types';
 	import { notificationsStore, formatRelativeTime } from '$lib/stores/notifications.svelte';
-	import { fetchAndCacheAttachment, isImageMime } from '$lib/utils/attachmentCache';
+	import { fetchAndCacheAttachment, isImageMime, isVideoMime } from '$lib/utils/attachmentCache';
 	import type { CachedAttachment } from '$lib/utils/attachmentCache';
 	import { parseHttpsLinkSegments } from '$lib/utils/linkify';
+	import { tick } from 'svelte';
 
 	const PRIORITY_HIGH: NotificationPriority = 'high';
 
@@ -48,9 +50,11 @@
 	});
 
 	let cachedAttachment = $state<CachedAttachment | null>(null);
-	let showImageModal = $state(false);
+	let showAttachmentViewer = $state(false);
 	let attachmentLoading = $state(false);
-	let imageDialog = $state<HTMLDialogElement | undefined>(undefined);
+	let attachmentDialog = $state<HTMLDialogElement | undefined>(undefined);
+	let viewerObjectUrl = $state<string | null>(null);
+	let viewerPreviewFailed = $state(false);
 
 	// Why: DaisyUI's focus-based dropdown breaks in Safari — focus leaves the
 	// trigger before onclick fires on menu items, swallowing the event.
@@ -78,11 +82,15 @@
 	});
 
 	$effect(() => {
-		if (!imageDialog) return;
-		if (showImageModal && cachedAttachment) {
-			imageDialog.showModal();
-		} else {
-			imageDialog.close();
+		if (!attachmentDialog) return;
+		if (showAttachmentViewer && cachedAttachment) {
+			if (!attachmentDialog.open) {
+				attachmentDialog.showModal();
+			}
+			return;
+		}
+		if (attachmentDialog.open) {
+			attachmentDialog.close();
 		}
 	});
 
@@ -106,25 +114,62 @@
 		menuOpen = false;
 	}
 
-	/** Trigger browser download for non-image attachments. */
-	function triggerDownload(dataUrl: string, filename: string) {
+	function attachmentFilename(): string {
+		return notification.attachment?.filename || 'attachment.bin';
+	}
+
+	/** Trigger browser download for an already-loaded attachment. */
+	function triggerDownload(blob: Blob, filename: string) {
+		const url = URL.createObjectURL(blob);
 		const a = document.createElement('a');
-		a.href = dataUrl;
+		a.href = url;
 		a.download = filename;
 		document.body.appendChild(a);
 		a.click();
 		document.body.removeChild(a);
+		setTimeout(() => URL.revokeObjectURL(url), 0);
 	}
 
-	/** Show image modal or trigger download depending on MIME type. */
-	function handleLoaded() {
-		if (!cachedAttachment) return;
-		if (isImageMime(cachedAttachment.mimeType)) {
-			showImageModal = true;
-		} else {
-			const filename = notification.attachment?.filename || 'attachment.bin';
-			triggerDownload(cachedAttachment.dataUrl, filename);
+	function isPreviewableAttachment(mime: string): boolean {
+		return isImageMime(mime) || isVideoMime(mime);
+	}
+
+	async function closeAttachmentViewer() {
+		const oldUrl = viewerObjectUrl;
+		viewerObjectUrl = null;
+		viewerPreviewFailed = false;
+		showAttachmentViewer = false;
+		await tick();
+		if (oldUrl) {
+			URL.revokeObjectURL(oldUrl);
 		}
+	}
+
+	function handleViewerClose() {
+		void closeAttachmentViewer();
+	}
+
+	function handleVideoError() {
+		viewerPreviewFailed = true;
+	}
+
+	/** Open the viewer for the already-loaded attachment. */
+	function openAttachmentViewer() {
+		if (!cachedAttachment) return;
+		viewerPreviewFailed = false;
+		if (viewerObjectUrl) {
+			URL.revokeObjectURL(viewerObjectUrl);
+			viewerObjectUrl = null;
+		}
+		if (isPreviewableAttachment(cachedAttachment.mimeType)) {
+			viewerObjectUrl = URL.createObjectURL(cachedAttachment.blob);
+		}
+		showAttachmentViewer = true;
+	}
+
+	function handleDownloadAttachment() {
+		if (!cachedAttachment) return;
+		triggerDownload(cachedAttachment.blob, attachmentFilename());
 	}
 
 	/** Returns a cached attachment assembled from inline base64 notification data. */
@@ -135,8 +180,14 @@
 		}
 
 		const mimeType = notification.attachment?.mime || 'application/octet-stream';
+		const binary = atob(inlineData);
+		const bytes = new Uint8Array(binary.length);
+		for (let i = 0; i < binary.length; i++) {
+			bytes[i] = binary.charCodeAt(i);
+		}
+
 		return {
-			dataUrl: `data:${mimeType};base64,${inlineData}`,
+			blob: new Blob([bytes], { type: mimeType }),
 			mimeType,
 			timestamp: Date.now()
 		};
@@ -149,8 +200,27 @@
 		if (notification.attachment?.mime && isImageMime(notification.attachment.mime)) {
 			return 'Image attachment';
 		}
+		if (notification.attachment?.mime && isVideoMime(notification.attachment.mime)) {
+			return 'Video attachment';
+		}
 		return 'File attachment';
 	});
+
+	const showingImagePreview = $derived.by(
+		() =>
+			!!cachedAttachment &&
+			!!viewerObjectUrl &&
+			!viewerPreviewFailed &&
+			isImageMime(cachedAttachment.mimeType)
+	);
+
+	const showingVideoPreview = $derived.by(
+		() =>
+			!!cachedAttachment &&
+			!!viewerObjectUrl &&
+			!viewerPreviewFailed &&
+			isVideoMime(cachedAttachment.mimeType)
+	);
 
 	const relativeTime = $derived(formatRelativeTime(notification.sentAt));
 	const absoluteTime = $derived(
@@ -183,14 +253,14 @@
 	async function loadAttachment() {
 		if (selectionMode) return;
 		if (cachedAttachment) {
-			handleLoaded();
+			openAttachmentViewer();
 			return;
 		}
 
 		const inlineAttachment = buildInlineAttachment();
 		if (inlineAttachment) {
 			cachedAttachment = inlineAttachment;
-			handleLoaded();
+			openAttachmentViewer();
 			return;
 		}
 
@@ -200,7 +270,7 @@
 		attachmentLoading = true;
 		try {
 			cachedAttachment = await fetchAndCacheAttachment(url, notification.attachment.mime, true);
-			handleLoaded();
+			openAttachmentViewer();
 		} catch (err) {
 			console.error('[NotificationCard] Failed to load attachment:', err);
 		} finally {
@@ -360,6 +430,8 @@
 			>
 				{#if notification.attachment?.mime && isImageMime(notification.attachment.mime)}
 					<Image size={16} />
+				{:else if notification.attachment?.mime && isVideoMime(notification.attachment.mime)}
+					<Video size={16} />
 				{:else}
 					<FileDown size={16} />
 				{/if}
@@ -372,23 +444,65 @@
 	{/if}
 </div>
 
-<!-- Image modal — rendered outside the card to avoid inheriting opacity-60 on read messages -->
-<dialog bind:this={imageDialog} class="modal">
-	<div class="modal-box max-w-4xl w-11/12 flex flex-col items-center">
+<dialog
+	bind:this={attachmentDialog}
+	class="modal"
+	onclose={handleViewerClose}
+	oncancel={handleViewerClose}
+>
+	<div class="modal-box max-w-4xl w-11/12 flex flex-col gap-4">
 		<form method="dialog">
 			<button
 				type="submit"
 				class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2"
-				aria-label="Close image viewer"
+				aria-label="Close attachment viewer"
 			>
 				✕
 			</button>
 		</form>
-		<img
-			src={cachedAttachment?.dataUrl}
-			alt="{notification.title} attachment"
-			class="rounded-lg max-w-full max-h-96"
-		/>
+
+		<div class="pr-8">
+			<h4 class="text-sm font-semibold text-base-content">{attachmentLabel}</h4>
+			<p class="mt-1 text-xs text-base-content/70">
+				{cachedAttachment?.mimeType || 'Unknown type'}
+			</p>
+		</div>
+
+		<div class="flex justify-end">
+			<button type="button" class="btn btn-sm gap-2" onclick={handleDownloadAttachment}>
+				<FileDown size={16} />
+				Download
+			</button>
+		</div>
+
+		{#if showingImagePreview}
+			<img
+				src={viewerObjectUrl}
+				alt="{notification.title} attachment"
+				class="rounded-lg max-w-full max-h-[70vh] self-center"
+			/>
+		{:else if showingVideoPreview}
+			<!-- eslint-disable-next-line svelte/no-unused-svelte-ignore -->
+			<!-- svelte-ignore a11y_media_has_caption: attachment previews do not ship caption tracks -->
+			<video
+				src={viewerObjectUrl}
+				controls
+				muted
+				playsinline
+				preload="metadata"
+				class="rounded-lg max-w-full max-h-[70vh] self-center"
+				onerror={handleVideoError}
+			></video>
+		{:else}
+			<div
+				class="rounded-lg border border-dashed border-base-300 bg-base-200/60 px-4 py-10 text-center"
+			>
+				<p class="text-sm font-medium text-base-content">Preview not available</p>
+				<p class="mt-1 text-xs text-base-content/70">
+					Download the attachment to open it in another app.
+				</p>
+			</div>
+		{/if}
 	</div>
 	<form method="dialog" class="modal-backdrop"><button type="submit">close</button></form>
 </dialog>
