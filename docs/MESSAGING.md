@@ -235,6 +235,12 @@ On the Hive side, the service worker:
 - decrypts the fetched blob locally
 - persists the resolved notification to IndexedDB before showing it
 
+Hive attachment viewing is intentionally narrow:
+
+- previews inline for `image/jpeg`, `image/png`, `image/webp`, `image/gif`, and best-effort `video/mp4`
+- keeps all other attachment types download-only
+- renders previews and downloads from the locally fetched and decrypted blob rather than exposing the attachment token URL to browser media elements
+
 ## BeeBuzz CLI
 
 The CLI in `cmd/beebuzz` uses E2E delivery. See [E2E_ENCRYPTION.md](E2E_ENCRYPTION.md) for the full sending flow and plaintext payload shape.

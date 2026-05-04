@@ -5,19 +5,22 @@ import { decryptBinary } from '$lib/services/encryption';
 const attachmentCache = new Map<string, CachedAttachment>();
 
 export interface CachedAttachment {
-	dataUrl: string;
+	blob: Blob;
 	mimeType: string;
 	timestamp: number;
 }
 
-/** Convert blob to data URL */
-function blobToDataUrl(blob: Blob): Promise<string> {
-	return new Promise((resolve, reject) => {
-		const reader = new FileReader();
-		reader.onload = () => resolve(reader.result as string);
-		reader.onerror = () => reject(new Error('Failed to read blob'));
-		reader.readAsDataURL(blob);
-	});
+const PREVIEWABLE_IMAGE_MIME_TYPES = new Set([
+	'image/jpeg',
+	'image/png',
+	'image/webp',
+	'image/gif'
+]);
+
+const PREVIEWABLE_VIDEO_MIME_TYPES = new Set(['video/mp4']);
+
+function normalizeMime(mime: string): string {
+	return mime.split(';', 1)[0]?.trim().toLowerCase() ?? '';
 }
 
 /**
@@ -52,9 +55,8 @@ export async function fetchAndCacheAttachment(
 		finalBlob = blob;
 	}
 
-	const dataUrl = await blobToDataUrl(finalBlob);
 	const result: CachedAttachment = {
-		dataUrl,
+		blob: finalBlob,
 		mimeType: finalBlob.type || mimeType,
 		timestamp: Date.now()
 	};
@@ -65,7 +67,12 @@ export async function fetchAndCacheAttachment(
 
 /** Returns true if the MIME type represents an image. */
 export function isImageMime(mime: string): boolean {
-	return mime.startsWith('image/');
+	return PREVIEWABLE_IMAGE_MIME_TYPES.has(normalizeMime(mime));
+}
+
+/** Returns true if the MIME type represents a previewable video. */
+export function isVideoMime(mime: string): boolean {
+	return PREVIEWABLE_VIDEO_MIME_TYPES.has(normalizeMime(mime));
 }
 
 /** Clear attachment cache */
