@@ -1,5 +1,6 @@
 import { Decrypter } from 'age-encryption';
 import { getDeviceIdentity } from './lib/services/encryption';
+import { deviceKeysRepository } from './lib/services/device-keys-repository';
 import { notificationsRepository } from './lib/services/notifications-repository';
 import {
 	handleActivateEvent,
@@ -47,6 +48,7 @@ async function decryptPayload(data: ArrayBuffer): Promise<string> {
 
 function saveNotificationToStorage(input: {
 	id: string;
+	deviceId: string;
 	title: string;
 	body: string;
 	topic: string;
@@ -87,6 +89,7 @@ const runtimeDeps: ServiceWorkerRuntimeDeps = {
 	claimClients: () => self.clients.claim(),
 	skipWaiting: () => self.skipWaiting(),
 	getPushSubscription: () => self.registration.pushManager.getSubscription(),
+	getDeviceCredentials: () => deviceKeysRepository.getDeviceCredentials(),
 	decryptPayload,
 	fetch: (input, init) => self.fetch(input, init)
 };

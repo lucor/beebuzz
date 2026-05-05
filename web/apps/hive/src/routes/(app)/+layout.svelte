@@ -10,6 +10,9 @@
 	import { paired } from '$lib/stores/paired.svelte';
 	import { notificationsStore } from '$lib/stores/notifications.svelte';
 	import { getVapidKey, registerServiceWorker } from '$lib/services/push';
+	import { deviceKeysRepository } from '$lib/services/device-keys-repository';
+	import { notificationsRepository } from '$lib/services/notifications-repository';
+	import { bootstrapAppShell } from '$lib/services/app-bootstrap';
 	import { cleanupStalePairingState } from '$lib/services/startup-recovery';
 	import { formatStartupError } from '$lib/services/startup-error';
 	import {
@@ -64,6 +67,7 @@
 	/** Handles messages from the service worker. */
 	const handleServiceWorkerMessage = (event: MessageEvent<PushMessage>) => {
 		if (event.data?.type === 'PUSH_RECEIVED') {
+			if (event.data.deviceId !== notificationsStore.activeDeviceId) return;
 			notificationsStore.add(
 				event.data.title,
 				event.data.body,
@@ -76,6 +80,7 @@
 			);
 		} else if (event.data?.type === 'NOTIFICATION_CLICKED') {
 			const clickedNotification = event.data.notification;
+			if (clickedNotification?.deviceId !== notificationsStore.activeDeviceId) return;
 			if (
 				clickedNotification?.id &&
 				typeof clickedNotification.title === 'string' &&
@@ -207,6 +212,7 @@
 		startupError = null;
 		ready = false;
 		stopPolling();
+		notificationsStore.deactivateDevice();
 		if (swMessageListener) {
 			navigator.serviceWorker.removeEventListener('message', swMessageListener);
 			swMessageListener = null;
@@ -217,14 +223,57 @@
 		);
 
 		try {
-			const registration = await withTimeout(
-				registerServiceWorker(),
-				STARTUP_TIMEOUT_MS,
-				'Service worker registration'
-			);
-
-			// Check paired state (push subscription + encryption key)
-			const isPaired = await withTimeout(paired.check(), STARTUP_TIMEOUT_MS, 'Paired device check');
+			// The bootstrap order matters: paired state and credentials determine the
+			// notification history scope, so no local notification cache is loaded until
+			// the current backend device ID is known.
+			const { isPaired } = await bootstrapAppShell({
+				registerServiceWorker: () =>
+					withTimeout(registerServiceWorker(), STARTUP_TIMEOUT_MS, 'Service worker registration'),
+				checkPaired: () => withTimeout(paired.check(), STARTUP_TIMEOUT_MS, 'Paired device check'),
+				getDeviceId: async () => {
+					const credentials = await withTimeout(
+						deviceKeysRepository.getDeviceCredentials(),
+						STARTUP_TIMEOUT_MS,
+						'Device credentials load'
+					);
+					return credentials?.deviceId ?? null;
+				},
+				activateNotifications: (deviceId) => {
+					notificationsStore.activateDevice(deviceId);
+				},
+				attachServiceWorkerListeners: () => {
+					navigator.serviceWorker.addEventListener('message', handleServiceWorkerMessage);
+					swMessageListener = handleServiceWorkerMessage;
+					hasSeenController = navigator.serviceWorker.controller !== null;
+					navigator.serviceWorker.addEventListener(
+						'controllerchange',
+						handleServiceWorkerControllerChange
+					);
+				},
+				migrateLegacyNotifications: (deviceId) =>
+					withTimeout(
+						notificationsRepository.migrateLegacyNotifications(deviceId),
+						STARTUP_TIMEOUT_MS,
+						'Legacy notification migration'
+					),
+				loadPersistedNotifications: (phase) =>
+					withTimeout(
+						notificationsStore.loadFromIndexedDB(),
+						STARTUP_TIMEOUT_MS,
+						phase === 'initial'
+							? 'Initial notification cache load'
+							: 'Final notification cache load'
+					),
+				runPostPairingChecks: async (registration) => {
+					await withTimeout(getVapidKey(), STARTUP_TIMEOUT_MS, 'VAPID key fetch');
+					if (health.status === 'unknown' && !health.loading) {
+						await withTimeout(health.check(), STARTUP_TIMEOUT_MS, 'Health check');
+					}
+					watchServiceWorkerRegistration(registration);
+					await withTimeout(registration.update(), STARTUP_TIMEOUT_MS, 'Service worker update');
+					syncWaitingWorker(registration);
+				}
+			});
 
 			if (!isPaired) {
 				await cleanupStalePairingState();
@@ -255,27 +304,6 @@
 				await goto('/pair');
 				return;
 			}
-
-			navigator.serviceWorker.addEventListener('message', handleServiceWorkerMessage);
-			swMessageListener = handleServiceWorkerMessage;
-			hasSeenController = navigator.serviceWorker.controller !== null;
-			navigator.serviceWorker.addEventListener(
-				'controllerchange',
-				handleServiceWorkerControllerChange
-			);
-
-			await withTimeout(getVapidKey(), STARTUP_TIMEOUT_MS, 'VAPID key fetch');
-			if (health.status === 'unknown' && !health.loading) {
-				await withTimeout(health.check(), STARTUP_TIMEOUT_MS, 'Health check');
-			}
-			watchServiceWorkerRegistration(registration);
-			await withTimeout(registration.update(), STARTUP_TIMEOUT_MS, 'Service worker update');
-			syncWaitingWorker(registration);
-			await withTimeout(
-				notificationsStore.loadFromIndexedDB(),
-				STARTUP_TIMEOUT_MS,
-				'Notification cache load'
-			);
 
 			ready = true;
 			startPolling();

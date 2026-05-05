@@ -52,6 +52,7 @@ function createDeps(overrides: Partial<ServiceWorkerRuntimeDeps> = {}): ServiceW
 		claimClients: vi.fn(() => Promise.resolve()),
 		skipWaiting: vi.fn(() => Promise.resolve()),
 		getPushSubscription: vi.fn(() => Promise.resolve(null)),
+		getDeviceCredentials: vi.fn(() => Promise.resolve({ deviceId: 'dev-a' })),
 		decryptPayload: vi.fn(() => Promise.resolve('')),
 		fetch: vi.fn(() => Promise.resolve(new Response('{}', { status: 200 }))),
 		...overrides
@@ -92,6 +93,7 @@ describe('service worker runtime', () => {
 		expect(order).toEqual(['save', 'show']);
 		expect(deps.saveNotification).toHaveBeenCalledWith({
 			id: 'n-1',
+			deviceId: 'dev-a',
 			title: 'Door',
 			body: 'Front door opened',
 			topic: 'alerts',
@@ -142,6 +144,7 @@ describe('service worker runtime', () => {
 		expect(healthyClient.postMessage).toHaveBeenCalledWith({
 			type: 'PUSH_RECEIVED',
 			id: 'n-2',
+			deviceId: 'dev-a',
 			title: 'Motion',
 			body: 'Garage motion detected',
 			topicId: undefined,
@@ -166,6 +169,7 @@ describe('service worker runtime', () => {
 		});
 		const event = createNotificationClickEvent({
 			id: 'n-3',
+			deviceId: 'dev-a',
 			title: 'Bell',
 			body: 'Someone rang the bell',
 			topic: 'door',
@@ -183,6 +187,7 @@ describe('service worker runtime', () => {
 			type: 'NOTIFICATION_CLICKED',
 			notification: {
 				id: 'n-3',
+				deviceId: 'dev-a',
 				title: 'Bell',
 				body: 'Someone rang the bell',
 				topic: 'door',
@@ -208,6 +213,7 @@ describe('service worker runtime', () => {
 			deps,
 			createNotificationClickEvent({
 				id: 'n-4',
+				deviceId: 'dev-a',
 				title: 'Alarm',
 				body: 'Window opened',
 				sentAt: '2026-04-20T12:00:00.000Z'
@@ -219,6 +225,7 @@ describe('service worker runtime', () => {
 			type: 'NOTIFICATION_CLICKED',
 			notification: {
 				id: 'n-4',
+				deviceId: 'dev-a',
 				title: 'Alarm',
 				body: 'Window opened',
 				topic: null,
@@ -290,6 +297,36 @@ describe('service worker runtime', () => {
 		consoleSpy.mockRestore();
 	});
 
+	it('shows the OS notification without importable UI history when credentials are missing', async () => {
+		const client = { url: 'https://hive.beebuzz.test/inbox', postMessage: vi.fn() };
+		const deps = createDeps({
+			getDeviceCredentials: vi.fn(() => Promise.resolve(null)),
+			matchWindowClients: vi.fn(() => Promise.resolve([client]))
+		});
+
+		await handlePushEvent(
+			deps,
+			createPushEvent({
+				id: 'n-no-credentials',
+				title: 'Sensor',
+				body: 'Temperature alert',
+				sent_at: '2026-04-20T13:10:00.000Z'
+			})
+		);
+
+		expect(deps.saveNotification).not.toHaveBeenCalled();
+		const showNotificationCall = vi.mocked(deps.showNotification).mock.calls[0];
+		const notificationOptions: NotificationOptionsWithData | undefined = showNotificationCall?.[1];
+		expect(showNotificationCall?.[0]).toBe('Sensor');
+		expect(notificationOptions?.body).toBe('Temperature alert');
+		expect(notificationOptions?.data).toMatchObject({
+			id: 'n-no-credentials',
+			deviceId: undefined
+		});
+		expect(deps.matchWindowClients).not.toHaveBeenCalled();
+		expect(client.postMessage).not.toHaveBeenCalled();
+	});
+
 	it('shows a decryption-specific fallback for encrypted payload failures', async () => {
 		const ageHeader = new TextEncoder().encode('age-encryption.org/v1\ncorrupted-data');
 		const buffer = ageHeader.buffer.slice(
@@ -358,6 +395,7 @@ describe('service worker runtime', () => {
 		);
 		expect(deps.saveNotification).toHaveBeenCalledWith({
 			id: 'n-e2e-1',
+			deviceId: 'dev-a',
 			title: 'Encrypted',
 			body: 'Secret message',
 			topic: 'alerts',

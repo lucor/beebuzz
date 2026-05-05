@@ -52,6 +52,7 @@ type WorkerClient = {
 
 type SavedNotification = {
 	id: string;
+	deviceId: string;
 	title: string;
 	body: string;
 	topic: string;
@@ -81,6 +82,7 @@ export type ServiceWorkerRuntimeDeps = {
 			};
 		};
 	} | null>;
+	getDeviceCredentials: () => Promise<{ deviceId: string } | null>;
 	decryptPayload: (data: ArrayBuffer) => Promise<string>;
 	fetch: typeof fetch;
 };
@@ -224,7 +226,8 @@ async function loadE2EPayload(
 
 function buildNotificationOptions(
 	deps: ServiceWorkerRuntimeDeps,
-	data: NotificationPayload
+	data: NotificationPayload,
+	deviceId?: string
 ): NotificationOptions {
 	return {
 		body: data.body,
@@ -237,6 +240,7 @@ function buildNotificationOptions(
 			body: data.body,
 			topic: data.topic,
 			topicId: data.topic_id,
+			deviceId,
 			sentAt: data.sent_at,
 			priority: data.priority,
 			attachment: data.attachment
@@ -266,6 +270,8 @@ function buildNotificationClickedMessage(notificationData?: Record<string, unkno
 				typeof notificationData?.topicId === 'string' || notificationData?.topicId === null
 					? notificationData.topicId
 					: null,
+			deviceId:
+				typeof notificationData?.deviceId === 'string' ? notificationData.deviceId : undefined,
 			sentAt: typeof notificationData?.sentAt === 'string' ? notificationData.sentAt : undefined,
 			priority:
 				typeof notificationData?.priority === 'string' ? notificationData.priority : undefined,
@@ -402,23 +408,38 @@ export async function handlePushEvent(
 		console.log(`[PUSH TOTAL] duration=${totalDuration.toFixed(2)}ms`);
 	}
 
+	let deviceId: string | undefined;
 	try {
-		await deps.saveNotification({
-			id: data.id,
-			title: data.title,
-			body: data.body ?? '',
-			topic: data.topic || '',
-			sentAt: data.sent_at,
-			topicId: data.topic_id,
-			attachment: data.attachment,
-			priority: data.priority
-		});
+		deviceId = (await deps.getDeviceCredentials())?.deviceId;
 	} catch (error) {
-		const message = error instanceof Error ? error.message : 'unknown storage error';
-		console.error('[PUSH] Failed to persist notification', { error: message });
+		const message = error instanceof Error ? error.message : 'unknown credentials error';
+		console.error('[PUSH] Failed to read device credentials', { error: message });
 	}
 
-	await deps.showNotification(data.title, buildNotificationOptions(deps, data));
+	if (deviceId) {
+		try {
+			await deps.saveNotification({
+				id: data.id,
+				deviceId,
+				title: data.title,
+				body: data.body ?? '',
+				topic: data.topic || '',
+				sentAt: data.sent_at,
+				topicId: data.topic_id,
+				attachment: data.attachment,
+				priority: data.priority
+			});
+		} catch (error) {
+			const message = error instanceof Error ? error.message : 'unknown storage error';
+			console.error('[PUSH] Failed to persist notification', { error: message });
+		}
+	}
+
+	await deps.showNotification(data.title, buildNotificationOptions(deps, data, deviceId));
+
+	if (!deviceId) {
+		return;
+	}
 
 	const windowClients = await deps.matchWindowClients(true);
 	for (const client of windowClients) {
@@ -426,6 +447,7 @@ export async function handlePushEvent(
 			client.postMessage({
 				type: 'PUSH_RECEIVED',
 				id: data.id,
+				deviceId,
 				title: data.title,
 				body: data.body ?? '',
 				topicId: data.topic_id,
