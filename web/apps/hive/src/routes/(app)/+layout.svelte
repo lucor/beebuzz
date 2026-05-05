@@ -80,6 +80,13 @@
 			);
 		} else if (event.data?.type === 'NOTIFICATION_CLICKED') {
 			const clickedNotification = event.data.notification;
+			// User tapped a system notification — always reload from IndexedDB
+			// in case the postMessage for the original push didn't reach us
+			// (common on iOS, and required when the click happens before the
+			// app shell has activated a device id). Run this BEFORE any
+			// device-id gating so the durable record is still recovered when
+			// `deviceId` on the click message is missing or stale.
+			void notificationsStore.loadFromIndexedDB();
 			if (clickedNotification?.deviceId !== notificationsStore.activeDeviceId) return;
 			if (
 				clickedNotification?.id &&
@@ -98,9 +105,6 @@
 					clickedNotification.id
 				);
 			}
-			// User tapped a system notification — reload from IndexedDB in case
-			// the postMessage for the original push didn't reach us (common on iOS).
-			void notificationsStore.loadFromIndexedDB();
 		} else if (event.data?.type === 'SUBSCRIPTION_CHANGED') {
 			paired.clear();
 			toast.info('Push subscription expired. Please reconnect.');

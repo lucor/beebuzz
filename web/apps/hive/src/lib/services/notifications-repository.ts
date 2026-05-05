@@ -1,4 +1,9 @@
-import { NOTIFICATIONS_BY_DEVICE_INDEX, NOTIFICATIONS_STORE, openHiveDB } from './hive-db';
+import {
+	NOTIFICATIONS_BY_DEVICE_INDEX,
+	NOTIFICATIONS_STORE,
+	openExistingHiveDB,
+	openHiveDB
+} from './hive-db';
 
 export interface StoredNotificationRecord {
 	id: string;
@@ -31,7 +36,7 @@ function normalizeLegacyRecord(record: Record<string, unknown>): Record<string, 
 export const notificationsRepository = {
 	/** Persists one notification record to IndexedDB. */
 	async save(input: StoredNotificationRecord): Promise<void> {
-		const db = await openHiveDB();
+		const db = await openExistingHiveDB();
 
 		return new Promise((resolve, reject) => {
 			const tx = db.transaction(NOTIFICATIONS_STORE, 'readwrite');

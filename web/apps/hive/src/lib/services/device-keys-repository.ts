@@ -2,6 +2,7 @@ import {
 	ENCRYPTED_KEY_STORE,
 	ENCRYPTION_METADATA_STORE,
 	WRAPPING_KEY_STORE,
+	openExistingHiveDB,
 	openHiveDB
 } from './hive-db';
 
@@ -76,7 +77,7 @@ function putWrappedIdentity(
 export const deviceKeysRepository = {
 	/** Returns the first usable key metadata record, skipping reserved entries. */
 	async getFirstMetadata(): Promise<KeyMetadata | null> {
-		const db = await openHiveDB();
+		const db = await openExistingHiveDB();
 
 		return new Promise((resolve, reject) => {
 			const tx = db.transaction(ENCRYPTION_METADATA_STORE, 'readonly');
@@ -104,7 +105,7 @@ export const deviceKeysRepository = {
 		wrappingKey: CryptoKey | null;
 		wrappedPrivateKey: WrappedPrivateKeyRecord | null;
 	}> {
-		const db = await openHiveDB();
+		const db = await openExistingHiveDB();
 		const [wrappingKey, wrappedPrivateKey] = await Promise.all([
 			getStoreValue<CryptoKey>(db, WRAPPING_KEY_STORE, keyId, 'Wrapping key fetch failed'),
 			getStoreValue<WrappedPrivateKeyRecord>(
@@ -194,7 +195,7 @@ export const deviceKeysRepository = {
 
 	/** Retrieves stored device credentials, if available. */
 	async getDeviceCredentials(): Promise<DeviceCredentials | null> {
-		const db = await openHiveDB();
+		const db = await openExistingHiveDB();
 		return getStoreValue<DeviceCredentials>(
 			db,
 			ENCRYPTION_METADATA_STORE,
