@@ -126,6 +126,12 @@ On startup, Hive checks whether an apparently paired device is still healthy:
 The health check lives in `reconcilePushState()` inside `web/apps/hive/src/lib/onboarding.svelte.ts`.
 It is used both during onboarding init and again when the paired app shell boots from `web/apps/hive/src/routes/(app)/+layout.svelte`.
 
+## Notification History Scope
+
+Hive notification history is scoped to the current backend `device_id`. The paired app shell registers the service worker first, then confirms paired state and loads stored device credentials before activating the notification store, attaching service worker message listeners, or draining IndexedDB. Local notification history uses per-device browser storage keys, and the service worker includes the current `device_id` when it persists IndexedDB records or posts notification messages to open clients.
+
+If stored device credentials are missing, Hive keeps the app shell bootable so `reconcilePushState()` can surface reconnect-required recovery, but it does not activate notification history or import cached notification records. Legacy unscoped notification records in localStorage or IndexedDB are not imported into the active history.
+
 ## Testing & Diagnostics
 
 The debug route `/debug` exists to verify browser behavior around:
@@ -180,4 +186,5 @@ If you change any of the following, update the relevant section of this document
 - change capability checks in `capability.ts`
 - change install policy or `skipInstall` behavior in `install.ts` or `onboarding.svelte.ts`
 - change the pairing flow in `push.ts` or `encryption.ts`
+- change notification history scoping, startup notification drains, or service worker notification message handling
 - add or remove files under `web/apps/hive/src/lib/services/` that affect onboarding, pairing, or diagnostics

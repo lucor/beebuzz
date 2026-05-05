@@ -30,6 +30,7 @@ export type PushMessage =
 	| {
 			type: 'PUSH_RECEIVED';
 			id?: string;
+			deviceId?: string;
 			title: string;
 			body: string;
 			topicId?: string | null;
@@ -45,6 +46,7 @@ export type PushMessage =
 			type: 'NOTIFICATION_CLICKED';
 			notification?: {
 				id?: string;
+				deviceId?: string;
 				title?: string;
 				body?: string;
 				topicId?: string | null;

@@ -338,6 +338,7 @@ const createOnboarding = () => {
 			);
 			await finalizePendingStoredKeyPair(deviceId);
 			await deviceKeysRepository.storeDeviceCredentials(deviceId, deviceToken);
+			notificationsStore.activateDevice(deviceId);
 
 			await paired.check();
 			await notificationsStore.loadFromIndexedDB();

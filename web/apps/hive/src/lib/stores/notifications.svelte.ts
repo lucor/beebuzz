@@ -3,8 +3,8 @@ import { notificationsRepository } from '$lib/services/notifications-repository'
 import { SvelteSet } from 'svelte/reactivity';
 import type { Notification, NotificationPriority } from '@beebuzz/shared/types';
 
-const STORAGE_KEY = 'notifications';
-const READ_IDS_KEY = 'notifications_read_ids';
+const STORAGE_KEY_PREFIX = 'notifications:';
+const READ_IDS_KEY_PREFIX = 'notifications_read_ids:';
 export type TopicSummary = {
 	name: string;
 	count: number;
@@ -50,49 +50,48 @@ function computeTopicSummaries(
 
 function createNotificationsStore() {
 	let notifications = $state<Notification[]>([]);
+	let activeDeviceId = $state<string | null>(null);
 	const unreadIds = new SvelteSet<string>();
 
-	function parseStoredNotification(
-		record: Record<string, unknown>,
-		sentAtField: 'sentAt' | 'sent_at'
-	): Notification | null {
-		const rawSentAt = record[sentAtField];
+	function parseStoredNotification(record: unknown): Notification | null {
+		if (!record || typeof record !== 'object') return null;
+		const r = record as Record<string, unknown>;
 
 		if (
-			typeof record.id !== 'string' ||
-			typeof record.title !== 'string' ||
-			typeof record.body !== 'string' ||
-			typeof rawSentAt !== 'string'
+			typeof r.id !== 'string' ||
+			typeof r.title !== 'string' ||
+			typeof r.body !== 'string' ||
+			typeof r.sentAt !== 'string'
 		) {
 			return null;
 		}
 
-		const sentAt = new Date(rawSentAt);
+		const sentAt = new Date(r.sentAt);
 		if (Number.isNaN(sentAt.getTime())) {
 			return null;
 		}
 
 		return {
-			id: record.id,
-			title: record.title,
-			body: record.body,
-			topicId: (record.topicId as string | null) ?? (record.topic_id as string | null) ?? null,
-			topic: (record.topic as string | null) ?? null,
+			id: r.id,
+			title: r.title,
+			body: r.body,
+			topicId: (r.topicId as string | null) ?? null,
+			topic: (r.topic as string | null) ?? null,
 			sentAt,
-			priority: (record.priority as NotificationPriority) ?? 'normal',
-			attachment: record.attachment as Notification['attachment']
+			priority: (r.priority as NotificationPriority) ?? 'normal',
+			attachment: r.attachment as Notification['attachment']
 		};
 	}
 
 	/** Persists read IDs to localStorage. */
 	function saveReadIds() {
-		if (!browser) return;
+		if (!browser || !activeDeviceId) return;
 		const readArray = notifications.map((n) => n.id).filter((id) => !unreadIds.has(id));
-		localStorage.setItem(READ_IDS_KEY, JSON.stringify(readArray));
+		localStorage.setItem(`${READ_IDS_KEY_PREFIX}${activeDeviceId}`, JSON.stringify(readArray));
 	}
 
 	function save() {
-		if (!browser) return;
+		if (!browser || !activeDeviceId) return;
 		const toSave = notifications.map((n) => ({
 			id: n.id,
 			title: n.title,
@@ -103,13 +102,15 @@ function createNotificationsStore() {
 			priority: n.priority,
 			attachment: n.attachment
 		}));
-		localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
+		localStorage.setItem(`${STORAGE_KEY_PREFIX}${activeDeviceId}`, JSON.stringify(toSave));
 		saveReadIds();
 	}
 
-	function load() {
-		if (!browser) return;
-		const saved = localStorage.getItem(STORAGE_KEY);
+	function loadForActiveDevice() {
+		if (!browser || !activeDeviceId) return;
+		const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}${activeDeviceId}`);
+		notifications = [];
+		unreadIds.clear();
 		if (saved) {
 			try {
 				const parsed: unknown = JSON.parse(saved);
@@ -118,14 +119,14 @@ function createNotificationsStore() {
 					return;
 				}
 				notifications = parsed
-					.map((n: unknown) => parseStoredNotification(n as Record<string, unknown>, 'sentAt'))
+					.map((n) => parseStoredNotification(n))
 					.filter((n): n is Notification => n !== null);
 
 				// Restore read state: only mark as unread those not in the persisted read list
 				unreadIds.clear();
 				// eslint-disable-next-line svelte/prefer-svelte-reactivity -- local temp set inside load, not reactive state
 				const readSet = new Set<string>();
-				const savedReadIds = localStorage.getItem(READ_IDS_KEY);
+				const savedReadIds = localStorage.getItem(`${READ_IDS_KEY_PREFIX}${activeDeviceId}`);
 				if (savedReadIds) {
 					try {
 						const readArray: unknown = JSON.parse(savedReadIds);
@@ -143,27 +144,68 @@ function createNotificationsStore() {
 				}
 			} catch {
 				notifications = [];
+				unreadIds.clear();
 			}
 		}
 	}
 
+	/** Removes localStorage entries belonging to devices other than the active one. */
+	function removeStaleLocalStorage() {
+		if (!browser || !activeDeviceId) return;
+		const activeStorageKey = `${STORAGE_KEY_PREFIX}${activeDeviceId}`;
+		const activeReadKey = `${READ_IDS_KEY_PREFIX}${activeDeviceId}`;
+		const keysToRemove: string[] = [];
+		for (let i = 0; i < localStorage.length; i++) {
+			const key = localStorage.key(i);
+			if (!key) continue;
+			if (
+				(key.startsWith(STORAGE_KEY_PREFIX) || key.startsWith(READ_IDS_KEY_PREFIX)) &&
+				key !== activeStorageKey &&
+				key !== activeReadKey
+			) {
+				keysToRemove.push(key);
+			}
+		}
+		for (const key of keysToRemove) {
+			localStorage.removeItem(key);
+		}
+		// One-shot cleanup of legacy unscoped keys (pre-device-scoping).
+		localStorage.removeItem('notifications');
+		localStorage.removeItem('notifications_read_ids');
+	}
+
+	function activateDevice(deviceId: string) {
+		if (activeDeviceId === deviceId) return;
+		activeDeviceId = deviceId;
+		removeStaleLocalStorage();
+		loadForActiveDevice();
+	}
+
+	function deactivateDevice() {
+		activeDeviceId = null;
+		notifications = [];
+		unreadIds.clear();
+	}
+
 	async function loadFromIndexedDB(): Promise<void> {
-		if (!browser) return;
+		if (!browser || !activeDeviceId) return;
+		const deviceId = activeDeviceId;
 
 		return new Promise((resolve) => {
 			try {
 				void notificationsRepository
-					.list()
+					.listByDevice(deviceId)
 					.then((records) => {
+						if (activeDeviceId !== deviceId) {
+							resolve();
+							return;
+						}
+
 						const importedIds: string[] = [];
 						const idbNotifications: Notification[] = [];
 
 						for (const record of records) {
-							if (typeof record.id !== 'string') {
-								continue;
-							}
-
-							const parsed = parseStoredNotification(record, 'sentAt');
+							const parsed = parseStoredNotification(record);
 							if (!parsed) {
 								console.error(
 									'[NotificationsStore] Skipped malformed IndexedDB notification record',
@@ -211,6 +253,7 @@ function createNotificationsStore() {
 		priority?: string,
 		id?: string
 	) {
+		if (!activeDeviceId) return;
 		if (!id) return;
 		if (notifications.some((n) => n.id === id)) return;
 
@@ -237,6 +280,7 @@ function createNotificationsStore() {
 	}
 
 	function remove(id: string) {
+		if (!activeDeviceId) return;
 		notifications = notifications.filter((n) => n.id !== id);
 		unreadIds.delete(id);
 		save();
@@ -244,6 +288,7 @@ function createNotificationsStore() {
 
 	/** Removes multiple notifications in one pass. */
 	function removeMany(ids: string[]) {
+		if (!activeDeviceId) return;
 		if (ids.length === 0) return;
 
 		const idSet = new Set(ids);
@@ -255,23 +300,27 @@ function createNotificationsStore() {
 	}
 
 	function clearAll() {
+		if (!activeDeviceId) return;
 		notifications = [];
 		unreadIds.clear();
 		save();
 	}
 
 	function markAsRead(id: string) {
+		if (!activeDeviceId) return;
 		unreadIds.delete(id);
 		saveReadIds();
 	}
 
 	function markAsUnread(id: string) {
+		if (!activeDeviceId) return;
 		unreadIds.add(id);
 		saveReadIds();
 	}
 
 	/** Marks the provided notifications as read in one pass. */
 	function markManyAsRead(ids: string[]) {
+		if (!activeDeviceId) return;
 		for (const id of ids) {
 			unreadIds.delete(id);
 		}
@@ -280,16 +329,17 @@ function createNotificationsStore() {
 
 	/** Marks the provided notifications as unread in one pass. */
 	function markManyAsUnread(ids: string[]) {
+		if (!activeDeviceId) return;
 		for (const id of ids) {
 			unreadIds.add(id);
 		}
 		saveReadIds();
 	}
 
-	// Load initial data
-	load();
-
 	return {
+		get activeDeviceId() {
+			return activeDeviceId;
+		},
 		get list() {
 			return notifications;
 		},
@@ -316,6 +366,8 @@ function createNotificationsStore() {
 		markAsUnread,
 		markManyAsRead,
 		markManyAsUnread,
+		activateDevice,
+		deactivateDevice,
 		loadFromIndexedDB
 	};
 }
