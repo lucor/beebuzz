@@ -647,9 +647,9 @@
 			</p>
 			<div class="modal-action flex flex-col gap-2 sm:flex-row sm:justify-end">
 				<form method="dialog" class="w-full sm:w-auto">
-					<button type="submit" class="btn btn-outline w-full sm:w-auto">Cancel</button>
+					<button type="submit" class="btn btn-outline w-full">Cancel</button>
 				</form>
-				<button type="button" class="btn btn-error w-full sm:w-auto" onclick={handleDisconnect}>Disconnect</button>
+				<button type="button" class="btn btn-error" onclick={handleDisconnect}>Disconnect</button>
 			</div>
 		</div>
 		<form method="dialog" class="modal-backdrop"><button type="submit">close</button></form>
