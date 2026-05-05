@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+
+	"lucor.dev/beebuzz/internal/core"
 )
 
 // buildAuthorizedRequest creates an authenticated HTTP request for the BeeBuzz API.
@@ -16,7 +18,7 @@ func buildAuthorizedRequest(ctx context.Context, method, requestURL, apiToken st
 	}
 
 	req.Header.Set("Authorization", "Bearer "+apiToken)
-	req.Header.Set("User-Agent", "BeeBuzz-CLI/"+version)
+	req.Header.Set("User-Agent", core.CLIUserAgentPrefix+"/"+version)
 	return req, nil
 }
 

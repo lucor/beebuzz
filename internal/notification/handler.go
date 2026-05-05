@@ -105,7 +105,11 @@ func (h *Handler) Send(w http.ResponseWriter, r *http.Request) {
 	}
 
 	input.TopicName = topicName
-	input.Source = "api"
+	if strings.HasPrefix(r.Header.Get("User-Agent"), core.CLIUserAgentPrefix) {
+		input.Source = SourceCLI
+	} else {
+		input.Source = SourceAPI
+	}
 	if input.DeliveryMode == "" {
 		input.DeliveryMode = DeliveryModeServerTrusted
 	}

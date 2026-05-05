@@ -19,6 +19,18 @@ const (
 	MaxNotificationBodyLen    = 256
 )
 
+// Source identifies the origin of a push send for analytics.
+// Values are kept in sync with the labels consumed by the event domain;
+// the type lives here so the notification domain does not import event.
+type Source string
+
+const (
+	SourceAPI      Source = "api"
+	SourceCLI      Source = "cli"
+	SourceWebhook  Source = "webhook"
+	SourceInternal Source = "internal"
+)
+
 var (
 	// ErrAttachmentProcessingFailed is returned when an attachment cannot be fetched, encrypted, or stored.
 	ErrAttachmentProcessingFailed = errors.New("attachment processing failed")
@@ -73,7 +85,7 @@ type SendInput struct {
 	Title        string
 	Body         string
 	Priority     string
-	Source       string           // opaque source tag for analytics (e.g., "api", "webhook")
+	Source       Source           // origin of the send for analytics
 	DeliveryMode string           // delivery mode (e.g., "server_trusted", "e2e")
 	Attachment   *AttachmentInput // nil when no attachment
 	OpaqueBlob   []byte           // raw E2E-encrypted payload (octet-stream mode)
@@ -150,7 +162,7 @@ type AttachmentStorer interface {
 // Implementations bridge to the event/analytics layer via adapters.
 type EventTracker interface {
 	// NotificationCreated is called once per Send operation after the push loop completes.
-	NotificationCreated(ctx context.Context, userID, topic, source, deliveryMode string, attachmentBytes int64)
+	NotificationCreated(ctx context.Context, userID, topic string, source Source, deliveryMode string, attachmentBytes int64)
 	// DeviceDelivered is called for each successful push delivery.
 	DeviceDelivered(ctx context.Context, userID, deviceID string)
 	// DeviceFailed is called for each failed push delivery.

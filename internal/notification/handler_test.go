@@ -897,3 +897,62 @@ func TestSendHandler_JSONAllowsMissingBody(t *testing.T) {
 		t.Fatalf("status: got %d, want %d — body: %s", w.Code, http.StatusOK, w.Body.String())
 	}
 }
+
+// sourceCaptureSender is a test double that records the SendInput it receives.
+type sourceCaptureSender struct {
+	captured SendInput
+	report   *SendReport
+	err      error
+}
+
+func (s *sourceCaptureSender) Send(_ context.Context, _, _ string, input SendInput, _ *slog.Logger) (*SendReport, error) {
+	s.captured = input
+	return s.report, s.err
+}
+
+func (s *sourceCaptureSender) VAPIDPublicKey() string {
+	return ""
+}
+
+func TestSendHandler_SourceCLI(t *testing.T) {
+	sender := &sourceCaptureSender{report: &SendReport{}}
+	handler, rawToken, topicName := buildHandlerWithSender(t, sender)
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/push/"+topicName, bytes.NewBufferString(`{"title":"Test","body":"Hello"}`))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+rawToken)
+	req.Header.Set("User-Agent", core.CLIUserAgentPrefix+"/1.0.0")
+	req = withBearer(req)
+	req = withTopic(req, topicName)
+	w := httptest.NewRecorder()
+
+	handler.Send(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("status: got %d, want %d — body: %s", w.Code, http.StatusOK, w.Body.String())
+	}
+	if sender.captured.Source != "cli" {
+		t.Fatalf("source: got %q, want %q", sender.captured.Source, "cli")
+	}
+}
+
+func TestSendHandler_SourceAPI(t *testing.T) {
+	sender := &sourceCaptureSender{report: &SendReport{}}
+	handler, rawToken, topicName := buildHandlerWithSender(t, sender)
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/push/"+topicName, bytes.NewBufferString(`{"title":"Test","body":"Hello"}`))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+rawToken)
+	req = withBearer(req)
+	req = withTopic(req, topicName)
+	w := httptest.NewRecorder()
+
+	handler.Send(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("status: got %d, want %d — body: %s", w.Code, http.StatusOK, w.Body.String())
+	}
+	if sender.captured.Source != "api" {
+		t.Fatalf("source: got %q, want %q", sender.captured.Source, "api")
+	}
+}

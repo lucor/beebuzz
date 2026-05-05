@@ -217,13 +217,13 @@ type notificationEventTrackerAdapter struct {
 }
 
 // NotificationCreated translates notification-domain facts to event-domain recording.
-func (a *notificationEventTrackerAdapter) NotificationCreated(ctx context.Context, userID, topic, source, deliveryMode string, attachmentBytes int64) {
+func (a *notificationEventTrackerAdapter) NotificationCreated(ctx context.Context, userID, topic string, source notification.Source, deliveryMode string, attachmentBytes int64) {
 	var ab *int64
 	if attachmentBytes > 0 {
 		ab = &attachmentBytes
 	}
 
-	a.eventSvc.RecordNotificationCreated(ctx, userID, topic, source, deliveryMode, ab)
+	a.eventSvc.RecordNotificationCreated(ctx, userID, topic, string(source), deliveryMode, ab)
 }
 
 // DeviceDelivered records a successful push delivery.
@@ -272,7 +272,7 @@ func (a *systemNotificationDeliveryAdapter) SendSystemNotification(ctx context.C
 		TopicName:    input.TopicName,
 		Title:        input.Title,
 		Body:         input.Body,
-		Source:       event.SourceInternal,
+		Source:       notification.SourceInternal,
 		DeliveryMode: notification.DeliveryModeServerTrusted,
 	}, a.log)
 	if err != nil {
@@ -302,7 +302,7 @@ func (a *webhookDispatcherAdapter) Dispatch(ctx context.Context, userID, topicID
 		Title:        title,
 		Body:         body,
 		Priority:     priority,
-		Source:       event.SourceWebhook,
+		Source:       notification.SourceWebhook,
 		DeliveryMode: notification.DeliveryModeServerTrusted,
 	}, log)
 	if err != nil {
