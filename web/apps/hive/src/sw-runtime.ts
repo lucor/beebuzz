@@ -327,6 +327,9 @@ async function resolvePushPayload(
 	// notification body instead of "could not be parsed".
 	if (isE2EEnvelope(parsed)) {
 		const { beebuzz: envelope } = parsed;
+		if (!envelope) {
+			throw new PushPayloadError('plain', 'missing encrypted notification envelope');
+		}
 		try {
 			return await loadE2EPayload(deps, envelope.id, envelope.token, envelope.sent_at);
 		} catch (error) {
