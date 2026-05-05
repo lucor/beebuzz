@@ -431,8 +431,11 @@ export function formatTime(date: Date): string {
 }
 
 export function formatRelativeTime(date: Date): string {
+	// eslint-disable-next-line svelte/prefer-svelte-reactivity -- pure utility, not reactive state
 	const now = new Date();
+	// eslint-disable-next-line svelte/prefer-svelte-reactivity -- pure utility, not reactive state
 	const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+	// eslint-disable-next-line svelte/prefer-svelte-reactivity -- pure utility, not reactive state
 	const target = new Date(date.getFullYear(), date.getMonth(), date.getDate());
 	const diffDays = Math.floor((today.getTime() - target.getTime()) / 86400000);
 

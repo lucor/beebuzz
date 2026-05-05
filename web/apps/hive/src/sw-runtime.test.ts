@@ -363,6 +363,7 @@ describe('service worker runtime', () => {
 			'Sensor',
 			expect.objectContaining({
 				body: 'Temperature alert',
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- vitest matcher
 				data: expect.objectContaining({
 					id: 'n-credentials-fail',
 					deviceId: undefined
