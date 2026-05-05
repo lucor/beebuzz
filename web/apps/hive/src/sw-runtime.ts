@@ -290,22 +290,45 @@ async function resolvePushPayload(
 		console.log(`[PUSH] Payload size: ${payloadArray.byteLength} bytes`);
 	}
 
+	let parsed: unknown;
 	if (startsWith(payloadBytes, AGE_HEADER)) {
 		if (deps.debug) {
 			console.log('[PUSH] Detected age-encrypted payload, decrypting...');
 		}
 		try {
 			const decrypted = await deps.decryptPayload(payloadArray);
-			const parsed = JSON.parse(decrypted) as unknown;
-			if (isE2EEnvelope(parsed)) {
-				const envelope = parsed.beebuzz;
-				if (!envelope) {
-					throw new Error('missing encrypted notification envelope');
-				}
-				return loadE2EPayload(deps, envelope.id, envelope.token, envelope.sent_at);
-			}
+			parsed = JSON.parse(decrypted) as unknown;
+		} catch (error) {
+			throw new PushPayloadError(
+				'encrypted',
+				error instanceof Error ? error.message : 'unknown encrypted error',
+				error
+			);
+		}
+	} else {
+		if (deps.debug) {
+			console.log('[PUSH] Plain JSON payload detected');
+		}
+		try {
+			parsed = parseJsonBytes(payloadBytes);
+		} catch (error) {
+			throw new PushPayloadError(
+				'plain',
+				error instanceof Error ? error.message : 'unknown payload error',
+				error
+			);
+		}
+	}
 
-			return validateNotificationPayload(parsed);
+	// E2E envelopes (BeeBuzz default for E2E delivery) require fetching the
+	// opaque ciphertext attachment and decrypting it. Any failure here is an
+	// encryption-side problem (missing key, fetch failure, decrypt failure),
+	// not a parse error: classify it as 'encrypted' so the user sees a useful
+	// notification body instead of "could not be parsed".
+	if (isE2EEnvelope(parsed)) {
+		const { beebuzz: envelope } = parsed;
+		try {
+			return await loadE2EPayload(deps, envelope.id, envelope.token, envelope.sent_at);
 		} catch (error) {
 			throw new PushPayloadError(
 				'encrypted',
@@ -315,24 +338,12 @@ async function resolvePushPayload(
 		}
 	}
 
-	if (deps.debug) {
-		console.log('[PUSH] Plain JSON payload detected');
-	}
 	try {
-		const parsed = parseJsonBytes(payloadBytes);
-		if (isE2EEnvelope(parsed)) {
-			const envelope = parsed.beebuzz;
-			if (!envelope) {
-				throw new Error('missing encrypted notification envelope');
-			}
-			return loadE2EPayload(deps, envelope.id, envelope.token, envelope.sent_at);
-		}
-
 		return validateNotificationPayload(parsed);
 	} catch (error) {
 		throw new PushPayloadError(
 			'plain',
-			error instanceof Error ? error.message : 'unknown payload error',
+			error instanceof Error ? error.message : 'invalid notification payload',
 			error
 		);
 	}
@@ -462,6 +473,103 @@ export async function handlePushEvent(
 	}
 }
 
+/**
+ * Best-effort: persist the clicked notification to IndexedDB so the app shell
+ * can recover it after launch even when the original push-time persistence was
+ * skipped (e.g. credentials weren't readable yet) or the postMessage to the
+ * newly opened window was dropped (common on iOS / WebKit).
+ */
+async function persistClickedNotificationBestEffort(
+	deps: ServiceWorkerRuntimeDeps,
+	notificationData?: Record<string, unknown>
+): Promise<void> {
+	if (!notificationData) return;
+
+	const id = typeof notificationData.id === 'string' ? notificationData.id : undefined;
+	const title = typeof notificationData.title === 'string' ? notificationData.title : undefined;
+	const body = typeof notificationData.body === 'string' ? notificationData.body : '';
+	const sentAt = typeof notificationData.sentAt === 'string' ? notificationData.sentAt : undefined;
+	if (!id || !title || !sentAt) return;
+
+	let deviceId =
+		typeof notificationData.deviceId === 'string' ? notificationData.deviceId : undefined;
+	if (!deviceId) {
+		try {
+			deviceId = (await deps.getDeviceCredentials())?.deviceId;
+		} catch {
+			// Ignore — without a deviceId we cannot scope the record.
+		}
+	}
+	if (!deviceId) return;
+
+	const attachment =
+		notificationData.attachment &&
+		typeof notificationData.attachment === 'object' &&
+		!Array.isArray(notificationData.attachment)
+			? (notificationData.attachment as NotificationAttachmentEnvelope)
+			: undefined;
+
+	try {
+		await deps.saveNotification({
+			id,
+			deviceId,
+			title,
+			body,
+			topic: typeof notificationData.topic === 'string' ? notificationData.topic : '',
+			sentAt,
+			topicId: typeof notificationData.topicId === 'string' ? notificationData.topicId : undefined,
+			attachment,
+			priority:
+				typeof notificationData.priority === 'string' ? notificationData.priority : undefined
+		});
+	} catch (error) {
+		const message = error instanceof Error ? error.message : 'unknown storage error';
+		console.error('[CLICK] Failed to persist clicked notification', { error: message });
+	}
+}
+
+function isSameOriginClient(deps: ServiceWorkerRuntimeDeps, client: WorkerClient): boolean {
+	try {
+		return new URL(client.url).origin === deps.locationOrigin;
+	} catch {
+		return false;
+	}
+}
+
+async function focusClientBestEffort(client: WorkerClient): Promise<WorkerClient | undefined> {
+	try {
+		return client.focus ? await client.focus() : client;
+	} catch (error) {
+		const message = error instanceof Error ? error.message : 'unknown focus error';
+		console.error('[CLICK] Failed to focus window client', { error: message });
+		return undefined;
+	}
+}
+
+async function openHiveWindowBestEffort(
+	deps: ServiceWorkerRuntimeDeps
+): Promise<WorkerClient | undefined> {
+	try {
+		return (await deps.openWindow(deps.locationOrigin || '/')) ?? undefined;
+	} catch (error) {
+		const message = error instanceof Error ? error.message : 'unknown openWindow error';
+		console.error('[CLICK] Failed to open Hive window', { error: message });
+		return undefined;
+	}
+}
+
+function postClickMessageBestEffort(
+	client: WorkerClient,
+	notificationData?: Record<string, unknown>
+): void {
+	try {
+		client.postMessage(buildNotificationClickedMessage(notificationData));
+	} catch (error) {
+		const message = error instanceof Error ? error.message : 'unknown postMessage error';
+		console.error('[CLICK] Failed to post notification click message', { error: message });
+	}
+}
+
 /** Handles notification clicks by focusing or opening Hive and sending a fallback payload. */
 export async function handleNotificationClickEvent(
 	deps: ServiceWorkerRuntimeDeps,
@@ -469,22 +577,36 @@ export async function handleNotificationClickEvent(
 ): Promise<void> {
 	event.notification.close();
 
-	const windows = await deps.matchWindowClients(false);
 	let focused: WorkerClient | undefined;
-	for (const windowClient of windows) {
-		const clientOrigin = new URL(windowClient.url).origin;
-		if (clientOrigin === deps.locationOrigin) {
-			focused = windowClient.focus ? await windowClient.focus() : windowClient;
-			break;
+	try {
+		const windows = await deps.matchWindowClients(false);
+		for (const windowClient of windows) {
+			if (!isSameOriginClient(deps, windowClient)) continue;
+			focused = await focusClientBestEffort(windowClient);
+			if (focused) break;
 		}
+	} catch (error) {
+		const message = error instanceof Error ? error.message : 'unknown matchAll error';
+		console.error('[CLICK] Failed to match window clients', { error: message });
 	}
 
 	if (!focused) {
-		focused = (await deps.openWindow(deps.locationOrigin || '/')) ?? undefined;
+		focused = await openHiveWindowBestEffort(deps);
+	}
+
+	// Keep Android's activation path as close as possible to the pre-fix
+	// behavior: do not touch IndexedDB until after focus/openWindow finished.
+	// Once a client exists, persist before the fallback postMessage so iOS can
+	// still recover from a dropped click message during cold launch.
+	try {
+		await persistClickedNotificationBestEffort(deps, event.notification.data);
+	} catch (error) {
+		const message = error instanceof Error ? error.message : 'unknown persistence error';
+		console.error('[CLICK] Failed after opening Hive window', { error: message });
 	}
 
 	if (focused) {
-		focused.postMessage(buildNotificationClickedMessage(event.notification.data));
+		postClickMessageBestEffort(focused, event.notification.data);
 	}
 }
 

@@ -1,5 +1,5 @@
 import { Decrypter } from 'age-encryption';
-import { getDeviceIdentity } from './lib/services/encryption';
+import { getDeviceIdentity, MissingDeviceIdentityError } from './lib/services/encryption';
 import { deviceKeysRepository } from './lib/services/device-keys-repository';
 import { notificationsRepository } from './lib/services/notifications-repository';
 import {
@@ -23,7 +23,9 @@ async function decryptPayload(data: ArrayBuffer): Promise<string> {
 	}
 	const identity = await getDeviceIdentity();
 	if (!identity) {
-		throw new Error('❌ No encryption key found in IndexedDB - device may not be paired correctly');
+		throw new MissingDeviceIdentityError(
+			'No encryption key found in IndexedDB - device may not be paired correctly'
+		);
 	}
 	if (DEBUG) {
 		console.log(`[AGE] ✅ Identity loaded, starting decryption...`);

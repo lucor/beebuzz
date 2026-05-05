@@ -426,26 +426,35 @@ export function formatTime(date: Date): string {
 	return date.toLocaleTimeString('en-US', {
 		hour: '2-digit',
 		minute: '2-digit',
-		second: '2-digit',
 		hour12: false
 	});
 }
 
 export function formatRelativeTime(date: Date): string {
-	const diffMs = Date.now() - date.getTime();
+	const now = new Date();
+	const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+	const target = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+	const diffDays = Math.floor((today.getTime() - target.getTime()) / 86400000);
 
-	if (diffMs < 60000) {
+	// Not today: show absolute time for clarity across midnight
+	if (diffDays !== 0) {
+		return formatTime(date);
+	}
+
+	const diffMs = Date.now() - date.getTime();
+	const diffSeconds = Math.floor(diffMs / 1000);
+
+	if (diffSeconds < 10) {
 		return 'now';
+	}
+
+	if (diffSeconds < 60) {
+		return `${diffSeconds}s`;
 	}
 
 	const diffMinutes = Math.floor(diffMs / 60000);
 	if (diffMinutes < 60) {
 		return `${diffMinutes}m`;
-	}
-
-	const diffHours = Math.floor(diffMinutes / 60);
-	if (diffHours < 24) {
-		return `${diffHours}h`;
 	}
 
 	return formatTime(date);

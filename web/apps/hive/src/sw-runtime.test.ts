@@ -59,6 +59,20 @@ function createDeps(overrides: Partial<ServiceWorkerRuntimeDeps> = {}): ServiceW
 	};
 }
 
+function createDeferred<T = void>(): {
+	promise: Promise<T>;
+	resolve: (value: T | PromiseLike<T>) => void;
+	reject: (reason?: unknown) => void;
+} {
+	let resolve!: (value: T | PromiseLike<T>) => void;
+	let reject!: (reason?: unknown) => void;
+	const promise = new Promise<T>((res, rej) => {
+		resolve = res;
+		reject = rej;
+	});
+	return { promise, resolve, reject };
+}
+
 describe('service worker runtime', () => {
 	beforeEach(() => {
 		vi.restoreAllMocks();
@@ -327,6 +341,44 @@ describe('service worker runtime', () => {
 		expect(client.postMessage).not.toHaveBeenCalled();
 	});
 
+	it('still shows the notification when reading device credentials fails', async () => {
+		const client = { url: 'https://hive.beebuzz.test/inbox', postMessage: vi.fn() };
+		const deps = createDeps({
+			getDeviceCredentials: vi.fn(() => Promise.reject(new Error('IDB open blocked'))),
+			matchWindowClients: vi.fn(() => Promise.resolve([client]))
+		});
+		const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+		await handlePushEvent(
+			deps,
+			createPushEvent({
+				id: 'n-credentials-fail',
+				title: 'Sensor',
+				body: 'Temperature alert',
+				sent_at: '2026-04-20T13:20:00.000Z'
+			})
+		);
+
+		expect(deps.showNotification).toHaveBeenCalledWith(
+			'Sensor',
+			expect.objectContaining({
+				body: 'Temperature alert',
+				data: expect.objectContaining({
+					id: 'n-credentials-fail',
+					deviceId: undefined
+				})
+			})
+		);
+		expect(deps.saveNotification).not.toHaveBeenCalled();
+		expect(deps.matchWindowClients).not.toHaveBeenCalled();
+		expect(client.postMessage).not.toHaveBeenCalled();
+		expect(consoleSpy).toHaveBeenCalledWith(
+			'[PUSH] Failed to read device credentials',
+			expect.objectContaining({ error: 'IDB open blocked' })
+		);
+		consoleSpy.mockRestore();
+	});
+
 	it('shows a decryption-specific fallback for encrypted payload failures', async () => {
 		const ageHeader = new TextEncoder().encode('age-encryption.org/v1\ncorrupted-data');
 		const buffer = ageHeader.buffer.slice(
@@ -453,6 +505,245 @@ describe('service worker runtime', () => {
 			icon: '/assets/manifest-icon-192.maskable.png'
 		});
 		expect(deps.saveNotification).not.toHaveBeenCalled();
+		consoleSpy.mockRestore();
+	});
+
+	it('classifies E2E envelope decryption failures as encrypted (not parse errors)', async () => {
+		// Server-side E2E delivery sends a plain JSON envelope pointing to the
+		// ciphertext attachment. If decryption of that attachment fails, the
+		// user must see the encryption-specific message — never the misleading
+		// "could not be parsed" text.
+		const envelopeBytes = new TextEncoder().encode(
+			JSON.stringify({
+				beebuzz: {
+					id: 'n-e2e-fail',
+					token: 'attachment-token',
+					sent_at: '2026-04-20T13:30:00.000Z'
+				}
+			})
+		);
+		const buffer = envelopeBytes.buffer.slice(
+			envelopeBytes.byteOffset,
+			envelopeBytes.byteOffset + envelopeBytes.byteLength
+		);
+		const deps = createDeps({
+			fetch: vi.fn(() => Promise.resolve(new Response('ciphertext', { status: 200 }))),
+			decryptPayload: vi.fn(() => Promise.reject(new MissingDeviceIdentityError()))
+		});
+		const event: PushEventLike = {
+			data: { arrayBuffer: () => buffer },
+			waitUntil: () => {}
+		};
+
+		await handlePushEvent(deps, event);
+
+		expect(deps.showNotification).toHaveBeenCalledWith('BeeBuzz Notification', {
+			body: 'Device key missing or invalid. Open BeeBuzz to re-pair.',
+			icon: '/assets/manifest-icon-192.maskable.png'
+		});
+		expect(deps.saveNotification).not.toHaveBeenCalled();
+	});
+
+	it('persists the clicked notification so the app can recover it after a missed postMessage', async () => {
+		// Closed-app click on iOS often loses the SW->client postMessage. The
+		// notification must still be in IndexedDB so the app shell finds it on
+		// the first drain.
+		const openedClient = {
+			url: 'https://hive.beebuzz.test/',
+			postMessage: vi.fn()
+		};
+		const deps = createDeps({
+			matchWindowClients: vi.fn(() => Promise.resolve([])),
+			openWindow: vi.fn(() => Promise.resolve(openedClient))
+		});
+
+		await handleNotificationClickEvent(
+			deps,
+			createNotificationClickEvent({
+				id: 'n-click-persist',
+				deviceId: 'dev-a',
+				title: 'Door',
+				body: 'Front door opened',
+				topic: 'alerts',
+				topicId: 'topic-1',
+				sentAt: '2026-04-20T11:00:00.000Z',
+				priority: 'high'
+			})
+		);
+
+		expect(deps.saveNotification).toHaveBeenCalledWith({
+			id: 'n-click-persist',
+			deviceId: 'dev-a',
+			title: 'Door',
+			body: 'Front door opened',
+			topic: 'alerts',
+			topicId: 'topic-1',
+			sentAt: '2026-04-20T11:00:00.000Z',
+			priority: 'high',
+			attachment: undefined
+		});
+		expect(openedClient.postMessage).toHaveBeenCalledTimes(1);
+	});
+
+	it('opens Hive before waiting for clicked-notification persistence', async () => {
+		const persist = createDeferred();
+		const openedClient = {
+			url: 'https://hive.beebuzz.test/',
+			postMessage: vi.fn()
+		};
+		const deps = createDeps({
+			saveNotification: vi.fn(() => persist.promise),
+			matchWindowClients: vi.fn(() => Promise.resolve([])),
+			openWindow: vi.fn(() => Promise.resolve(openedClient))
+		});
+
+		const clickPromise = handleNotificationClickEvent(
+			deps,
+			createNotificationClickEvent({
+				id: 'n-click-open-first',
+				deviceId: 'dev-a',
+				title: 'Door',
+				body: 'Front door opened',
+				sentAt: '2026-04-20T11:00:00.000Z'
+			})
+		);
+		await Promise.resolve();
+		await Promise.resolve();
+
+		expect(deps.openWindow).toHaveBeenCalledWith('https://hive.beebuzz.test');
+		expect(openedClient.postMessage).not.toHaveBeenCalled();
+
+		persist.resolve();
+		await clickPromise;
+
+		expect(openedClient.postMessage).toHaveBeenCalledWith(
+			expect.objectContaining({ type: 'NOTIFICATION_CLICKED' })
+		);
+	});
+
+	it('falls back to current credentials when click data has no deviceId', async () => {
+		const openedClient = {
+			url: 'https://hive.beebuzz.test/',
+			postMessage: vi.fn()
+		};
+		const deps = createDeps({
+			matchWindowClients: vi.fn(() => Promise.resolve([])),
+			openWindow: vi.fn(() => Promise.resolve(openedClient)),
+			getDeviceCredentials: vi.fn(() => Promise.resolve({ deviceId: 'dev-current' }))
+		});
+
+		await handleNotificationClickEvent(
+			deps,
+			createNotificationClickEvent({
+				id: 'n-click-fallback',
+				title: 'Door',
+				body: 'Front door opened',
+				sentAt: '2026-04-20T11:00:00.000Z'
+			})
+		);
+
+		expect(deps.saveNotification).toHaveBeenCalledWith(
+			expect.objectContaining({ id: 'n-click-fallback', deviceId: 'dev-current' })
+		);
+	});
+
+	it('opens a new Hive window when focusing an existing client fails on click', async () => {
+		const failingClient = {
+			url: 'https://hive.beebuzz.test/',
+			postMessage: vi.fn(),
+			focus: vi.fn(() => Promise.reject(new Error('focus failed')))
+		};
+		const openedClient = {
+			url: 'https://hive.beebuzz.test/',
+			postMessage: vi.fn()
+		};
+		const deps = createDeps({
+			matchWindowClients: vi.fn(() => Promise.resolve([failingClient])),
+			openWindow: vi.fn(() => Promise.resolve(openedClient))
+		});
+		const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+		await expect(
+			handleNotificationClickEvent(
+				deps,
+				createNotificationClickEvent({
+					id: 'n-click-focus-fail',
+					deviceId: 'dev-a',
+					title: 'Door',
+					body: 'Front door opened',
+					sentAt: '2026-04-20T11:00:00.000Z'
+				})
+			)
+		).resolves.toBeUndefined();
+
+		expect(deps.openWindow).toHaveBeenCalledWith('https://hive.beebuzz.test');
+		expect(openedClient.postMessage).toHaveBeenCalledWith(
+			expect.objectContaining({ type: 'NOTIFICATION_CLICKED' })
+		);
+		consoleSpy.mockRestore();
+	});
+
+	it('ignores malformed client URLs while handling notification clicks', async () => {
+		const malformedClient = {
+			url: 'not a url',
+			postMessage: vi.fn()
+		};
+		const openedClient = {
+			url: 'https://hive.beebuzz.test/',
+			postMessage: vi.fn()
+		};
+		const deps = createDeps({
+			matchWindowClients: vi.fn(() => Promise.resolve([malformedClient])),
+			openWindow: vi.fn(() => Promise.resolve(openedClient))
+		});
+
+		await handleNotificationClickEvent(
+			deps,
+			createNotificationClickEvent({
+				id: 'n-click-bad-url',
+				deviceId: 'dev-a',
+				title: 'Door',
+				body: 'Front door opened',
+				sentAt: '2026-04-20T11:00:00.000Z'
+			})
+		);
+
+		expect(deps.openWindow).toHaveBeenCalledWith('https://hive.beebuzz.test');
+		expect(malformedClient.postMessage).not.toHaveBeenCalled();
+		expect(openedClient.postMessage).toHaveBeenCalledWith(
+			expect.objectContaining({ type: 'NOTIFICATION_CLICKED' })
+		);
+	});
+
+	it('does not reject when posting the click message fails', async () => {
+		const focusedClient = {
+			url: 'https://hive.beebuzz.test/',
+			postMessage: vi.fn(() => {
+				throw new Error('postMessage failed');
+			}),
+			focus: vi.fn(function (this: typeof focusedClient) {
+				return Promise.resolve(this);
+			})
+		};
+		const deps = createDeps({
+			matchWindowClients: vi.fn(() => Promise.resolve([focusedClient]))
+		});
+		const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+		await expect(
+			handleNotificationClickEvent(
+				deps,
+				createNotificationClickEvent({
+					id: 'n-click-post-fail',
+					deviceId: 'dev-a',
+					title: 'Door',
+					body: 'Front door opened',
+					sentAt: '2026-04-20T11:00:00.000Z'
+				})
+			)
+		).resolves.toBeUndefined();
+
+		expect(focusedClient.postMessage).toHaveBeenCalledTimes(1);
 		consoleSpy.mockRestore();
 	});
 
