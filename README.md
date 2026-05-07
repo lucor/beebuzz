@@ -2,17 +2,23 @@
     <img src="docs/assets/readme/beebuzz-logo.svg" alt="BeeBuzz logo" width="96">
 </div>
 
-<h1 align="center">Private push notifications for your own devices</h1>
+<h1 align="center">Your tools. Your notifications. Your keys.</h1>
 
 <p align="center">
-  Send alerts from servers, scripts, apps, and webhooks without turning notification delivery into a chat system.
+  End-to-end encrypted delivery first. Trusted delivery when needed.
 </p>
 
-BeeBuzz is a focused Web Push delivery system for machine-to-person alerts. It
-supports two delivery modes:
+BeeBuzz is a focused push delivery system for private machine-to-person notifications from
+servers, automations, scripts, apps, and webhooks.
 
-- **Server-trusted notifications** for fast HTTP, webhook, and third-party service integrations.
-- **End-to-end encrypted notifications** for senders you control, where the CLI encrypts locally and BeeBuzz stores only ciphertext.
+It is built for developers, homelabbers, and small teams sending notifications from
+systems they control. Not chat, not a team inbox, not a general messaging
+platform.
+
+It supports two delivery modes:
+
+- **End-to-end encrypted delivery** for senders you control, when they can encrypt before sending to BeeBuzz and BeeBuzz stores only ciphertext.
+- **Trusted delivery** for fast HTTP, webhook, and third-party service integrations when they cannot encrypt before sending.
 
 BeeBuzz is built around paired personal devices, short-lived delivery state, and
 a small auditable stack: Go, SQLite, SvelteKit, Web Push, and Hive, its PWA
@@ -20,7 +26,7 @@ receiver.
 
 ## Quickstart Demo
 
-Hosted beta flow, shown on the real stack with Site and Hive side by side.
+Hosted beta flow, showing setup in BeeBuzz and delivery in Hive side by side.
 
 <https://github.com/user-attachments/assets/edcd0981-119a-47e8-a947-91c70f888782>
 
@@ -32,16 +38,8 @@ Hosted beta flow, shown on the real stack with Site and Hive side by side.
 
 [BeeBuzz.app](https://beebuzz.app) is the hosted BeeBuzz SaaS.
 
-Hosted access is currently a beta for approved users. During the beta you can:
-
-- sign in after approval
-- pair a device with [Hive](https://hive.beebuzz.app)
-- create API tokens scoped to topics
-- send trusted-mode notifications over HTTP
-- create webhook URLs for external services
-- install the CLI and send end-to-end encrypted notifications
-
-Hosted access is free during beta. After beta, the hosted service is expected to
+Hosted access is currently a beta for approved users. Hosted access is free
+during beta. After beta, the hosted service is expected to
 move to a single paid plan so the project can stay sustainable. Self-hosting
 remains free, open source, and available under the AGPL license.
 
@@ -49,30 +47,31 @@ Start here: [BeeBuzz quickstart](https://beebuzz.app/docs/quickstart).
 
 ## How It Works
 
-BeeBuzz has two delivery modes because not every sender can encrypt before
-calling the server.
+BeeBuzz has two delivery paths because not every sender can encrypt before
+sending to BeeBuzz.
 
 <table>
   <tr>
     <td width="50%" valign="top">
-      <img src="docs/assets/readme/trusted-flow.svg" alt="Server-trusted BeeBuzz delivery flow">
+      <img src="docs/assets/readme/e2e-flow.svg" alt="End-to-end encrypted BeeBuzz delivery flow">
     </td>
     <td width="50%" valign="top">
-      <img src="docs/assets/readme/e2e-flow.svg" alt="End-to-end encrypted BeeBuzz delivery flow">
+      <img src="docs/assets/readme/trusted-flow.svg" alt="Server-trusted BeeBuzz delivery flow">
     </td>
   </tr>
 </table>
 
-In both modes, Web Push transport is encrypted in transit between BeeBuzz and
-the receiving browser. The difference is what the BeeBuzz server can read:
-trusted mode gives BeeBuzz plaintext notification content; E2E mode gives
-BeeBuzz only ciphertext plus routing and delivery metadata. In trusted mode,
-BeeBuzz validates the payload, handles short-lived attachment data when present,
-and dispatches the notification to paired devices.
+In both paths, Web Push transport is encrypted in transit between BeeBuzz and
+the receiving browser. The difference is what BeeBuzz handles before delivery.
+In trusted delivery, BeeBuzz receives the message, prepares delivery, handles
+short-lived attachment data when present, and dispatches the notification to
+paired devices. In end-to-end encrypted delivery, BeeBuzz stores ciphertext and
+relays a minimal delivery envelope while Hive fetches and decrypts the message
+on the receiving device.
 
 ## Try It
 
-Use trusted mode when the sender can trust BeeBuzz with the notification content:
+Use trusted mode when the sender cannot encrypt before sending:
 
 ```bash
 curl https://push.beebuzz.app \
@@ -96,7 +95,7 @@ beebuzz send "Hello from BeeBuzz"
 ```
 
 In E2E mode, the CLI fetches paired device public keys, encrypts the payload
-locally with [age](https://age-encryption.org), and uploads ciphertext as
+locally with [age](https://age-encryption.org), and sends ciphertext as
 `application/octet-stream`. Hive fetches and decrypts the notification on the
 receiving device.
 
