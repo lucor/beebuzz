@@ -77,7 +77,7 @@
 	<title>BeeBuzz | Your tools. Your notifications. Your keys.</title>
 	<meta
 		name="description"
-		content="BeeBuzz is a focused Push delivery system for private machine-to-person notifications from servers, automations, scripts, apps, and webhooks. End-to-end encrypted delivery first, trusted delivery when needed."
+		content="BeeBuzz is a focused push delivery system for private machine-to-person notifications from servers, automations, scripts, apps, and webhooks. End-to-end encrypted delivery first, trusted delivery when needed."
 	/>
 </svelte:head>
 
@@ -132,9 +132,9 @@
 						Your tools.<br />Your notifications.<br />Your keys.
 					</h1>
 					<p class="mt-6 max-w-3xl text-lg leading-8 text-base-content/75 md:text-xl">
-						BeeBuzz is a focused Push delivery system for private machine-to-person notifications from
-						servers, automations, scripts, apps, and webhooks. Use end-to-end encrypted delivery when
-						the sender can encrypt; use trusted delivery when it can't.
+						BeeBuzz is a push delivery system for private machine-to-person notifications from
+						servers, automations, scripts, apps, and webhooks. Use end-to-end encrypted delivery
+						when the sender can encrypt; use trusted delivery when it can't.
 					</p>
 
 					<div class="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
@@ -266,8 +266,8 @@
 						Built for private machine-to-person notifications
 					</h2>
 					<p class="mt-3 text-base leading-7 text-base-content/70">
-						For developers, homelabbers, and small teams sending notifications from systems they control.
-						Not chat, not a team inbox, not a general messaging platform.
+						For developers, homelabbers, and small teams sending notifications from systems they
+						control. Not chat, not a team inbox, not a general messaging platform.
 					</p>
 				</div>
 

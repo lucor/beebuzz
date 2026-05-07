@@ -8,7 +8,7 @@
   End-to-end encrypted delivery first. Trusted delivery when needed.
 </p>
 
-BeeBuzz is a focused Push delivery system for private machine-to-person notifications from
+BeeBuzz is a focused push delivery system for private machine-to-person notifications from
 servers, automations, scripts, apps, and webhooks.
 
 It is built for developers, homelabbers, and small teams sending notifications from
