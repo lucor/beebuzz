@@ -3,13 +3,15 @@
 	import {
 		ArrowRight,
 		BellRing,
+		Cloud,
 		CodeXml,
+		Eye,
 		ExternalLink,
-		Globe,
 		LockKeyhole,
+		Send,
 		Server,
 		ShieldCheck,
-		Zap
+		Smartphone
 	} from '@lucide/svelte';
 	import { BeeBuzzLogo, isLoggedIn } from '@beebuzz/shared';
 	import { onMount } from 'svelte';
@@ -32,59 +34,50 @@
 		icon: typeof Server;
 	};
 
-	type ProofPoint = {
-		label: string;
-		value: string;
-		description: string;
-	};
-
 	const useCases: UseCase[] = [
 		{
-			title: 'Homelab and personal infrastructure',
-			description:
-				'Get private alerts from your server, router, backups, or cron jobs without relying on chat apps.',
+			title: 'Homelab and self-hosted services',
+			description: 'Notifications from servers, routers, backups, cron jobs, and homelab services.',
 			icon: Server
 		},
 		{
-			title: 'CI, deployments, and automation',
-			description:
-				'Send deploy results, pipeline failures, and workflow notifications directly to the devices you control.',
+			title: 'Scripts, cron, and CI/CD',
+			description: 'Notifications from scripts, deployments, pipelines, and scheduled jobs.',
 			icon: CodeXml
 		},
 		{
-			title: 'Monitoring that reaches you fast',
-			description:
-				'Deliver operational messages with less noise than email and more control than general-purpose messengers.',
+			title: 'Private delivery to your devices',
+			description: 'Direct delivery to your own devices, or to a small set of paired devices.',
 			icon: BellRing
 		}
 	];
 
-	const proofPoints: ProofPoint[] = [
-		{
-			label: 'Delivery model',
-			value: 'Trusted or end-to-end encrypted',
-			description:
-				'Start fast in trusted mode or use paired-device encryption when privacy is the priority.'
-		},
-		{
-			label: 'Client footprint',
-			value: 'One PWA across desktop and mobile',
-			description: 'Hive runs from a single install path and pairs devices for encrypted delivery.'
-		},
-		{
-			label: 'Operational posture',
-			value: 'Open source and auditable',
-			description:
-				'Inspect the code, self-host your own instance, or evaluate the hosted beta before committing.'
-		}
+	type FlowNode = {
+		label: string;
+		description: string;
+		icon: typeof Send;
+	};
+
+	const e2eNodes: FlowNode[] = [
+		{ label: 'Sender', description: 'Encrypts locally', icon: Send },
+		{ label: 'BeeBuzz', description: 'Stores ciphertext only', icon: Server },
+		{ label: 'Web Push', description: 'Delivers encrypted envelope', icon: Cloud },
+		{ label: 'Hive', description: 'Fetches and decrypts', icon: Smartphone }
+	];
+
+	const trustedNodes: FlowNode[] = [
+		{ label: 'Sender', description: 'Sends the message', icon: Send },
+		{ label: 'BeeBuzz', description: 'Reads to prepare delivery', icon: Server },
+		{ label: 'Web Push', description: 'Delivers', icon: Cloud },
+		{ label: 'Hive', description: 'Shows the message', icon: Smartphone }
 	];
 </script>
 
 <svelte:head>
-	<title>BeeBuzz | Encrypted Push For Servers And Apps</title>
+	<title>BeeBuzz | Your tools. Your notifications. Your keys.</title>
 	<meta
 		name="description"
-		content="BeeBuzz delivers private push notifications from your apps and servers to your devices, with open-source infrastructure and optional end-to-end encryption."
+		content="BeeBuzz is a focused Push delivery system for private machine-to-person notifications from servers, automations, scripts, apps, and webhooks. End-to-end encrypted delivery first, trusted delivery when needed."
 	/>
 </svelte:head>
 
@@ -130,20 +123,18 @@
 
 		<main class="flex-1 pb-16">
 			<section
-				class="grid gap-10 py-10 lg:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)] lg:items-center lg:py-16"
+				class="grid gap-10 pb-12 pt-6 md:pt-8 lg:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)] lg:items-center lg:pb-16 lg:pt-12"
 			>
 				<div>
-					<p class="text-sm font-semibold uppercase tracking-[0.22em] text-primary">
-						Private push for servers and apps
-					</p>
 					<h1
-						class="mt-4 max-w-4xl text-4xl font-bold leading-tight text-base-content md:text-5xl lg:text-6xl"
+						class="max-w-4xl text-3xl font-bold leading-snug text-base-content md:text-4xl lg:text-5xl"
 					>
-						Simple, private push notifications with real end-to-end encryption.
+						Your tools.<br />Your notifications.<br />Your keys.
 					</h1>
 					<p class="mt-6 max-w-3xl text-lg leading-8 text-base-content/75 md:text-xl">
-						BeeBuzz delivers alerts over Web Push with a small, auditable stack. In E2E mode, the
-						server stores ciphertext instead of plaintext.
+						BeeBuzz is a focused Push delivery system for private machine-to-person notifications from
+						servers, automations, scripts, apps, and webhooks. Use end-to-end encrypted delivery when
+						the sender can encrypt; use trusted delivery when it can't.
 					</p>
 
 					<div class="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
@@ -172,50 +163,9 @@
 
 					{#if isSaasMode}
 						<p class="mt-4 text-sm leading-6 text-base-content/65">
-							Hosted access is free during beta. After beta, the hosted service will move to a
-							single paid plan, priced to keep the project sustainable. Self-hosting remains free
-							and open source.
-						</p>
-						<p class="mt-2 text-sm leading-6 text-base-content/65">
-							If your email is already approved, you can sign in now. Otherwise the same flow
-							submits your access request.
+							Hosted access is currently in beta. Self-hosting is open source under AGPL.
 						</p>
 					{/if}
-
-					<div class="mt-10 grid gap-4 sm:grid-cols-3">
-						<div class="rounded-2xl border border-base-300 bg-base-200/45 p-4">
-							<div class="mb-3 flex items-center gap-2 text-base-content">
-								<ShieldCheck class="h-5 w-5 text-primary" />
-								<p class="font-semibold">Optional end-to-end delivery</p>
-							</div>
-							<p class="text-sm leading-6 text-base-content/70">
-								In E2E mode, pair devices so BeeBuzz stores ciphertext instead of plaintext message
-								bodies.
-							</p>
-						</div>
-
-						<div class="rounded-2xl border border-base-300 bg-base-200/45 p-4">
-							<div class="mb-3 flex items-center gap-2 text-base-content">
-								<Zap class="h-5 w-5 text-primary" />
-								<p class="font-semibold">One job, done simply</p>
-							</div>
-							<p class="text-sm leading-6 text-base-content/70">
-								BeeBuzz is not a general messaging platform. It is a focused delivery path for the
-								alerts you actually care about.
-							</p>
-						</div>
-
-						<div class="rounded-2xl border border-base-300 bg-base-200/45 p-4">
-							<div class="mb-3 flex items-center gap-2 text-base-content">
-								<Globe class="h-5 w-5 text-primary" />
-								<p class="font-semibold">Minimal client model</p>
-							</div>
-							<p class="text-sm leading-6 text-base-content/70">
-								Use the same Hive PWA across desktop and mobile without extra apps or extra moving
-								parts.
-							</p>
-						</div>
-					</div>
 				</div>
 
 				<div
@@ -229,7 +179,7 @@
 						</div>
 						<div>
 							<p class="text-sm font-semibold uppercase tracking-[0.18em] text-primary">
-								How it works
+								Quickstart
 							</p>
 							<h2 class="text-2xl font-bold text-base-content">From sign-in to first message</h2>
 						</div>
@@ -284,8 +234,7 @@
 									Create one API token or webhook
 								</h3>
 								<p class="mt-2 max-w-md text-sm leading-6 text-base-content/70">
-									Choose the integration path that matches your system, from API calls to outbound
-									event hooks.
+									Choose the integration path that matches your sender.
 								</p>
 							</div>
 							<hr class="bg-primary/20" />
@@ -302,54 +251,37 @@
 							<div class="timeline-end ml-4 pt-1 text-left">
 								<h3 class="text-lg font-semibold text-base-content">Send your first message</h3>
 								<p class="mt-2 max-w-md text-sm leading-6 text-base-content/70">
-									Start with the fastest setup path, then refine delivery mode and privacy controls
-									as needed.
+									Use encrypted delivery when possible, or trusted delivery when the sender cannot
+									encrypt.
 								</p>
 							</div>
 						</li>
 					</ul>
-
-					{#if isSaasMode}
-						<div class="mt-6 rounded-2xl border border-primary/20 bg-primary/8 p-4">
-							<p class="text-sm font-semibold text-base-content">Already approved?</p>
-							<p class="mt-1 text-sm leading-6 text-base-content/70">
-								Continue to your account, then pair a device in Hive.
-							</p>
-							<div class="mt-3 flex flex-wrap gap-3">
-								<a href={resolve('/login')} class="link link-primary text-sm font-medium">Sign in</a
-								>
-								<a href={resolve(QUICKSTART_PATH)} class="link link-primary text-sm font-medium">
-									Setup guide
-								</a>
-							</div>
-						</div>
-					{/if}
 				</div>
 			</section>
 
 			<section class="py-10">
-				<div class="mb-8">
-					<p class="text-sm font-semibold uppercase tracking-[0.18em] text-primary">
-						Who it is for
-					</p>
-					<h2 class="mt-2 text-3xl font-bold text-base-content">
-						BeeBuzz is strongest when the alert matters and the audience is small.
+				<div class="mb-8 max-w-3xl">
+					<h2 class="text-3xl font-bold text-base-content">
+						Built for private machine-to-person notifications
 					</h2>
 					<p class="mt-3 text-base leading-7 text-base-content/70">
-						This is not another team chat surface. It is a delivery path for messages you want to
-						send directly from machines to people, with tighter control over privacy and attention.
+						For developers, homelabbers, and small teams sending notifications from systems they control.
+						Not chat, not a team inbox, not a general messaging platform.
 					</p>
 				</div>
 
 				<div class="grid gap-5 lg:grid-cols-3">
 					{#each useCases as useCase (useCase.title)}
 						<div class="rounded-3xl border border-base-300 bg-base-100 p-6 shadow-sm">
-							<div
-								class="flex h-12 w-12 items-center justify-center rounded-2xl bg-warning/15 text-warning"
-							>
-								<useCase.icon class="h-6 w-6" />
+							<div class="flex items-center gap-3">
+								<div
+									class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-warning/15 text-warning"
+								>
+									<useCase.icon class="h-6 w-6" />
+								</div>
+								<h3 class="text-xl font-semibold text-base-content">{useCase.title}</h3>
 							</div>
-							<h3 class="mt-5 text-xl font-semibold text-base-content">{useCase.title}</h3>
 							<p class="mt-3 text-sm leading-7 text-base-content/70">{useCase.description}</p>
 						</div>
 					{/each}
@@ -358,50 +290,178 @@
 
 			<section class="py-10">
 				<div class="mb-8 max-w-3xl">
-					<p class="text-sm font-semibold uppercase tracking-[0.18em] text-primary">
-						Trust and evaluation
+					<h2 class="text-3xl font-bold text-base-content">How delivery works</h2>
+					<p class="mt-3 text-base leading-7 text-base-content/70">
+						Two delivery modes, chosen by one question: can the sender encrypt before it talks to
+						BeeBuzz?
 					</p>
-					<h2 class="mt-2 text-3xl font-bold text-base-content">
-						Strong product claims need a fast way to verify them.
-					</h2>
 				</div>
 
-				<div class="grid gap-5 lg:grid-cols-3">
-					{#each proofPoints as point (point.label)}
-						<div class="rounded-3xl border border-base-300 bg-base-200/40 p-6">
-							<p class="text-sm font-semibold uppercase tracking-[0.16em] text-base-content/45">
-								{point.label}
-							</p>
-							<h3 class="mt-3 text-xl font-semibold text-base-content">{point.value}</h3>
-							<p class="mt-3 text-sm leading-7 text-base-content/70">{point.description}</p>
+				<div class="grid gap-5 lg:grid-cols-2">
+					<!-- E2E Encrypted -->
+					<div
+						class="relative h-full overflow-hidden rounded-3xl border-2 border-primary/30 bg-base-100 shadow-sm"
+					>
+						<div class="flex h-full flex-col p-6">
+							<div class="mb-5 flex items-center gap-3">
+								<div
+									class="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/15 text-primary"
+								>
+									<LockKeyhole class="h-6 w-6" />
+								</div>
+								<div class="flex-1">
+									<div class="flex flex-wrap items-center gap-2">
+										<h3 class="text-xl font-semibold text-base-content">
+											End-to-end encrypted delivery
+										</h3>
+										<span class="badge badge-primary badge-sm text-primary-content"
+											>Recommended</span
+										>
+									</div>
+								</div>
+							</div>
+
+							<div
+								class="flex flex-1 flex-col items-stretch gap-3 md:flex-row md:items-stretch md:gap-2"
+							>
+								{#each e2eNodes as node, index (node.label)}
+									{@const isPivot = node.label === 'BeeBuzz'}
+									<div
+										class={[
+											'flex min-h-36 flex-1 flex-col items-center rounded-2xl p-4 text-center',
+											isPivot ? 'border-2 border-primary/40 bg-primary/10' : 'bg-base-200/60'
+										].join(' ')}
+									>
+										<div
+											class={[
+												'flex h-10 w-10 items-center justify-center rounded-xl',
+												isPivot
+													? 'bg-primary/20 text-primary'
+													: 'bg-base-300/60 text-base-content/70'
+											].join(' ')}
+										>
+											<node.icon class="h-5 w-5" />
+										</div>
+										<p class="mt-2 text-sm font-semibold text-base-content">
+											{node.label}
+										</p>
+										<p class="mt-1 text-xs leading-4 text-base-content/70">
+											{node.description}
+										</p>
+									</div>
+
+									{#if index < e2eNodes.length - 1}
+										<div
+											class="flex shrink-0 items-center justify-center text-primary md:w-6"
+											aria-hidden="true"
+										>
+											<ArrowRight class="h-5 w-5 rotate-90 md:rotate-0" />
+										</div>
+									{/if}
+								{/each}
+							</div>
+
+							<div
+								class="mt-4 flex items-center gap-2 rounded-xl border border-primary/20 bg-primary/5 px-4 py-3"
+							>
+								<ShieldCheck class="h-4 w-4 shrink-0 text-primary" />
+								<p class="text-sm font-medium text-base-content/85">
+									BeeBuzz can't read the message.
+								</p>
+							</div>
+
+							<div class="mt-4">
+								<p class="mb-2 text-xs font-medium uppercase tracking-wider text-base-content/60">
+									Example senders
+								</p>
+								<div class="flex flex-wrap gap-1.5">
+									<span class="badge badge-neutral badge-soft badge-sm">BeeBuzz CLI</span>
+									<span class="badge badge-neutral badge-soft badge-sm">BeeBuzz libraries</span>
+									<span class="badge badge-neutral badge-soft badge-sm">Home Assistant plugin</span>
+								</div>
+							</div>
 						</div>
-					{/each}
-				</div>
-
-				<div
-					class="mt-8 flex flex-col gap-3 rounded-3xl border border-base-300 bg-base-100 p-6 sm:flex-row sm:items-center sm:justify-between"
-				>
-					<div>
-						<h3 class="text-xl font-semibold text-base-content">
-							Evaluate BeeBuzz through the path that fits your risk profile.
-						</h3>
-						<p class="mt-2 text-sm leading-6 text-base-content/70">
-							Read the setup guide, inspect the code, or test the hosted beta if you want the
-							shortest path to first delivery.
-						</p>
 					</div>
-					<div class="flex flex-wrap gap-3">
-						{#if isSaasMode}
-							<a href={resolve(QUICKSTART_PATH)} class="btn btn-outline">Quickstart</a>
-						{/if}
-						<a
-							href={GITHUB_REPO_URL}
-							target="_blank"
-							rel="noopener noreferrer"
-							class="btn btn-primary"
-						>
-							View Source
-						</a>
+
+					<!-- Trusted -->
+					<div
+						class="relative h-full overflow-hidden rounded-3xl border border-base-300 bg-base-100 shadow-sm"
+					>
+						<div class="flex h-full flex-col p-6">
+							<div class="mb-5 flex items-center gap-3">
+								<div
+									class="flex h-12 w-12 items-center justify-center rounded-2xl bg-base-200 text-base-content/70"
+								>
+									<Server class="h-6 w-6" />
+								</div>
+								<div class="flex-1">
+									<div class="flex flex-wrap items-center gap-2">
+										<h3 class="text-xl font-semibold text-base-content">Trusted delivery</h3>
+										<span class="badge badge-neutral badge-soft badge-sm">When needed</span>
+									</div>
+								</div>
+							</div>
+
+							<div
+								class="flex flex-1 flex-col items-stretch gap-3 md:flex-row md:items-stretch md:gap-2"
+							>
+								{#each trustedNodes as node, index (node.label)}
+									{@const isPivot = node.label === 'BeeBuzz'}
+									<div
+										class={[
+											'flex min-h-36 flex-1 flex-col items-center rounded-2xl p-4 text-center',
+											isPivot ? 'border-2 border-warning/40 bg-warning/10' : 'bg-base-200/60'
+										].join(' ')}
+									>
+										<div
+											class={[
+												'flex h-10 w-10 items-center justify-center rounded-xl',
+												isPivot
+													? 'bg-warning/20 text-warning'
+													: 'bg-base-300/60 text-base-content/60'
+											].join(' ')}
+										>
+											<node.icon class="h-5 w-5" />
+										</div>
+										<p class="mt-2 text-sm font-semibold text-base-content">
+											{node.label}
+										</p>
+										<p class="mt-1 text-xs leading-4 text-base-content/70">
+											{node.description}
+										</p>
+									</div>
+
+									{#if index < trustedNodes.length - 1}
+										<div
+											class="flex shrink-0 items-center justify-center text-base-content/40 md:w-6"
+											aria-hidden="true"
+										>
+											<ArrowRight class="h-5 w-5 rotate-90 md:rotate-0" />
+										</div>
+									{/if}
+								{/each}
+							</div>
+
+							<div
+								class="mt-4 flex items-center gap-2 rounded-xl border border-warning/30 bg-warning/10 px-4 py-3"
+							>
+								<Eye class="h-4 w-4 shrink-0 text-warning" />
+								<p class="text-sm font-medium text-base-content/85">
+									BeeBuzz can read the message to prepare delivery.
+								</p>
+							</div>
+
+							<div class="mt-4">
+								<p class="mb-2 text-xs font-medium uppercase tracking-wider text-base-content/60">
+									Example senders
+								</p>
+								<div class="flex flex-wrap gap-1.5">
+									<span class="badge badge-neutral badge-soft badge-sm">Webhooks</span>
+									<span class="badge badge-neutral badge-soft badge-sm">cURL</span>
+									<span class="badge badge-neutral badge-soft badge-sm">CI/CD</span>
+								</div>
+							</div>
+						</div>
 					</div>
 				</div>
 			</section>
