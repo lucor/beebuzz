@@ -97,8 +97,8 @@ func NewRouter(
 		// Auth routes (public)
 		v1.Route("/auth", func(authR chi.Router) {
 			// Public
-			authR.With(rateLimitLogin).Post("/login", authHandler.Login)
-			authR.With(rateLimitVerify).Post("/otp/verify", authHandler.VerifyOTP)
+			authR.With(middleware.RequireOrigin(cfg.SiteURL), rateLimitLogin).Post("/login", authHandler.Login)
+			authR.With(middleware.RequireOrigin(cfg.SiteURL), rateLimitVerify).Post("/otp/verify", authHandler.VerifyOTP)
 
 			// Authenticated
 			authR.Group(func(authAuthenticated chi.Router) {

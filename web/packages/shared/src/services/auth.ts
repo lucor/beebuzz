@@ -13,12 +13,16 @@ const clearAuthStorage = () => {
 };
 
 /** Requests authentication for the given email. Stores state and email in localStorage. */
-export const login = async (email: string, reason?: string): Promise<void> => {
+export const login = async (
+	email: string,
+	reason?: string,
+	referralCode?: string
+): Promise<void> => {
 	const state = crypto.randomUUID();
 	localStorage.setItem(STORAGE_KEY_STATE, state);
 
 	try {
-		await authApi.login(email, state, reason);
+		await authApi.login(email, state, reason, referralCode);
 		sessionStorage.setItem(STORAGE_KEY_EMAIL, email);
 		logger.debug('auth request sent');
 	} catch (error: unknown) {
