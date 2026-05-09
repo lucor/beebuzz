@@ -12,8 +12,8 @@ export const authApi = {
 	/**
 	 * Login authentication with email.
 	 */
-	login: (email: string, state: string, reason?: string) => {
-		return api.post<void>('/auth/login', { email, state, reason });
+	login: (email: string, state: string, reason?: string, referralCode?: string) => {
+		return api.post<void>('/auth/login', { email, state, reason, referral_code: referralCode });
 	},
 
 	/**

@@ -68,6 +68,7 @@ paths:
       tags: [Auth]
       operationId: login
       summary: Start OTP login
+      description: Supported client fields are documented here. The server may apply additional anti-abuse checks that are intentionally excluded from the public request contract.
       x-audience: [site]
       x-stability: stable
       requestBody:

@@ -39,6 +39,12 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Honeypot: if the hidden referral_code field is filled, silently reject the request.
+	if req.ReferralCode != "" {
+		core.WriteNoContent(w)
+		return
+	}
+
 	_, err := h.authService.RequestAuth(r.Context(), req.Email, req.State, req.Reason)
 	if err != nil {
 		if errors.Is(err, ErrGlobalRateLimit) {

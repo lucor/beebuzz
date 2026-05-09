@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
+	import { LOGIN_HONEYPOT_FIELD_NAME } from '@beebuzz/shared/constants/auth';
 	import { toast } from '@beebuzz/shared/stores';
 	import { login } from '@beebuzz/shared/services/auth';
 	import { ApiError, isInlineError } from '@beebuzz/shared/errors';
@@ -10,6 +11,7 @@
 
 	let email = $state('');
 	let reason = $state('');
+	let referralCode = $state('');
 	let isLoading = $state(false);
 	let error = $state<string | undefined>(undefined);
 
@@ -20,7 +22,7 @@
 		error = undefined;
 
 		try {
-			await login(email, reason.trim() || undefined);
+			await login(email, reason.trim() || undefined, referralCode || undefined);
 			await goto(resolve('/verify'));
 		} catch (err) {
 			if (err instanceof ApiError && isInlineError(err.code)) {
@@ -72,6 +74,19 @@
 			{/if}
 
 			<form class="space-y-4" onsubmit={handleRequest}>
+				<!-- Honeypot field to reduce bot signups -->
+				<div class="contents" aria-hidden="true">
+					<input
+						type="text"
+						id={LOGIN_HONEYPOT_FIELD_NAME}
+						name={LOGIN_HONEYPOT_FIELD_NAME}
+						tabindex="-1"
+						autocomplete="off"
+						class="absolute -left-[10000px] w-px h-px overflow-hidden opacity-0 pointer-events-none"
+						bind:value={referralCode}
+					/>
+				</div>
+
 				<div>
 					<label for="email" class="block text-sm font-semibold text-base-content mb-2">
 						Email Address

@@ -18,6 +18,27 @@ import (
 	"lucor.dev/beebuzz/internal/topic"
 )
 
+type countingMailer struct {
+	requestAuthCalls int
+}
+
+func (m *countingMailer) SendRequestAuth(_ context.Context, _, _ string) error {
+	m.requestAuthCalls++
+	return nil
+}
+
+func (m *countingMailer) SendAccountApproved(context.Context, string) error {
+	return nil
+}
+
+func (m *countingMailer) SendAccountBlocked(context.Context, string) error {
+	return nil
+}
+
+func (m *countingMailer) SendAccountReactivated(context.Context, string) error {
+	return nil
+}
+
 func newTestAuthHandler() *Handler {
 	logger := slog.New(slog.NewTextHandler(&bytes.Buffer{}, nil))
 	return NewHandler(nil, "", logger)
@@ -76,6 +97,40 @@ func TestLoginRejectsWhitespaceOnlyState(t *testing.T) {
 
 	if w.Code != http.StatusUnprocessableEntity {
 		t.Fatalf("Login() status = %d, want %d. body=%s", w.Code, http.StatusUnprocessableEntity, w.Body.String())
+	}
+}
+
+func TestLoginReturnsNoContentForFilledHoneypotWithoutAuthSideEffects(t *testing.T) {
+	db := testutil.NewDB(t)
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	authRepo := NewRepository(db)
+	topicRepo := topic.NewRepository(db)
+	topicSvc := topic.NewService(topicRepo, logger)
+	mailer := &countingMailer{}
+	svc := NewService(authRepo, mailer, "", topicSvc, logger)
+	handler := NewHandler(svc, "", logger)
+
+	req := httptest.NewRequest(http.MethodPost, "/auth/login", bytes.NewBufferString(`{"email":"trap@example.com","state":"abc","referral_code":"Acme Bot LLC"}`))
+	w := httptest.NewRecorder()
+
+	handler.Login(w, req)
+
+	if w.Code != http.StatusNoContent {
+		t.Fatalf("Login() status = %d, want %d. body=%s", w.Code, http.StatusNoContent, w.Body.String())
+	}
+	if w.Body.Len() != 0 {
+		t.Fatalf("Login() body = %q, want empty", w.Body.String())
+	}
+	if mailer.requestAuthCalls != 0 {
+		t.Fatalf("SendRequestAuth calls = %d, want 0", mailer.requestAuthCalls)
+	}
+
+	challenge, err := authRepo.GetAuthChallengeByState(context.Background(), "abc")
+	if err != nil {
+		t.Fatalf("GetAuthChallengeByState: %v", err)
+	}
+	if challenge != nil {
+		t.Fatal("expected no auth challenge to be created for filled honeypot")
 	}
 }
 

@@ -112,6 +112,80 @@ func TestCORSDeniesUnconfiguredOrigin(t *testing.T) {
 	}
 }
 
+func TestRequireOriginAllowsConfiguredOrigin(t *testing.T) {
+	handler := RequireOrigin("https://site.example.com")(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/auth/login", nil)
+	req.Header.Set("Origin", "https://site.example.com")
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status: got %d, want %d", rec.Code, http.StatusOK)
+	}
+}
+
+func TestRequireOriginRejectsMissingOrigin(t *testing.T) {
+	nextCalled := false
+	handler := RequireOrigin("https://site.example.com")(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		nextCalled = true
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/auth/login", nil)
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("status: got %d, want %d", rec.Code, http.StatusNoContent)
+	}
+	if nextCalled {
+		t.Fatal("next handler was called for request with missing Origin")
+	}
+}
+
+func TestRequireOriginRejectsUnexpectedOrigin(t *testing.T) {
+	nextCalled := false
+	handler := RequireOrigin("https://site.example.com")(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		nextCalled = true
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/auth/login", nil)
+	req.Header.Set("Origin", "https://blocked.example.com")
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("status: got %d, want %d", rec.Code, http.StatusNoContent)
+	}
+	if nextCalled {
+		t.Fatal("next handler was called for request with unexpected Origin")
+	}
+}
+
+func TestRequireOriginRejectsWhenExpectedOriginIsEmpty(t *testing.T) {
+	nextCalled := false
+	handler := RequireOrigin("")(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		nextCalled = true
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/auth/login", nil)
+	req.Header.Set("Origin", "https://site.example.com")
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("status: got %d, want %d", rec.Code, http.StatusNoContent)
+	}
+	if nextCalled {
+		t.Fatal("next handler was called with empty expected origin")
+	}
+}
+
 func TestRequireSessionRejectsMissingCookie(t *testing.T) {
 	handler := RequireSession(testSessionValidator{})(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)

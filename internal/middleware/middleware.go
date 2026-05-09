@@ -127,3 +127,18 @@ func CORS(allowedOrigins []string) func(http.Handler) http.Handler {
 		})
 	}
 }
+
+// RequireOrigin silently rejects requests whose Origin header does not match
+// the expected browser origin for site-only endpoints.
+func RequireOrigin(expectedOrigin string) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.Header.Get("Origin") != expectedOrigin {
+				core.WriteNoContent(w)
+				return
+			}
+
+			next.ServeHTTP(w, r)
+		})
+	}
+}

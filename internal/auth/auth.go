@@ -38,6 +38,8 @@ type LoginRequest struct {
 	Email  string  `json:"email"`
 	State  string  `json:"state"`
 	Reason *string `json:"reason,omitempty"`
+	// Keep in sync with web/packages/shared/src/constants/auth.ts.
+	ReferralCode string `json:"referral_code,omitempty"`
 }
 
 // Validate enforces login-style email input and required request fields.
