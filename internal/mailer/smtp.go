@@ -7,7 +7,7 @@ import (
 	"net/smtp"
 	"strings"
 
-	"beebuzz.app/beebuzzd/internal/secure"
+	"beebuzz.app/beebuzz/internal/secure"
 )
 
 // SMTPSender sends emails via SMTP.

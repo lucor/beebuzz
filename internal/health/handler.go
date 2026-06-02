@@ -4,7 +4,7 @@ import (
 	"context"
 	"net/http"
 
-	"beebuzz.app/beebuzzd/internal/core"
+	"beebuzz.app/beebuzz/internal/core"
 )
 
 // DBPinger checks database connectivity.

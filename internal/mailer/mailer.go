@@ -11,8 +11,8 @@ import (
 	"fmt"
 	"text/template"
 
-	"beebuzz.app/beebuzzd/internal/config"
-	"beebuzz.app/beebuzzd/internal/validator"
+	"beebuzz.app/beebuzz/internal/config"
+	"beebuzz.app/beebuzz/internal/validator"
 )
 
 //go:embed templates/*.html.tmpl templates/*.txt.tmpl

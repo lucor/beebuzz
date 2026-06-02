@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"beebuzz.app/beebuzzd/internal/testutil"
+	"beebuzz.app/beebuzz/internal/testutil"
 )
 
 func TestGetOrCreateUserDoesNotPromoteFirstUser(t *testing.T) {

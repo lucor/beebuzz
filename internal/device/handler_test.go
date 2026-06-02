@@ -10,10 +10,10 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"beebuzz.app/beebuzzd/internal/auth"
-	"beebuzz.app/beebuzzd/internal/middleware"
-	"beebuzz.app/beebuzzd/internal/testutil"
-	"beebuzz.app/beebuzzd/internal/topic"
+	"beebuzz.app/beebuzz/internal/auth"
+	"beebuzz.app/beebuzz/internal/middleware"
+	"beebuzz.app/beebuzz/internal/testutil"
+	"beebuzz.app/beebuzz/internal/topic"
 )
 
 func newTestDeviceHandler(t *testing.T) *Handler {

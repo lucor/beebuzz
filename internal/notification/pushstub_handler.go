@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"time"
 
-	"beebuzz.app/beebuzzd/internal/core"
+	"beebuzz.app/beebuzz/internal/core"
 )
 
 const pushStubLongPollTimeout = 30 * time.Second

@@ -14,25 +14,25 @@ import (
 	sentryhttp "github.com/getsentry/sentry-go/http"
 	"github.com/jmoiron/sqlx"
 
-	"beebuzz.app/beebuzzd/internal/admin"
-	"beebuzz.app/beebuzzd/internal/attachment"
-	"beebuzz.app/beebuzzd/internal/auth"
-	"beebuzz.app/beebuzzd/internal/config"
-	"beebuzz.app/beebuzzd/internal/database"
-	"beebuzz.app/beebuzzd/internal/device"
-	"beebuzz.app/beebuzzd/internal/event"
-	"beebuzz.app/beebuzzd/internal/health"
-	"beebuzz.app/beebuzzd/internal/logger"
-	"beebuzz.app/beebuzzd/internal/mailer"
-	"beebuzz.app/beebuzzd/internal/middleware"
-	"beebuzz.app/beebuzzd/internal/migrations"
-	"beebuzz.app/beebuzzd/internal/monitoring"
-	"beebuzz.app/beebuzzd/internal/notification"
-	systemnotifications "beebuzz.app/beebuzzd/internal/system/notifications"
-	"beebuzz.app/beebuzzd/internal/token"
-	"beebuzz.app/beebuzzd/internal/topic"
-	"beebuzz.app/beebuzzd/internal/user"
-	"beebuzz.app/beebuzzd/internal/webhook"
+	"beebuzz.app/beebuzz/internal/admin"
+	"beebuzz.app/beebuzz/internal/attachment"
+	"beebuzz.app/beebuzz/internal/auth"
+	"beebuzz.app/beebuzz/internal/config"
+	"beebuzz.app/beebuzz/internal/database"
+	"beebuzz.app/beebuzz/internal/device"
+	"beebuzz.app/beebuzz/internal/event"
+	"beebuzz.app/beebuzz/internal/health"
+	"beebuzz.app/beebuzz/internal/logger"
+	"beebuzz.app/beebuzz/internal/mailer"
+	"beebuzz.app/beebuzz/internal/middleware"
+	"beebuzz.app/beebuzz/internal/migrations"
+	"beebuzz.app/beebuzz/internal/monitoring"
+	"beebuzz.app/beebuzz/internal/notification"
+	systemnotifications "beebuzz.app/beebuzz/internal/system/notifications"
+	"beebuzz.app/beebuzz/internal/token"
+	"beebuzz.app/beebuzz/internal/topic"
+	"beebuzz.app/beebuzz/internal/user"
+	"beebuzz.app/beebuzz/internal/webhook"
 )
 
 const (
@@ -69,7 +69,7 @@ type appServices struct {
 
 // RunServe bootstraps and runs the HTTP server lifecycle.
 func RunServe(commitHash string) error {
-	version := "beebuzzd@" + commitHash[:min(7, len(commitHash))]
+	version := "beebuzz@" + commitHash[:min(7, len(commitHash))]
 
 	cfg, err := config.Load()
 	if err != nil {

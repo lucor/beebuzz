@@ -121,7 +121,7 @@ BeeBuzz currently publishes CLI binaries for macOS and Linux on `amd64` and `arm
 If you already have Go installed, you can also install the CLI from source:
 
 ```bash
-go install beebuzz.app/beebuzz@latest
+go install beebuzz.app/cli/beebuzz@latest
 ```
 
 ### Connect The CLI

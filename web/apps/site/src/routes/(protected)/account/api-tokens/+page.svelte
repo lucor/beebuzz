@@ -167,7 +167,7 @@
 
 	function buildCliExample(token: string): CodeLine[] {
 		return [
-			{ text: 'go install beebuzz.app/beebuzz@latest', prefix: '$' },
+			{ text: 'go install beebuzz.app/cli/beebuzz@latest', prefix: '$' },
 			{ text: `beebuzz connect --api-token "${token}"`, prefix: '$' },
 			{ text: `beebuzz send "${TEST_NOTIFICATION_TITLE}"`, prefix: '$' }
 		];

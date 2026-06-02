@@ -7,9 +7,9 @@ import (
 	"log/slog"
 	"testing"
 
-	"beebuzz.app/beebuzzd/internal/auth"
-	"beebuzz.app/beebuzzd/internal/testutil"
-	"beebuzz.app/beebuzzd/internal/topic"
+	"beebuzz.app/beebuzz/internal/auth"
+	"beebuzz.app/beebuzz/internal/testutil"
+	"beebuzz.app/beebuzz/internal/topic"
 )
 
 const testAgeRecipient = "age1lnhya3u0lkqlw2txk56ltge6n9gm3p4lj2snmt4yaftwx005wetsmyx0zx"

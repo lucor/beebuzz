@@ -9,7 +9,7 @@ import (
 
 	"github.com/jmoiron/sqlx"
 
-	"beebuzz.app/beebuzzd/internal/core"
+	"beebuzz.app/beebuzz/internal/core"
 )
 
 // DBUser represents a user record from the database.

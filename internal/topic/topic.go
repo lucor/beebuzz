@@ -5,7 +5,7 @@ import (
 	"errors"
 	"time"
 
-	"beebuzz.app/beebuzzd/internal/validator"
+	"beebuzz.app/beebuzz/internal/validator"
 )
 
 // Topic is the DB struct — db tags only, no json tags.

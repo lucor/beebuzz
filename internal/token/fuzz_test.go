@@ -5,7 +5,7 @@ import (
 	"testing"
 	"unicode/utf8"
 
-	"beebuzz.app/beebuzzd/internal/validator"
+	"beebuzz.app/beebuzz/internal/validator"
 )
 
 // FuzzCreateAPITokenRequestValidate verifies that CreateAPITokenRequest.Validate never panics
@@ -19,11 +19,11 @@ func FuzzCreateAPITokenRequestValidate(f *testing.F) {
 	f.Add(strings.Repeat("a", validator.MaxDisplayNameLen+1), strings.Repeat("b", validator.MaxDisplayNameLen+1))
 	f.Add("\x00\xff", "\x00\xff")
 	f.Add("token", strings.Repeat("\u00e9", validator.MaxDisplayNameLen+1))
-	f.Add(strings.Repeat("a", validator.MaxDisplayNameLen+1), "ok")                          // isolated name overflow
-	f.Add(strings.Repeat("é", validator.MaxDisplayNameLen), "")                              // multibyte name exact
-	f.Add(strings.Repeat("é", validator.MaxDisplayNameLen+1), "")                            // multibyte name overflow
-	f.Add("token", strings.Repeat("é", validator.MaxDisplayNameLen))                         // multibyte desc exact (uses MaxDisplayNameLen)
-	f.Add(" ", "")                                                                           // whitespace-only name
+	f.Add(strings.Repeat("a", validator.MaxDisplayNameLen+1), "ok")  // isolated name overflow
+	f.Add(strings.Repeat("é", validator.MaxDisplayNameLen), "")      // multibyte name exact
+	f.Add(strings.Repeat("é", validator.MaxDisplayNameLen+1), "")    // multibyte name overflow
+	f.Add("token", strings.Repeat("é", validator.MaxDisplayNameLen)) // multibyte desc exact (uses MaxDisplayNameLen)
+	f.Add(" ", "")                                                   // whitespace-only name
 
 	f.Fuzz(func(t *testing.T, name, description string) {
 		req := CreateAPITokenRequest{
@@ -61,11 +61,11 @@ func FuzzUpdateAPITokenRequestValidate(f *testing.F) {
 	f.Add(strings.Repeat("a", validator.MaxDisplayNameLen+1), strings.Repeat("b", validator.MaxDisplayNameLen+1))
 	f.Add("\x00\xff", "\x00\xff")
 	f.Add("token", strings.Repeat("\u00e9", validator.MaxDisplayNameLen+1))
-	f.Add(strings.Repeat("a", validator.MaxDisplayNameLen+1), "ok")                          // isolated name overflow
-	f.Add(strings.Repeat("é", validator.MaxDisplayNameLen), "")                              // multibyte name exact
-	f.Add(strings.Repeat("é", validator.MaxDisplayNameLen+1), "")                            // multibyte name overflow
-	f.Add("token", strings.Repeat("é", validator.MaxDisplayNameLen))                         // multibyte desc exact (uses MaxDisplayNameLen)
-	f.Add(" ", "")                                                                           // whitespace-only name
+	f.Add(strings.Repeat("a", validator.MaxDisplayNameLen+1), "ok")  // isolated name overflow
+	f.Add(strings.Repeat("é", validator.MaxDisplayNameLen), "")      // multibyte name exact
+	f.Add(strings.Repeat("é", validator.MaxDisplayNameLen+1), "")    // multibyte name overflow
+	f.Add("token", strings.Repeat("é", validator.MaxDisplayNameLen)) // multibyte desc exact (uses MaxDisplayNameLen)
+	f.Add(" ", "")                                                   // whitespace-only name
 
 	f.Fuzz(func(t *testing.T, name, description string) {
 		req := UpdateAPITokenRequest{

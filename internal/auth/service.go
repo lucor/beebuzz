@@ -7,9 +7,9 @@ import (
 	"strings"
 	"time"
 
-	"beebuzz.app/beebuzzd/internal/core"
-	"beebuzz.app/beebuzzd/internal/mailer"
-	"beebuzz.app/beebuzzd/internal/secure"
+	"beebuzz.app/beebuzz/internal/core"
+	"beebuzz.app/beebuzz/internal/mailer"
+	"beebuzz.app/beebuzz/internal/secure"
 )
 
 const (

@@ -2,7 +2,7 @@
 
 This repo contains the merged BeeBuzz application:
 
-- **Server** (Go) — at the repo root: HTTP API, SQLite, web-push delivery, auth, mailer, admin backend. Module path `beebuzz.app/beebuzzd`, binary `beebuzzd`.
+- **Server** (Go) — at the repo root: HTTP API, SQLite, web-push delivery, auth, mailer, admin backend. Module path `beebuzz.app/beebuzz`, binary `beebuzz`.
 - **Frontend** (SvelteKit pnpm workspace) — under `web/`: `apps/site`, `apps/hive`, `packages/shared`.
 - **Local-dev orchestration** — under `.mise/`: Procfile, Caddyfile, setup-dev.sh, .air.toml.
 
@@ -12,7 +12,7 @@ The two halves share the OpenAPI contract in `docs/openapi.yaml` and ship togeth
 
 - Use `mise` for tooling and task execution. The unified [mise.toml](./mise.toml) at the repo root covers Go, Node, pnpm, air, caddy, goreman, mailpit, and all dev/test/lint/build tasks.
 - Do not edit the legacy reference repo at `~/Developer/beebuzz`; it is the read-only archive of the pre-split monorepo.
-- Module path for the server is the immutable vanity import `beebuzz.app/beebuzzd`. The GitHub repo URL may change; the module path may not.
+- Module path for the server is the immutable vanity import `beebuzz.app/beebuzz`. The GitHub repo URL may change; the module path may not.
 
 ## Commands
 
@@ -33,7 +33,7 @@ Run all commands from the repo root.
 | `mise run check` | Svelte/TypeScript checks |
 | `mise run vuln` | govulncheck |
 | `mise run build` | Compile every Go package and build the frontend |
-| `mise run binary` | Build the `beebuzzd` binary into `./bin` |
+| `mise run binary` | Build the `beebuzz` binary into `./bin` |
 | `mise run quickstart-demo` | Run the end-to-end quickstart demo against the local stack |
 
 ## Package Layout
@@ -67,7 +67,7 @@ Run all commands from the repo root.
 The merged app is tagged **after** `beebuzz-go` SDK is tagged. Order:
 
 1. Tag `beebuzz-go vX.Y.Z` (in the SDK repo).
-2. In this repo: bump `go.mod` to the new SDK tag, run the full pre-release verification pipeline (`mise run setup`, `tidy`, `check`, `test`, `test-race`, `lint`, `vuln`, `build`), then run `releaser release beebuzz` to build and push the server and web images and push a `beebuzzd@<short_sha>` tag.
+2. In this repo: bump `go.mod` to the new SDK tag, run the full pre-release verification pipeline (`mise run setup`, `tidy`, `check`, `test`, `test-race`, `lint`, `vuln`, `build`), then run `releaser release beebuzz` to build and push the server and web images and push a `beebuzz@<date>.<n>-<short_sha>` tag.
 3. Deploy via the image tag produced by `beebuzz-release`. The server does **not** use GoReleaser, and this repo does not assume GitHub CI/release workflows.
 
 Never the reverse.

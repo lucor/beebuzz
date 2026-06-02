@@ -83,10 +83,10 @@ func FuzzSendRequestValidate(f *testing.F) {
 	f.Add("Title", "Body", "invalid", "not-a-url")
 	f.Add(strings.Repeat("t", MaxNotificationTitleLen+1), strings.Repeat("b", MaxNotificationBodyLen+1), "normal", "http://example.com")
 	f.Add("\x00", "\xff", "\x00", "ftp://evil.com")
-	f.Add("", "Body", "", "")                                    // isolated empty title
-	f.Add("Title", "", "", "")                                   // isolated empty body
-	f.Add("Title", "Body", "normal", "")                         // valid priority, no attachment
-	f.Add("Title", "Body", "", "https://example.com/image.png")  // empty priority (valid), with attachment
+	f.Add("", "Body", "", "")                                   // isolated empty title
+	f.Add("Title", "", "", "")                                  // isolated empty body
+	f.Add("Title", "Body", "normal", "")                        // valid priority, no attachment
+	f.Add("Title", "Body", "", "https://example.com/image.png") // empty priority (valid), with attachment
 	f.Add("Title", "Body", "high", "https://127.0.0.1/img.png") // loopback attachment URL
 	f.Add("Title", "Body", "high", "https://[::1]/img.png")     // IPv6 loopback attachment
 	f.Add("Title", "Body", "high", "https://8.8.8.8/img.png")   // public IP attachment

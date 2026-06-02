@@ -32,11 +32,11 @@ func FuzzVerify(f *testing.F) {
 	f.Add("beebuzz_api_token", "deadbeef")
 	f.Add("\x00\xff", "not-a-hash")
 	f.Add(strings.Repeat("x", 10000), strings.Repeat("f", 64))
-	f.Add("abc", "")                       // empty hash
-	f.Add("abc", strings.Repeat("a", 63))  // off-by-one short
-	f.Add("abc", strings.Repeat("a", 65))  // off-by-one long
+	f.Add("abc", "")                           // empty hash
+	f.Add("abc", strings.Repeat("a", 63))      // off-by-one short
+	f.Add("abc", strings.Repeat("a", 65))      // off-by-one long
 	f.Add("abc", strings.ToUpper(Hash("abc"))) // uppercase hex (case sensitivity)
-	f.Add("abc", Hash("abd"))              // same shape, wrong content
+	f.Add("abc", Hash("abd"))                  // same shape, wrong content
 
 	f.Fuzz(func(t *testing.T, token, hash string) {
 		// Must never panic.

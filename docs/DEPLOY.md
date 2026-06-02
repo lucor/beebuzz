@@ -14,8 +14,8 @@ BeeBuzz production uses two containers built by `beebuzz-release`:
 
 | Service | Image | Role |
 |---|---|---|
-| `api` | `${REGISTRY_HOST}/${REGISTRY_OWNER}/beebuzzd:<short_sha>` | Go backend, SQLite, push delivery, auth, webhooks |
-| `web` | `${REGISTRY_HOST}/${REGISTRY_OWNER}/beebuzz-web:<short_sha>` | Caddy edge, static site, static Hive app, reverse proxy to `api` |
+| `api` | `${REGISTRY_HOST}/${REGISTRY_OWNER}/beebuzz:<release_version>` | Go backend, SQLite, push delivery, auth, webhooks |
+| `web` | `${REGISTRY_HOST}/${REGISTRY_OWNER}/beebuzz-web:<release_version>` | Caddy edge, static site, static Hive app, reverse proxy to `api` |
 
 ## Domains
 
@@ -31,9 +31,9 @@ The `web` container handles `{domain}` (main site), `hive.{domain}` (Hive app), 
 
 ## Release Process
 
-`beebuzzd` uses an on-demand release model driven by the `beebuzz-release` tool. There are no GitHub CI or release workflows assumed by this repo.
+`beebuzz` uses an on-demand release model driven by the `beebuzz-release` tool. There are no GitHub CI or release workflows assumed by this repo.
 
-The release tool guards that the working tree is clean, the current branch is `main`, and local `main` is not behind `origin/main`. It then builds and pushes both Podman images, creates the forge release, and pushes a `beebuzzd@<short_sha>` tag.
+The release tool guards that the working tree is clean, the current branch is `main`, and local `main` is not behind `origin/main`. It then creates and pushes a `beebuzz@YYYY.MM.DD.N-SHORTSHA` tag, builds and pushes the selected Podman images, and creates the forge release.
 
 Manual verification must happen before invoking the release tool. This is the same gate that would otherwise run in CI:
 
@@ -64,8 +64,8 @@ The tool previews the tag and commits since the last release, then prompts for c
 - web Dockerfile: `deploy/web.Dockerfile`
 - Caddy config: `deploy/Caddyfile`
 - tags:
-  - `${REGISTRY_HOST}/${REGISTRY_OWNER}/beebuzzd:<short_sha>`
-  - `${REGISTRY_HOST}/${REGISTRY_OWNER}/beebuzz-web:<short_sha>`
+  - `${REGISTRY_HOST}/${REGISTRY_OWNER}/beebuzz:<release_version>`
+  - `${REGISTRY_HOST}/${REGISTRY_OWNER}/beebuzz-web:<release_version>`
 
 Server build args:
 

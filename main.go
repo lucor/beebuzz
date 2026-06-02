@@ -6,7 +6,7 @@ import (
 	"io"
 	"os"
 
-	"beebuzz.app/beebuzzd/internal/server"
+	"beebuzz.app/beebuzz/internal/server"
 )
 
 // commitHash is set at build time via -ldflags "-X main.commitHash=<commit-sha>".

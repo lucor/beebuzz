@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
+	"beebuzz.app/beebuzz/internal/testutil"
 	"github.com/jmoiron/sqlx"
-	"beebuzz.app/beebuzzd/internal/testutil"
 )
 
 // seedUser inserts a minimal user row so FK constraints pass.
@@ -255,7 +255,7 @@ func TestDayStartMs(t *testing.T) {
 func TestToAccountUsageResponseIncludesSourceBreakdown(t *testing.T) {
 	summaryDay := time.Date(2026, 4, 17, 0, 0, 0, 0, time.UTC)
 	fromMs := summaryDay.UnixMilli()
-	toMs := summaryDay.Add(24*time.Hour).UnixMilli()
+	toMs := summaryDay.Add(24 * time.Hour).UnixMilli()
 
 	resp := ToAccountUsageResponse(
 		[]DailyUsageSummary{

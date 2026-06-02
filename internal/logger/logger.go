@@ -5,7 +5,7 @@ import (
 	"log/slog"
 	"os"
 
-	"beebuzz.app/beebuzzd/internal/config"
+	"beebuzz.app/beebuzz/internal/config"
 )
 
 // New creates and returns a configured slog.Logger based on environment.

@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"beebuzz.app/beebuzzd/internal/secure"
-	"beebuzz.app/beebuzzd/internal/testutil"
+	"beebuzz.app/beebuzz/internal/secure"
+	"beebuzz.app/beebuzz/internal/testutil"
 )
 
 func newCleanupTestService(t *testing.T) (*Repository, *Service, *User, context.Context) {

@@ -9,11 +9,11 @@ import (
 	"testing"
 	"time"
 
-	"beebuzz.app/beebuzzd/internal/auth"
-	"beebuzz.app/beebuzzd/internal/push"
-	"beebuzz.app/beebuzzd/internal/secure"
-	"beebuzz.app/beebuzzd/internal/testutil"
-	"beebuzz.app/beebuzzd/internal/topic"
+	"beebuzz.app/beebuzz/internal/auth"
+	"beebuzz.app/beebuzz/internal/push"
+	"beebuzz.app/beebuzz/internal/secure"
+	"beebuzz.app/beebuzz/internal/testutil"
+	"beebuzz.app/beebuzz/internal/topic"
 )
 
 func newTestService() *Service {

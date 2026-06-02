@@ -1,5 +1,6 @@
 {$BEEBUZZ_DOMAIN} {
 	tls .mise/certs/fullchain.pem .mise/certs/privkey.pem
+
 	reverse_proxy localhost:5173
 }
 

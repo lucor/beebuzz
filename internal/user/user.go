@@ -4,7 +4,7 @@ package user
 import (
 	"time"
 
-	"beebuzz.app/beebuzzd/internal/core"
+	"beebuzz.app/beebuzz/internal/core"
 )
 
 type User struct {

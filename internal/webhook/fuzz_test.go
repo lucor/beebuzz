@@ -5,7 +5,7 @@ import (
 	"testing"
 	"unicode/utf8"
 
-	"beebuzz.app/beebuzzd/internal/validator"
+	"beebuzz.app/beebuzz/internal/validator"
 )
 
 // FuzzExtractPayloadBeebuzz verifies that extractPayload with the standard payload type

@@ -15,15 +15,15 @@ import (
 
 	"github.com/jmoiron/sqlx"
 
-	"beebuzz.app/beebuzzd/internal/attachment"
-	"beebuzz.app/beebuzzd/internal/auth"
-	"beebuzz.app/beebuzzd/internal/core"
-	"beebuzz.app/beebuzzd/internal/device"
-	"beebuzz.app/beebuzzd/internal/middleware"
-	"beebuzz.app/beebuzzd/internal/secure"
-	"beebuzz.app/beebuzzd/internal/testutil"
-	"beebuzz.app/beebuzzd/internal/token"
-	"beebuzz.app/beebuzzd/internal/topic"
+	"beebuzz.app/beebuzz/internal/attachment"
+	"beebuzz.app/beebuzz/internal/auth"
+	"beebuzz.app/beebuzz/internal/core"
+	"beebuzz.app/beebuzz/internal/device"
+	"beebuzz.app/beebuzz/internal/middleware"
+	"beebuzz.app/beebuzz/internal/secure"
+	"beebuzz.app/beebuzz/internal/testutil"
+	"beebuzz.app/beebuzz/internal/token"
+	"beebuzz.app/beebuzz/internal/topic"
 )
 
 const testAgeRecipient = "age1seaxfh0rsf6z4y0j2rc0h6j8x0nafpdkttkjxc3a3ka7r3y49g7s6sn0ur"

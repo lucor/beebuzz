@@ -7,9 +7,9 @@ import (
 	"io"
 	"log/slog"
 
-	"beebuzz.app/beebuzzd/internal/device"
-	"beebuzz.app/beebuzzd/internal/push"
-	"beebuzz.app/beebuzzd/internal/validator"
+	"beebuzz.app/beebuzz/internal/device"
+	"beebuzz.app/beebuzz/internal/push"
+	"beebuzz.app/beebuzz/internal/validator"
 )
 
 const (

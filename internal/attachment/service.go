@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"beebuzz.app/beebuzzd/internal/core"
+	"beebuzz.app/beebuzz/internal/core"
 )
 
 const (

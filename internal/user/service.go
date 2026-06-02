@@ -16,4 +16,3 @@ func NewService(repo *Repository) *Service {
 func (s *Service) GetMe(ctx context.Context, userID string) (*User, error) {
 	return s.repo.GetByID(ctx, userID)
 }
-

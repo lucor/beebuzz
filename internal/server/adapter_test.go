@@ -9,10 +9,10 @@ import (
 	"testing"
 	"time"
 
-	"beebuzz.app/beebuzzd/internal/auth"
-	"beebuzz.app/beebuzzd/internal/core"
-	"beebuzz.app/beebuzzd/internal/secure"
-	"beebuzz.app/beebuzzd/internal/testutil"
+	"beebuzz.app/beebuzz/internal/auth"
+	"beebuzz.app/beebuzz/internal/core"
+	"beebuzz.app/beebuzz/internal/secure"
+	"beebuzz.app/beebuzz/internal/testutil"
 )
 
 // TestSessionValidatorAdapterStaleSession verifies stale sessions do not panic in the adapter.

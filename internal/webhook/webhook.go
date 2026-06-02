@@ -8,8 +8,8 @@ import (
 	"log/slog"
 	"time"
 
-	"beebuzz.app/beebuzzd/internal/push"
-	"beebuzz.app/beebuzzd/internal/validator"
+	"beebuzz.app/beebuzz/internal/push"
+	"beebuzz.app/beebuzz/internal/validator"
 )
 
 // PayloadType identifies how a webhook payload should be parsed.

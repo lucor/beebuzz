@@ -5,8 +5,8 @@ import (
 	"log/slog"
 	"net/http"
 
-	"beebuzz.app/beebuzzd/internal/core"
-	"beebuzz.app/beebuzzd/internal/middleware"
+	"beebuzz.app/beebuzz/internal/core"
+	"beebuzz.app/beebuzz/internal/middleware"
 )
 
 // Handler handles auth HTTP requests.

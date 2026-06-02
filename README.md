@@ -84,7 +84,7 @@ Install the CLI from the [latest release](https://codeberg.org/beebuzz/beebuzz-c
 or with Go:
 
 ```bash
-go install beebuzz.app/beebuzz@latest
+go install beebuzz.app/cli/beebuzz@latest
 ```
 
 Then connect the CLI and send an encrypted notification:

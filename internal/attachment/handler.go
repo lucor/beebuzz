@@ -6,7 +6,7 @@ import (
 	"log/slog"
 	"net/http"
 
-	"beebuzz.app/beebuzzd/internal/core"
+	"beebuzz.app/beebuzz/internal/core"
 )
 
 // Handler handles attachment HTTP requests.

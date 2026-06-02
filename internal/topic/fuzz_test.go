@@ -5,7 +5,7 @@ import (
 	"testing"
 	"unicode/utf8"
 
-	"beebuzz.app/beebuzzd/internal/validator"
+	"beebuzz.app/beebuzz/internal/validator"
 )
 
 // FuzzCreateTopicRequestValidate verifies that CreateTopicRequest.Validate never panics
@@ -24,13 +24,13 @@ func FuzzCreateTopicRequestValidate(f *testing.F) {
 	f.Add("topic", "Unicode: \u00e9\u00e0\u00fc\u00f1")
 	f.Add("z", strings.Repeat("\u00e9", validator.MaxDescriptionLen))
 	f.Add("z", strings.Repeat("\u00e9", validator.MaxDescriptionLen+1))
-	f.Add("a", "")                            // minimal valid name
-	f.Add(strings.Repeat("a", 32), "")        // exact max length
-	f.Add("a"+strings.Repeat("0", 31), "")    // max length with digits
-	f.Add("a"+strings.Repeat("_", 31), "")    // max length with underscores
-	f.Add("_alerts", "desc")                   // invalid first char: underscore
-	f.Add("1alerts", "desc")                   // invalid first char: digit
-	f.Add("aA", "desc")                        // invalid uppercase tail
+	f.Add("a", "")                         // minimal valid name
+	f.Add(strings.Repeat("a", 32), "")     // exact max length
+	f.Add("a"+strings.Repeat("0", 31), "") // max length with digits
+	f.Add("a"+strings.Repeat("_", 31), "") // max length with underscores
+	f.Add("_alerts", "desc")               // invalid first char: underscore
+	f.Add("1alerts", "desc")               // invalid first char: digit
+	f.Add("aA", "desc")                    // invalid uppercase tail
 
 	f.Fuzz(func(t *testing.T, name, description string) {
 		req := CreateTopicRequest{
@@ -58,7 +58,7 @@ func FuzzUpdateTopicRequestValidate(f *testing.F) {
 	f.Add("Updated description")
 	f.Add(strings.Repeat("b", validator.MaxDescriptionLen))
 	f.Add(strings.Repeat("b", validator.MaxDescriptionLen+1))
-	f.Add(strings.Repeat("\u00e9", validator.MaxDescriptionLen))   // multibyte exact boundary
+	f.Add(strings.Repeat("\u00e9", validator.MaxDescriptionLen)) // multibyte exact boundary
 	f.Add(strings.Repeat("\u00e9", validator.MaxDescriptionLen+1))
 	f.Add("\x00\xff\xfe")
 

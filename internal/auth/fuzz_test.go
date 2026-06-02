@@ -12,13 +12,13 @@ func FuzzLoginRequestValidate(f *testing.F) {
 	f.Add("", "", "")
 	f.Add("user@example.com", "", "reason")
 	f.Add("not-email", "state", "")
-	f.Add(strings.Repeat("a", 1000) + "@example.com", strings.Repeat("b", 1000), "")
+	f.Add(strings.Repeat("a", 1000)+"@example.com", strings.Repeat("b", 1000), "")
 	f.Add("\x00@\x00", "\xff", "")
 	f.Add("日本語@example.com", "state", "reason")
-	f.Add("", "state123", "")                                 // isolated empty email
-	f.Add("user@", "state123", "")                            // missing domain
-	f.Add("@example.com", "state123", "")                     // missing local part
-	f.Add("user+tag@example.com", "state123", "reason")       // valid tagged address
+	f.Add("", "state123", "")                                  // isolated empty email
+	f.Add("user@", "state123", "")                             // missing domain
+	f.Add("@example.com", "state123", "")                      // missing local part
+	f.Add("user+tag@example.com", "state123", "reason")        // valid tagged address
 	f.Add("\"Alice Example\" <user@example.com>", "state", "") // display-name form
 
 	f.Fuzz(func(t *testing.T, email, state, reason string) {

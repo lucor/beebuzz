@@ -6,8 +6,8 @@ import (
 	"log/slog"
 	"net/http"
 
-	"beebuzz.app/beebuzzd/internal/core"
-	"beebuzz.app/beebuzzd/internal/middleware"
+	"beebuzz.app/beebuzz/internal/core"
+	"beebuzz.app/beebuzz/internal/middleware"
 )
 
 const maxWebhookBodyBytes = 64 * 1024 // 64 KB
