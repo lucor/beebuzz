@@ -76,7 +76,7 @@ Shared engineering rules for contributors and coding agents.
 
 - Do not introduce deprecated symbols in new code. Migrate existing usages when they are flagged.
 - Frontend: `@typescript-eslint/no-deprecated` is enabled as a warning in the shared ESLint config and will surface deprecated APIs at lint time.
-- Backend: `staticcheck` runs in CI and catches `SA1019` (using deprecated stdlib symbols). Project-internal deprecations must use a `// Deprecated: <reason> <alternative>` comment; removal is enforced by code review.
+- Backend: `staticcheck` catches `SA1019` (using deprecated stdlib symbols) during manual verification. Project-internal deprecations must use a `// Deprecated: <reason> <alternative>` comment; removal is enforced by code review.
 
 ## Frontend Verification
 

@@ -46,8 +46,7 @@ Run all commands from the repo root.
 - `web/apps/hive` — Hive PWA receiver
 - `web/packages/shared` — shared frontend API clients, stores, services, components, types, assets
 - `docs/` — server docs (`openapi.yaml`, `DEPLOY.md`, `STYLE.md`, etc.)
-- `deploy/server.Dockerfile` — server container image
-- `.release.toml` — release configuration read by `beebuzz-release`
+- `deploy/server.Dockerfile`, `deploy/web.Dockerfile`, `deploy/Caddyfile` — production images built by `beebuzz-release`
 - `scripts/quickstart-demo.sh` — full-stack demo recorder
 - `.mise/` — local-dev orchestration (Procfile, Caddyfile, setup-dev.sh, .air.toml)
 
@@ -68,7 +67,7 @@ Run all commands from the repo root.
 The merged app is tagged **after** `beebuzz-go` SDK is tagged. Order:
 
 1. Tag `beebuzz-go vX.Y.Z` (in the SDK repo).
-2. In this repo: bump `go.mod` to the new SDK tag, verify, run `releaser release` to push a `beebuzzd@<short_sha>` tag.
-3. Deploy via Docker (SHA tags) — the server does **not** use GoReleaser. The frontend ships in a separate container alongside (see `deploy/`).
+2. In this repo: bump `go.mod` to the new SDK tag, run the full pre-release verification pipeline (`mise run setup`, `tidy`, `check`, `test`, `test-race`, `lint`, `vuln`, `build`), then run `releaser release beebuzz` to build and push the server and web images and push a `beebuzzd@<short_sha>` tag.
+3. Deploy via the image tag produced by `beebuzz-release`. The server does **not** use GoReleaser, and this repo does not assume GitHub CI/release workflows.
 
 Never the reverse.

@@ -1,4 +1,4 @@
-import { fetchBlob } from '@beebuzz/shared/api';
+import { fetchBlob } from '@beebuzz/shared/api/client';
 import { decryptBinary } from '$lib/services/encryption';
 
 // In-memory cache for decrypted attachments (survives navigation within session)

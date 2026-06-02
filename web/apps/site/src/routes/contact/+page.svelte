@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import { Shield, MessageSquare, ScrollText } from '@lucide/svelte';
+	import { isSaasMode } from '$lib/config/deployment';
 
 	const CONTACT_EMAIL = 'support@beebuzz.app';
 	const ISSUES_URL = 'https://github.com/beebuzz-hive/beebuzz/issues';
@@ -90,11 +91,13 @@
 				{CONTACT_EMAIL}
 			</a>
 		</p>
-		<p class="mt-4 text-base leading-7 text-base-content/75">
-			Looking for our privacy policy or terms instead?
-			<a href={resolve('/policies')} class="underline hover:text-base-content"
-				>Open the policies page</a
-			>.
-		</p>
+		{#if isSaasMode}
+			<p class="mt-4 text-base leading-7 text-base-content/75">
+				Looking for our privacy policy or terms instead?
+				<a href={resolve('/policies')} class="underline hover:text-base-content"
+					>Open the policies page</a
+				>.
+			</p>
+		{/if}
 	</section>
 </div>

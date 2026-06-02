@@ -34,6 +34,17 @@ else
   echo "[setup] VAPID keys already present"
 fi
 
+# --- Keep frontend domain env in sync for existing .env files ---
+BEEBUZZ_DOMAIN=$(grep "^BEEBUZZ_DOMAIN=" .env 2>/dev/null | cut -d= -f2 || echo "")
+VITE_DOMAIN=$(grep "^VITE_BEEBUZZ_DOMAIN=" .env 2>/dev/null | cut -d= -f2 || echo "")
+
+if [ -n "$BEEBUZZ_DOMAIN" ] && [ -z "$VITE_DOMAIN" ]; then
+  echo "VITE_BEEBUZZ_DOMAIN=${BEEBUZZ_DOMAIN}" >> .env
+  echo "[setup] Set VITE_BEEBUZZ_DOMAIN=${BEEBUZZ_DOMAIN} in .env"
+else
+  echo "[setup] VITE_BEEBUZZ_DOMAIN=${VITE_DOMAIN:-<unset>}"
+fi
+
 # --- Prompt for bootstrap admin email if missing ---
 BOOTSTRAP_EMAIL=$(grep "^BEEBUZZ_BOOTSTRAP_ADMIN_EMAIL=" .env 2>/dev/null | cut -d= -f2 || echo "")
 DEFAULT_ADMIN_EMAIL="admin@beebuzz.local"

@@ -5,16 +5,17 @@ Reference document for the current production deployment model.
 ## How To Use This Doc
 
 - Canonical for production topology, required runtime configuration, container responsibilities, and deploy-time assumptions.
-- Read this when changing Dockerfiles, CI deploy flow, runtime env vars, or public host routing.
+- Read this when changing Dockerfiles, release tooling, runtime env vars, or public host routing.
 - Update this doc when deployment behavior, required environment variables, or hosting assumptions change.
 
 ## Architecture
 
-`beebuzzd` runs as a single container:
+BeeBuzz production uses two containers built by `beebuzz-release`:
 
 | Service | Image | Role |
 |---|---|---|
-| `api` | `${REGISTRY_HOST}/${REGISTRY_OWNER}/beebuzzd:server` | Go backend, SQLite, push delivery, auth, webhooks |
+| `api` | `${REGISTRY_HOST}/${REGISTRY_OWNER}/beebuzzd:<short_sha>` | Go backend, SQLite, push delivery, auth, webhooks |
+| `web` | `${REGISTRY_HOST}/${REGISTRY_OWNER}/beebuzz-web:<short_sha>` | Caddy edge, static site, static Hive app, reverse proxy to `api` |
 
 ## Domains
 
@@ -26,26 +27,72 @@ The server handles these subdomains derived from `BEEBUZZ_DOMAIN`:
 | `push.{domain}` | push API host |
 | `hook.{domain}` | webhook host |
 
-The frontend (`web/` repo) handles `{domain}` (main site) and `hive.{domain}` (Hive app).
+The `web` container handles `{domain}` (main site), `hive.{domain}` (Hive app), and reverse-proxies `api.{domain}`, `push.{domain}`, and `hook.{domain}` to the `api` container on port `8899`.
 
 ## Release Process
 
-`beebuzzd` uses an on-demand, tag-driven release model. Deployment happens when a `beebuzzd@<short_sha>` tag is pushed.
+`beebuzzd` uses an on-demand release model driven by the `beebuzz-release` tool. There are no GitHub CI or release workflows assumed by this repo.
+
+The release tool guards that the working tree is clean, the current branch is `main`, and local `main` is not behind `origin/main`. It then builds and pushes both Podman images, creates the forge release, and pushes a `beebuzzd@<short_sha>` tag.
+
+Manual verification must happen before invoking the release tool. This is the same gate that would otherwise run in CI:
+
+```bash
+mise run setup
+mise run tidy
+mise run check
+mise run test
+mise run test-race
+mise run lint
+mise run vuln
+mise run build
+```
 
 ### How to release
 
 ```bash
-releaser release
+releaser release beebuzz
 ```
 
-The tool previews the tag and commits since the last release, then prompts for confirmation before building the image, creating the forge release, and pushing the tag.
+The tool previews the tag and commits since the last release, then prompts for confirmation before building and pushing both images, creating the forge release, and pushing the tag.
 
-## Image Build
+## Image Builds
 
-- Dockerfile: `deploy/server.Dockerfile`
+- build tool: `podman`
+- platform: `linux/amd64`
+- server Dockerfile: `deploy/server.Dockerfile`
+- web Dockerfile: `deploy/web.Dockerfile`
+- Caddy config: `deploy/Caddyfile`
 - tags:
-  - `${REGISTRY_HOST}/${REGISTRY_OWNER}/beebuzzd:server`
-  - `${REGISTRY_HOST}/${REGISTRY_OWNER}/beebuzzd:server-<short_sha>`
+  - `${REGISTRY_HOST}/${REGISTRY_OWNER}/beebuzzd:<short_sha>`
+  - `${REGISTRY_HOST}/${REGISTRY_OWNER}/beebuzz-web:<short_sha>`
+
+Server build args:
+
+| Variable | Purpose |
+|---|---|
+| `COMMIT_SHA` | Set by `beebuzz-release`; used for health/version metadata |
+
+Web build args:
+
+| Variable | Purpose |
+|---|---|
+| `VITE_BEEBUZZ_DOMAIN` | Set from `BEEBUZZ_DOMAIN`; public app domain |
+| `VITE_BEEBUZZ_DEBUG` | Set to `false` by release config |
+| `VITE_BEEBUZZ_DEPLOYMENT_MODE` | Set to `saas` by release config |
+
+The release configuration is embedded in `beebuzz-release` as the `beebuzz` repo config, not stored in this repo as `.release.toml`.
+
+Required release-time env vars:
+
+| Variable | Purpose |
+|---|---|
+| `FORGE_HOST` | Forgejo/Gitea instance hostname |
+| `FORGE_OWNER` | Forge organization or user |
+| `FORGE_TOKEN` | Token used to create the release |
+| `BEEBUZZ_DOMAIN` | Public BeeBuzz domain used to build and route the web image |
+| `REGISTRY_HOST` | Container registry hostname |
+| `REGISTRY_OWNER` | Registry image owner |
 
 ## Runtime Server Configuration
 
@@ -80,7 +127,7 @@ Generate a fresh keypair with:
 beebuzzd vapid generate
 ```
 
-`vapid generate` prints the private key to stdout. Treat the output as a secret and do not paste it into shared CI logs or terminal recordings.
+`vapid generate` prints the private key to stdout. Treat the output as a secret and do not paste it into shared logs or terminal recordings.
 
 ## First Admin Bootstrap
 
@@ -124,6 +171,6 @@ The server image uses `beebuzzd healthcheck`, which checks the backend `/health`
 If you change any of the following, update the relevant section of this document in the same task:
 
 - add, remove, or rename a server environment variable in `internal/config/config.go`
-- change the server Dockerfile in `deploy/`
+- change a Dockerfile or Caddyfile in `deploy/`
 - change the `beebuzzd` subcommands (e.g., `serve`, `healthcheck`, `vapid generate`)
 - change persistence paths or health check behavior
