@@ -1,6 +1,6 @@
 # BeeBuzz Web Agent Guide
 
-This is the frontend subdirectory of the merged `beebuzz` app repo. It is a pnpm workspace:
+This is the frontend subdirectory of the `beebuzz` app repo. It is a pnpm workspace:
 
 - `apps/site`: public site, account UI, admin UI, and docs
 - `apps/hive`: Hive PWA
@@ -11,7 +11,6 @@ This is the frontend subdirectory of the merged `beebuzz` app repo. It is a pnpm
 - This is **not** a standalone repo. All tasks (setup, dev, test, lint, build) are defined in the unified `mise.toml` at the parent repo root and must be invoked from there. See [../AGENTS.md](../AGENTS.md) for the full task list.
 - Use `pnpm` for frontend work. Do not use `npm` or `bun`.
 - Keep `pnpm-lock.yaml` here as the only package lock.
-- Do not edit the legacy reference repo at `~/Developer/beebuzz`; it is the read-only archive of the pre-split monorepo.
 
 ## Commands (run from the parent repo root)
 

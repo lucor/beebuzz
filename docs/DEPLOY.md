@@ -15,7 +15,7 @@ BeeBuzz production uses two containers built by `beebuzz-release`:
 | Service | Image | Role |
 |---|---|---|
 | `api` | `${REGISTRY_HOST}/${REGISTRY_OWNER}/beebuzz:<release_version>` | Go backend, SQLite, push delivery, auth, webhooks |
-| `web` | `${REGISTRY_HOST}/${REGISTRY_OWNER}/beebuzz-web:<release_version>` | Caddy edge, static site, static Hive app, reverse proxy to `api` |
+| `web` | `${REGISTRY_HOST}/${REGISTRY_OWNER}/beebuzz-web:<release_version>` | Caddy edge, static site, static Hive app, vanity Go import redirects |
 
 ## Domains
 
@@ -27,7 +27,7 @@ The server handles these subdomains derived from `BEEBUZZ_DOMAIN`:
 | `push.{domain}` | push API host |
 | `hook.{domain}` | webhook host |
 
-The `web` container handles `{domain}` (main site), `hive.{domain}` (Hive app), and reverse-proxies `api.{domain}`, `push.{domain}`, and `hook.{domain}` to the `api` container on port `8899`.
+The `web` container handles `{domain}` (main site) and `hive.{domain}` (Hive app). `api.{domain}`, `push.{domain}`, and `hook.{domain}` are routed directly to the `api` container by the upstream reverse proxy (e.g. Dokploy/Traefik).
 
 ## Release Process
 

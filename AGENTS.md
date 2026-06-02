@@ -1,18 +1,17 @@
 # BeeBuzz App Agent Guide
 
-This repo contains the merged BeeBuzz application:
+This repo contains the BeeBuzz application:
 
 - **Server** (Go) — at the repo root: HTTP API, SQLite, web-push delivery, auth, mailer, admin backend. Module path `beebuzz.app/beebuzz`, binary `beebuzz`.
 - **Frontend** (SvelteKit pnpm workspace) — under `web/`: `apps/site`, `apps/hive`, `packages/shared`.
 - **Local-dev orchestration** — under `.mise/`: Procfile, Caddyfile, setup-dev.sh, .air.toml.
 
-The two halves share the OpenAPI contract in `docs/openapi.yaml` and ship together. They are intentionally NOT split across repos — see `PLAN.md` Step 4 in the workspace root for the reasoning.
+The backend and frontend share the OpenAPI contract in `docs/openapi.yaml` and ship together as a single deployable unit.
 
 ## Local Rules
 
 - Use `mise` for tooling and task execution. The unified [mise.toml](./mise.toml) at the repo root covers Go, Node, pnpm, air, caddy, goreman, mailpit, and all dev/test/lint/build tasks.
-- Do not edit the legacy reference repo at `~/Developer/beebuzz`; it is the read-only archive of the pre-split monorepo.
-- Module path for the server is the immutable vanity import `beebuzz.app/beebuzz`. The GitHub repo URL may change; the module path may not.
+- Module path for the server is the immutable vanity import `beebuzz.app/beebuzz`. The repository URL may change; the module path may not.
 
 ## Commands
 
@@ -64,7 +63,7 @@ Run all commands from the repo root.
 
 ## Release Workflow
 
-The merged app is tagged **after** `beebuzz-go` SDK is tagged. Order:
+The app is tagged **after** `beebuzz-go` SDK is tagged. Order:
 
 1. Tag `beebuzz-go vX.Y.Z` (in the SDK repo).
 2. In this repo: bump `go.mod` to the new SDK tag, run the full pre-release verification pipeline (`mise run setup`, `tidy`, `check`, `test`, `test-race`, `lint`, `vuln`, `build`), then run `releaser release beebuzz` to build and push the server and web images and push a `beebuzz@<date>.<n>-<short_sha>` tag.

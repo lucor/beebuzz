@@ -96,18 +96,4 @@ HTML 200
 		file_server
 	}
 
-	@api host api.{$BEEBUZZ_DOMAIN}
-	handle @api {
-		reverse_proxy api:8899
-	}
-
-	@push host push.{$BEEBUZZ_DOMAIN}
-	handle @push {
-		reverse_proxy api:8899
-	}
-
-	@hook host hook.{$BEEBUZZ_DOMAIN}
-	handle @hook {
-		reverse_proxy api:8899
-	}
 }
