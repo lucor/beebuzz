@@ -5,7 +5,7 @@ import (
 	"testing"
 	"unicode/utf8"
 
-	"lucor.dev/beebuzz/internal/validator"
+	"beebuzz.app/beebuzzd/internal/validator"
 )
 
 // FuzzPairRequestValidate verifies that PairRequest.Validate never panics

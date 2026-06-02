@@ -11,10 +11,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"lucor.dev/beebuzz/internal/core"
-	"lucor.dev/beebuzz/internal/middleware"
-	"lucor.dev/beebuzz/internal/push"
-	"lucor.dev/beebuzz/internal/validator"
+	"beebuzz.app/beebuzzd/internal/core"
+	"beebuzz.app/beebuzzd/internal/middleware"
+	"beebuzz.app/beebuzzd/internal/push"
+	"beebuzz.app/beebuzzd/internal/validator"
 )
 
 const (
@@ -105,7 +105,7 @@ func (h *Handler) Send(w http.ResponseWriter, r *http.Request) {
 	}
 
 	input.TopicName = topicName
-	if strings.HasPrefix(r.Header.Get("User-Agent"), core.CLIUserAgentPrefix) {
+	if strings.HasPrefix(r.Header.Get("User-Agent"), cliUserAgentPrefix) {
 		input.Source = SourceCLI
 	} else {
 		input.Source = SourceAPI

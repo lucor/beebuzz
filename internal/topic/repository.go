@@ -9,7 +9,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
-	"lucor.dev/beebuzz/internal/database"
+	"beebuzz.app/beebuzzd/internal/database"
 )
 
 // Repository provides data access for the topic domain.

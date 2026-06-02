@@ -9,7 +9,7 @@ import (
 
 	"golang.org/x/crypto/blake2b"
 
-	"lucor.dev/beebuzz/internal/core"
+	"beebuzz.app/beebuzzd/internal/core"
 )
 
 type hashedIPCtxKey struct{}

@@ -7,9 +7,9 @@ import (
 	"log/slog"
 	"testing"
 
-	"lucor.dev/beebuzz/internal/auth"
-	"lucor.dev/beebuzz/internal/testutil"
-	"lucor.dev/beebuzz/internal/topic"
+	"beebuzz.app/beebuzzd/internal/auth"
+	"beebuzz.app/beebuzzd/internal/testutil"
+	"beebuzz.app/beebuzzd/internal/topic"
 )
 
 const testAgeRecipient = "age1lnhya3u0lkqlw2txk56ltge6n9gm3p4lj2snmt4yaftwx005wetsmyx0zx"

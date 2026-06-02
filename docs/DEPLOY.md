@@ -130,7 +130,7 @@ Derived values such as API URL, Hive URL, Push URL, Hook URL, cookie domain, and
 Generate a fresh keypair with:
 
 ```bash
-beebuzz-server vapid generate
+beebuzzd vapid generate
 ```
 
 `vapid generate` prints the private key to stdout. Treat the output as a secret and do not paste it into shared CI logs or terminal recordings.
@@ -147,12 +147,12 @@ The bootstrap email also bypasses private-beta waitlist gating.
 
 ## Server Commands
 
-`beebuzz-server` requires an explicit subcommand:
+`beebuzzd` requires an explicit subcommand:
 
 ```bash
-beebuzz-server serve
-beebuzz-server healthcheck
-beebuzz-server vapid generate
+beebuzzd serve
+beebuzzd healthcheck
+beebuzzd vapid generate
 ```
 
 Containers and orchestrators should invoke `serve` explicitly and use `healthcheck` for container health probes.
@@ -184,7 +184,7 @@ Caddy also owns:
 
 ## Health Checks
 
-The server image uses `beebuzz-server healthcheck`, which checks the backend `/health` endpoint.
+The server image uses `beebuzzd healthcheck`, which checks the backend `/health` endpoint.
 
 The `api` service should expose a healthcheck, and any dependent `web` service should wait for the API to become healthy before serving traffic.
 
@@ -207,5 +207,5 @@ If you change any of the following, update the relevant section of this document
 - add or change a build-time `VITE_` variable
 - change Dockerfiles in `deploy/`
 - change the Caddyfile routing or domain structure
-- change the `beebuzz-server` subcommands (e.g., `serve`, `healthcheck`, `vapid generate`)
+- change the `beebuzzd` subcommands (e.g., `serve`, `healthcheck`, `vapid generate`)
 - change persistence paths or health check behavior

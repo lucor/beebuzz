@@ -11,8 +11,8 @@ import (
 	"github.com/jmoiron/sqlx"
 	_ "modernc.org/sqlite"
 
-	"lucor.dev/beebuzz/internal/middleware"
-	"lucor.dev/beebuzz/internal/migrations"
+	"beebuzz.app/beebuzzd/internal/middleware"
+	"beebuzz.app/beebuzzd/internal/migrations"
 )
 
 // NewDB opens an in-memory SQLite database and runs all migrations.

@@ -1,0 +1,41 @@
+# BeeBuzz Server repo tooling.
+
+[tools]
+go = "1.25.0"
+"go:golang.org/x/vuln/cmd/govulncheck" = "latest"
+"go:honnef.co/go/tools/cmd/staticcheck" = "latest"
+
+[tasks.setup]
+description = "Download Go module dependencies"
+run = "go mod download"
+
+[tasks.tidy]
+description = "Tidy go.mod / go.sum"
+run = "go mod tidy"
+
+[tasks.test]
+description = "Run unit tests"
+run = "go test ./..."
+
+[tasks.test-race]
+description = "Run unit tests with the race detector"
+run = "go test -race ./..."
+
+[tasks.lint]
+description = "Run go vet and staticcheck"
+run = [
+  "go vet ./...",
+  "staticcheck ./...",
+]
+
+[tasks.vuln]
+description = "Run govulncheck"
+run = "govulncheck ./..."
+
+[tasks.build]
+description = "Compile every package"
+run = "go build ./..."
+
+[tasks.binary]
+description = "Build the beebuzzd binary"
+run = "go build -o beebuzzd ."

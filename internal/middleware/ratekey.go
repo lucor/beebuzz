@@ -6,7 +6,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"lucor.dev/beebuzz/internal/secure"
+	"beebuzz.app/beebuzzd/internal/secure"
 )
 
 // RateKeyByHashedIP is an httprate.KeyFunc that uses the hashed client IP

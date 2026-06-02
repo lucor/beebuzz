@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"lucor.dev/beebuzz/internal/config"
+	"beebuzz.app/beebuzzd/internal/config"
 )
 
 func TestLookupTemplates(t *testing.T) {

@@ -7,9 +7,9 @@ import (
 	"io"
 	"log/slog"
 
-	"lucor.dev/beebuzz/internal/device"
-	"lucor.dev/beebuzz/internal/push"
-	"lucor.dev/beebuzz/internal/validator"
+	"beebuzz.app/beebuzzd/internal/device"
+	"beebuzz.app/beebuzzd/internal/push"
+	"beebuzz.app/beebuzzd/internal/validator"
 )
 
 const (
@@ -17,6 +17,8 @@ const (
 	DeliveryModeE2E           = "e2e"
 	MaxNotificationTitleLen   = 64
 	MaxNotificationBodyLen    = 256
+
+	cliUserAgentPrefix = "BeeBuzz-CLI"
 )
 
 // Source identifies the origin of a push send for analytics.

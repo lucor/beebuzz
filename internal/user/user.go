@@ -4,7 +4,7 @@ package user
 import (
 	"time"
 
-	"lucor.dev/beebuzz/internal/core"
+	"beebuzz.app/beebuzzd/internal/core"
 )
 
 type User struct {

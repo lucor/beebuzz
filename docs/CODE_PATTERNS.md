@@ -42,7 +42,7 @@ internal/
 └── testutil/      # Test helpers (NewDB, etc.)
 ```
 
-Adapters that bridge domains live in `cmd/beebuzz-server/adapter.go`. Service wiring and server lifecycle are in `cmd/beebuzz-server/serve.go`. Route registration is in `cmd/beebuzz-server/router.go`. The `main.go` entrypoint dispatches subcommands.
+Adapters that bridge domains live in `internal/server/adapter.go`. Service wiring and server lifecycle are in `internal/server/serve.go`. Route registration is in `internal/server/router.go`. The root `main.go` entrypoint dispatches subcommands.
 
 ---
 
@@ -337,8 +337,8 @@ If you add a new domain-specific sentinel error, define it in the domain package
 Domains must not import each other. When domain A needs behavior from domain B:
 
 1. **Define an interface** in domain A (in `types.go` or `service.go`)
-2. **Implement an adapter** in `cmd/beebuzz-server/adapter.go` using the concrete domain B service
-3. **Wire it** in `cmd/beebuzz-server/serve.go`
+2. **Implement an adapter** in `internal/server/adapter.go` using the concrete domain B service
+3. **Wire it** in `internal/server/serve.go`
 
 ```go
 // Step 1 — internal/auth/service.go: define what auth needs
@@ -346,7 +346,7 @@ type TopicInitializer interface {
  CreateDefaultTopic(ctx context.Context, userID string) error
 }
 
-// Step 2 — cmd/beebuzz-server/adapter.go: implement using topic.Service
+// Step 2 — internal/server/adapter.go: implement using topic.Service
 type authTopicInitializerAdapter struct {
  topicSvc *topic.Service
 }
@@ -355,7 +355,7 @@ func (a *authTopicInitializerAdapter) CreateDefaultTopic(ctx context.Context, us
  return a.topicSvc.CreateDefaultTopic(ctx, userID)
 }
 
-// Step 3 — cmd/beebuzz-server/serve.go: wire it
+// Step 3 — internal/server/serve.go: wire it
 topicRepo := topic.NewRepository(db)
 topicSvc := topic.NewService(topicRepo, log)
 
@@ -368,9 +368,9 @@ authSvc := auth.NewService(authRepo, m, cfg.URL, authTopicInit, log)
 ## Adding a New Domain
 
 1. Create `internal/<domain>/` with `types.go`, `repository.go`, `service.go`, `handler.go`
-2. Wire in `cmd/beebuzz-server/serve.go`: `NewRepository(db)` → `NewService(repo, log)` → `NewHandler(svc, log)`
-3. Register routes in `cmd/beebuzz-server/router.go`
-4. For cross-domain deps: define interface in the consuming domain, implement adapter in `cmd/beebuzz-server/adapter.go`
+2. Wire in `internal/server/serve.go`: `NewRepository(db)` → `NewService(repo, log)` → `NewHandler(svc, log)`
+3. Register routes in `internal/server/router.go`
+4. For cross-domain deps: define interface in the consuming domain, implement adapter in `internal/server/adapter.go`
 
 `internal/system/<area>` is reserved for platform-generated operational policy, such as deciding whether an internal BeeBuzz event should produce a user-facing notification. It must not become a generic utility namespace. Delivery mechanics still belong to the owning delivery domain, for example `internal/notification`.
 
@@ -396,6 +396,6 @@ If you change any of the following, update the relevant section of this document
 - add, remove, or rename a system area under `internal/system/`
 - add or change a response helper or sentinel error in `internal/core/`
 - add or change a sentinel error in any domain package
-- add or change an adapter in `cmd/beebuzz-server/adapter.go`
-- change service wiring in `cmd/beebuzz-server/serve.go`
-- change route registration in `cmd/beebuzz-server/router.go`
+- add or change an adapter in `internal/server/adapter.go`
+- change service wiring in `internal/server/serve.go`
+- change route registration in `internal/server/router.go`

@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"lucor.dev/beebuzz/internal/testutil"
+	"beebuzz.app/beebuzzd/internal/testutil"
 )
 
 func TestGetOrCreateUserDoesNotPromoteFirstUser(t *testing.T) {

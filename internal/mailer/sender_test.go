@@ -3,7 +3,7 @@ package mailer
 import (
 	"testing"
 
-	"lucor.dev/beebuzz/internal/config"
+	"beebuzz.app/beebuzzd/internal/config"
 )
 
 func TestNewTransport(t *testing.T) {

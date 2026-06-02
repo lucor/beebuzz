@@ -19,9 +19,9 @@ import (
 	"github.com/getsentry/sentry-go"
 	"github.com/google/uuid"
 
-	"lucor.dev/beebuzz/internal/core"
-	"lucor.dev/beebuzz/internal/httpfetch"
-	"lucor.dev/beebuzz/internal/push"
+	"beebuzz.app/beebuzzd/internal/core"
+	"beebuzz.app/beebuzzd/internal/httpfetch"
+	"beebuzz.app/beebuzzd/internal/push"
 )
 
 // maxAttachmentBytes is the maximum plaintext attachment size this service will process.

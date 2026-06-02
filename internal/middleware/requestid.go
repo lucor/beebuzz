@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"strings"
 
-	"lucor.dev/beebuzz/internal/secure"
+	"beebuzz.app/beebuzzd/internal/secure"
 )
 
 const (

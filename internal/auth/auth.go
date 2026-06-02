@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"lucor.dev/beebuzz/internal/core"
-	"lucor.dev/beebuzz/internal/validator"
+	"beebuzz.app/beebuzzd/internal/core"
+	"beebuzz.app/beebuzzd/internal/validator"
 )
 
 type User struct {

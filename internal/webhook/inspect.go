@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"lucor.dev/beebuzz/internal/secure"
+	"beebuzz.app/beebuzzd/internal/secure"
 )
 
 const inspectSessionTTL = 10 * time.Minute

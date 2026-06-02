@@ -9,8 +9,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"lucor.dev/beebuzz/internal/middleware"
-	"lucor.dev/beebuzz/internal/testutil"
+	"beebuzz.app/beebuzzd/internal/middleware"
+	"beebuzz.app/beebuzzd/internal/testutil"
 )
 
 func newTestHandler(t *testing.T) *Handler {

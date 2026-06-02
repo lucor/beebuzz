@@ -6,7 +6,7 @@ import (
 	"log/slog"
 	"net/http"
 
-	"lucor.dev/beebuzz/internal/core"
+	"beebuzz.app/beebuzzd/internal/core"
 )
 
 // Handler handles attachment HTTP requests.

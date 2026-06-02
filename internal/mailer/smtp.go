@@ -7,7 +7,7 @@ import (
 	"net/smtp"
 	"strings"
 
-	"lucor.dev/beebuzz/internal/secure"
+	"beebuzz.app/beebuzzd/internal/secure"
 )
 
 // SMTPSender sends emails via SMTP.

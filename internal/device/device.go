@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"time"
 
-	"lucor.dev/beebuzz/internal/secure"
-	"lucor.dev/beebuzz/internal/validator"
+	"beebuzz.app/beebuzzd/internal/secure"
+	"beebuzz.app/beebuzzd/internal/validator"
 )
 
 const (

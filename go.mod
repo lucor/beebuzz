@@ -1,6 +1,8 @@
-module lucor.dev/beebuzz
+module beebuzz.app/beebuzzd
 
 go 1.25.0
+
+replace beebuzz.app/beebuzz-go => ../beebuzz-go
 
 require (
 	filippo.io/age v1.3.1
@@ -14,7 +16,6 @@ require (
 	github.com/joho/godotenv v1.5.1
 	github.com/tidwall/gjson v1.18.0
 	golang.org/x/crypto v0.48.0
-	golang.org/x/term v0.40.0
 	modernc.org/sqlite v1.48.0
 	rsc.io/qr v0.2.0
 )

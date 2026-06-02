@@ -15,15 +15,15 @@ import (
 
 	"github.com/jmoiron/sqlx"
 
-	"lucor.dev/beebuzz/internal/attachment"
-	"lucor.dev/beebuzz/internal/auth"
-	"lucor.dev/beebuzz/internal/core"
-	"lucor.dev/beebuzz/internal/device"
-	"lucor.dev/beebuzz/internal/middleware"
-	"lucor.dev/beebuzz/internal/secure"
-	"lucor.dev/beebuzz/internal/testutil"
-	"lucor.dev/beebuzz/internal/token"
-	"lucor.dev/beebuzz/internal/topic"
+	"beebuzz.app/beebuzzd/internal/attachment"
+	"beebuzz.app/beebuzzd/internal/auth"
+	"beebuzz.app/beebuzzd/internal/core"
+	"beebuzz.app/beebuzzd/internal/device"
+	"beebuzz.app/beebuzzd/internal/middleware"
+	"beebuzz.app/beebuzzd/internal/secure"
+	"beebuzz.app/beebuzzd/internal/testutil"
+	"beebuzz.app/beebuzzd/internal/token"
+	"beebuzz.app/beebuzzd/internal/topic"
 )
 
 const testAgeRecipient = "age1seaxfh0rsf6z4y0j2rc0h6j8x0nafpdkttkjxc3a3ka7r3y49g7s6sn0ur"
@@ -921,7 +921,7 @@ func TestSendHandler_SourceCLI(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/v1/push/"+topicName, bytes.NewBufferString(`{"title":"Test","body":"Hello"}`))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+rawToken)
-	req.Header.Set("User-Agent", core.CLIUserAgentPrefix+"/1.0.0")
+	req.Header.Set("User-Agent", cliUserAgentPrefix+"/1.0.0")
 	req = withBearer(req)
 	req = withTopic(req, topicName)
 	w := httptest.NewRecorder()

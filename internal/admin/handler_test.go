@@ -9,7 +9,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"lucor.dev/beebuzz/internal/testutil"
+	"beebuzz.app/beebuzzd/internal/testutil"
 )
 
 // stubSessionRevoker satisfies the SessionRevoker interface for handler tests.

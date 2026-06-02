@@ -9,7 +9,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 
-	"lucor.dev/beebuzz/internal/core"
+	"beebuzz.app/beebuzzd/internal/core"
 )
 
 // AuthChallenge represents an OTP challenge stored in the database.

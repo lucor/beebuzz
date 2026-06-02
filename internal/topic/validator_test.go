@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"lucor.dev/beebuzz/internal/validator"
+	"beebuzz.app/beebuzzd/internal/validator"
 )
 
 func TestCreateTopicRequest_Validate(t *testing.T) {

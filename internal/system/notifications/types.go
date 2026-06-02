@@ -6,7 +6,7 @@ import (
 	"errors"
 	"time"
 
-	"lucor.dev/beebuzz/internal/core"
+	"beebuzz.app/beebuzzd/internal/core"
 )
 
 var (

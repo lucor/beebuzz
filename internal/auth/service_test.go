@@ -10,12 +10,12 @@ import (
 
 	"github.com/jmoiron/sqlx"
 
-	"lucor.dev/beebuzz/internal/config"
-	"lucor.dev/beebuzz/internal/core"
-	"lucor.dev/beebuzz/internal/mailer"
-	"lucor.dev/beebuzz/internal/secure"
-	"lucor.dev/beebuzz/internal/testutil"
-	"lucor.dev/beebuzz/internal/topic"
+	"beebuzz.app/beebuzzd/internal/config"
+	"beebuzz.app/beebuzzd/internal/core"
+	"beebuzz.app/beebuzzd/internal/mailer"
+	"beebuzz.app/beebuzzd/internal/secure"
+	"beebuzz.app/beebuzzd/internal/testutil"
+	"beebuzz.app/beebuzzd/internal/topic"
 )
 
 // TestVerifyOTPExpiredChallenge verifies expired challenges return the expired error.

@@ -5,7 +5,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"lucor.dev/beebuzz/internal/middleware"
+	"beebuzz.app/beebuzzd/internal/middleware"
 )
 
 func TestHostRewrite(t *testing.T) {

@@ -5,7 +5,7 @@ import (
 	"testing"
 	"unicode/utf8"
 
-	"lucor.dev/beebuzz/internal/validator"
+	"beebuzz.app/beebuzzd/internal/validator"
 )
 
 // FuzzExtractPayloadBeebuzz verifies that extractPayload with the standard payload type

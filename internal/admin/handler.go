@@ -9,8 +9,8 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"lucor.dev/beebuzz/internal/core"
-	"lucor.dev/beebuzz/internal/middleware"
+	"beebuzz.app/beebuzzd/internal/core"
+	"beebuzz.app/beebuzzd/internal/middleware"
 )
 
 type Handler struct {

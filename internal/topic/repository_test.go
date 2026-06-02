@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"lucor.dev/beebuzz/internal/testutil"
+	"beebuzz.app/beebuzzd/internal/testutil"
 )
 
 func TestCreate(t *testing.T) {

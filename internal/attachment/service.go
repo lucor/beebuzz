@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"lucor.dev/beebuzz/internal/core"
+	"beebuzz.app/beebuzzd/internal/core"
 )
 
 const (

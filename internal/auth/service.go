@@ -7,9 +7,9 @@ import (
 	"strings"
 	"time"
 
-	"lucor.dev/beebuzz/internal/core"
-	"lucor.dev/beebuzz/internal/mailer"
-	"lucor.dev/beebuzz/internal/secure"
+	"beebuzz.app/beebuzzd/internal/core"
+	"beebuzz.app/beebuzzd/internal/mailer"
+	"beebuzz.app/beebuzzd/internal/secure"
 )
 
 const (

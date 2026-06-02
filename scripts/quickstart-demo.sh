@@ -39,7 +39,7 @@ fi
 export VITE_BEEBUZZ_DOMAIN="$BEEBUZZ_DOMAIN"
 
 if [ -z "${BEEBUZZ_VAPID_PRIVATE_KEY:-}" ] || [ -z "${BEEBUZZ_VAPID_PUBLIC_KEY:-}" ]; then
-  eval "$(mise x -- go run ./cmd/beebuzz-server vapid generate)"
+  eval "$(mise x -- go run . vapid generate)"
   export BEEBUZZ_VAPID_PRIVATE_KEY
   export BEEBUZZ_VAPID_PUBLIC_KEY
 fi

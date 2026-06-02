@@ -4,7 +4,7 @@ import (
 	"context"
 	"net/http"
 
-	"lucor.dev/beebuzz/internal/core"
+	"beebuzz.app/beebuzzd/internal/core"
 )
 
 // DBPinger checks database connectivity.

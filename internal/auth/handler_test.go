@@ -10,12 +10,12 @@ import (
 	"testing"
 	"time"
 
-	"lucor.dev/beebuzz/internal/config"
-	"lucor.dev/beebuzz/internal/mailer"
-	"lucor.dev/beebuzz/internal/middleware"
-	"lucor.dev/beebuzz/internal/secure"
-	"lucor.dev/beebuzz/internal/testutil"
-	"lucor.dev/beebuzz/internal/topic"
+	"beebuzz.app/beebuzzd/internal/config"
+	"beebuzz.app/beebuzzd/internal/mailer"
+	"beebuzz.app/beebuzzd/internal/middleware"
+	"beebuzz.app/beebuzzd/internal/secure"
+	"beebuzz.app/beebuzzd/internal/testutil"
+	"beebuzz.app/beebuzzd/internal/topic"
 )
 
 type countingMailer struct {

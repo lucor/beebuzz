@@ -10,7 +10,7 @@ BeeBuzz uses structured logging on both backend and frontend with environment-aw
 
 ## Backend Configuration
 
-Logging is configured in `cmd/beebuzz-server/main.go` via `internal/logger` and uses the `BEEBUZZ_ENV` environment variable:
+Logging is configured in `main.go` via `internal/logger` and uses the `BEEBUZZ_ENV` environment variable:
 
 - **dev**: Text format with DEBUG level for human-readable output
 - **staging/prod**: JSON format with INFO level for structured log aggregation
@@ -250,7 +250,7 @@ BeeBuzz uses Sentry-compatible error capture for unexpected server failures. Cap
 
 | Location | Trigger |
 |----------|---------|
-| `cmd/beebuzz-server/serve.go` — `sentryhttp` middleware | Panic recovery |
+| `internal/server/serve.go` — `sentryhttp` middleware | Panic recovery |
 | `internal/core/response.go` — `WriteInternalError` | Any 500 response |
 | `internal/notification/service.go` | Unexpected push delivery failure (non-404/410) |
 

@@ -1,5 +1,5 @@
 # Stage 1: Build server
-FROM golang:1.26-alpine AS server-builder
+FROM golang:1.25-alpine AS server-builder
 WORKDIR /build
 
 ARG COMMIT_SHA=dev
@@ -10,13 +10,13 @@ COPY . .
 
 RUN CGO_ENABLED=0 go build -trimpath \
     -ldflags="-w -s -X main.commitHash=$(echo ${COMMIT_SHA} | cut -c1-7)" \
-    -o beebuzz-server ./cmd/beebuzz-server
+    -o beebuzzd .
 
 # Stage 2: Runtime image
 FROM gcr.io/distroless/base-debian12
 WORKDIR /app
 
-COPY --from=server-builder /build/beebuzz-server /app/beebuzz-server
+COPY --from=server-builder /build/beebuzzd /app/beebuzzd
 
 VOLUME ["/var/lib/beebuzz/db", "/var/lib/beebuzz/attachments"]
 
@@ -28,7 +28,7 @@ ENV BEEBUZZ_PORT=8899
 EXPOSE 8899
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
-	CMD ["/app/beebuzz-server", "healthcheck"]
+	CMD ["/app/beebuzzd", "healthcheck"]
 
-ENTRYPOINT ["/app/beebuzz-server"]
+ENTRYPOINT ["/app/beebuzzd"]
 CMD ["serve"]

@@ -6,8 +6,8 @@ import (
 	"log/slog"
 	"net/http"
 
-	"lucor.dev/beebuzz/internal/core"
-	"lucor.dev/beebuzz/internal/middleware"
+	"beebuzz.app/beebuzzd/internal/core"
+	"beebuzz.app/beebuzzd/internal/middleware"
 )
 
 const maxWebhookBodyBytes = 64 * 1024 // 64 KB

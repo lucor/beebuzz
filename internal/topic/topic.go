@@ -5,7 +5,7 @@ import (
 	"errors"
 	"time"
 
-	"lucor.dev/beebuzz/internal/validator"
+	"beebuzz.app/beebuzzd/internal/validator"
 )
 
 // Topic is the DB struct — db tags only, no json tags.

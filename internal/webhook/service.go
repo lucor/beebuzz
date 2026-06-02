@@ -10,8 +10,8 @@ import (
 
 	"github.com/tidwall/gjson"
 
-	"lucor.dev/beebuzz/internal/secure"
-	"lucor.dev/beebuzz/internal/validator"
+	"beebuzz.app/beebuzzd/internal/secure"
+	"beebuzz.app/beebuzzd/internal/validator"
 )
 
 // beebuzzPayload is the expected JSON structure for the standard payload type.

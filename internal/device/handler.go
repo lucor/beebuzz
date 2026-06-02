@@ -9,8 +9,8 @@ import (
 
 	"rsc.io/qr"
 
-	"lucor.dev/beebuzz/internal/core"
-	"lucor.dev/beebuzz/internal/middleware"
+	"beebuzz.app/beebuzzd/internal/core"
+	"beebuzz.app/beebuzzd/internal/middleware"
 )
 
 // Handler handles device HTTP requests.

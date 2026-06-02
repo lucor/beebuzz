@@ -10,10 +10,10 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"lucor.dev/beebuzz/internal/auth"
-	"lucor.dev/beebuzz/internal/middleware"
-	"lucor.dev/beebuzz/internal/testutil"
-	"lucor.dev/beebuzz/internal/topic"
+	"beebuzz.app/beebuzzd/internal/auth"
+	"beebuzz.app/beebuzzd/internal/middleware"
+	"beebuzz.app/beebuzzd/internal/testutil"
+	"beebuzz.app/beebuzzd/internal/topic"
 )
 
 func newTestDeviceHandler(t *testing.T) *Handler {

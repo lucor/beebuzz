@@ -6,7 +6,7 @@ import (
 	"errors"
 	"time"
 
-	"lucor.dev/beebuzz/internal/validator"
+	"beebuzz.app/beebuzzd/internal/validator"
 )
 
 // APIToken is the DB struct — db tags only.

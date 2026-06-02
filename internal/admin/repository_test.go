@@ -4,9 +4,9 @@ import (
 	"context"
 	"testing"
 
-	"lucor.dev/beebuzz/internal/auth"
-	"lucor.dev/beebuzz/internal/core"
-	"lucor.dev/beebuzz/internal/testutil"
+	"beebuzz.app/beebuzzd/internal/auth"
+	"beebuzz.app/beebuzzd/internal/core"
+	"beebuzz.app/beebuzzd/internal/testutil"
 )
 
 func TestGetUserByID_ActiveUser(t *testing.T) {

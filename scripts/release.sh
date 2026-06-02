@@ -26,7 +26,7 @@ fi
 # --- Compute tag ---------------------------------------------------------
 
 SHORT_SHA=$(git rev-parse --short HEAD)
-TAG="beebuzz@${SHORT_SHA}"
+TAG="beebuzzd@${SHORT_SHA}"
 
 if git rev-parse "$TAG" >/dev/null 2>&1; then
   echo "Error: tag $TAG already exists" >&2
@@ -35,7 +35,7 @@ fi
 
 # --- Preview -------------------------------------------------------------
 
-PREV=$(git tag --list 'beebuzz@*' --sort=-creatordate | sed -n '1p')
+PREV=$(git tag --list 'beebuzzd@*' --sort=-creatordate | sed -n '1p')
 
 echo ""
 echo "================================"

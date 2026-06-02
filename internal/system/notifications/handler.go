@@ -5,8 +5,8 @@ import (
 	"log/slog"
 	"net/http"
 
-	"lucor.dev/beebuzz/internal/core"
-	"lucor.dev/beebuzz/internal/middleware"
+	"beebuzz.app/beebuzzd/internal/core"
+	"beebuzz.app/beebuzzd/internal/middleware"
 )
 
 // Handler handles admin system notification settings requests.

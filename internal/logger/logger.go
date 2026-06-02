@@ -5,7 +5,7 @@ import (
 	"log/slog"
 	"os"
 
-	"lucor.dev/beebuzz/internal/config"
+	"beebuzz.app/beebuzzd/internal/config"
 )
 
 // New creates and returns a configured slog.Logger based on environment.

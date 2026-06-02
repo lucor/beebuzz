@@ -4,7 +4,7 @@ package attachment
 import (
 	"fmt"
 
-	"lucor.dev/beebuzz/internal/core"
+	"beebuzz.app/beebuzzd/internal/core"
 )
 
 type DBAttachment struct {

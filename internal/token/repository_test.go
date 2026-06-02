@@ -5,10 +5,10 @@ import (
 	"testing"
 	"time"
 
-	"lucor.dev/beebuzz/internal/auth"
-	"lucor.dev/beebuzz/internal/secure"
-	"lucor.dev/beebuzz/internal/testutil"
-	"lucor.dev/beebuzz/internal/topic"
+	"beebuzz.app/beebuzzd/internal/auth"
+	"beebuzz.app/beebuzzd/internal/secure"
+	"beebuzz.app/beebuzzd/internal/testutil"
+	"beebuzz.app/beebuzzd/internal/topic"
 )
 
 func TestValidateAPITokenForTopic_Valid(t *testing.T) {

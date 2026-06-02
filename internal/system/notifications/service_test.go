@@ -5,8 +5,8 @@ import (
 	"log/slog"
 	"testing"
 
-	"lucor.dev/beebuzz/internal/testutil"
-	"lucor.dev/beebuzz/internal/topic"
+	"beebuzz.app/beebuzzd/internal/testutil"
+	"beebuzz.app/beebuzzd/internal/topic"
 )
 
 type testTopicProvider struct {

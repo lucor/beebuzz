@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 
-	"lucor.dev/beebuzz/internal/secure"
+	"beebuzz.app/beebuzzd/internal/secure"
 )
 
 // Service provides token business logic.

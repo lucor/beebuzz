@@ -7,7 +7,7 @@ import (
 	"log/slog"
 	"testing"
 
-	"lucor.dev/beebuzz/internal/testutil"
+	"beebuzz.app/beebuzzd/internal/testutil"
 )
 
 func newTestTopicService(repo *Repository) *Service {
