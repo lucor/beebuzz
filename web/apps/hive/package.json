@@ -1,7 +1,6 @@
 {
 	"name": "@beebuzz/hive",
 	"private": true,
-	"version": "0.9.0",
 	"type": "module",
 	"scripts": {
 		"dev": "svelte-kit sync && pnpm run build:sw && vite dev",
