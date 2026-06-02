@@ -290,7 +290,11 @@ export default defineConfig({
 	},
 	server: {
 		port: 5173,
-		allowedHosts: [process.env.BEEBUZZ_DOMAIN ?? 'localhost']
+		allowedHosts: [process.env.BEEBUZZ_DOMAIN ?? 'localhost'],
+		fs: {
+			// Allow reading docs/openapi.yaml from the parent repo root.
+			allow: ['..', '../..', '../../..']
+		}
 	},
 	ssr: {
 		noExternal: ['@lucide/svelte']

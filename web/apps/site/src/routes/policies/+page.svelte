@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 
-	const LAST_UPDATED = 'April 23, 2026';
-	const CONTACT_EMAIL = 'support@beebuzz.app';
+	const LAST_UPDATED = 'June 2, 2026';
+	const CONTACT_EMAIL = 'hello@beebuzz.app';
 	const RELEASE_URL = 'https://codeberg.org/beebuzz/beebuzz';
 </script>
 

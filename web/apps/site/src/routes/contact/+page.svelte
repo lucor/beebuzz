@@ -3,7 +3,7 @@
 	import { Shield, MessageSquare, ScrollText } from '@lucide/svelte';
 	import { isSaasMode } from '$lib/config/deployment';
 
-	const CONTACT_EMAIL = 'support@beebuzz.app';
+	const CONTACT_EMAIL = 'hello@beebuzz.app';
 	const ISSUES_URL = 'https://codeberg.org/beebuzz/beebuzz/issues';
 	const MAINTENANCE_POLICY_URL = 'https://lucor.dev/projects/#maintenance-policy';
 	const SECURITY_POLICY_URL = 'https://lucor.dev/projects/#security';

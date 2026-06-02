@@ -159,7 +159,7 @@
 	<title>BeeBuzz | Minimalist, privacy-first push notifications.</title>
 	<meta
 		name="description"
-		content="BeeBuzz sends notifications from your tools to your devices. Use end-to-end encryption when possible, or trusted delivery when needed."
+		content="BeeBuzz sends notifications from your tools to your devices. End-to-end encryption where supported. Trusted delivery when needed."
 	/>
 </svelte:head>
 
@@ -207,7 +207,7 @@
 						> in your browser.
 					</p>
 					<p class="mt-3 max-w-4xl text-lg leading-8 text-base-content/75 md:text-xl">
-						Use end-to-end encryption when possible, or trusted delivery when needed.
+						End-to-end encryption where supported. Trusted delivery when needed.
 					</p>
 					<p class="mt-4 text-base font-semibold text-base-content/80">
 						Your tools. Your notifications. Your keys.

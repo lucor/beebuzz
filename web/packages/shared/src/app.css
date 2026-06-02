@@ -79,20 +79,8 @@
 		@apply text-xs font-mono uppercase tracking-[0.2em] text-neutral-content/70;
 	}
 
-	.docs-terminal-dots {
-		@apply inline-flex items-center gap-1.5;
-	}
-
-	.docs-terminal-dot {
-		@apply h-2.5 w-2.5 rounded-full;
-	}
-
 	.docs-terminal-body {
-		@apply mockup-code rounded-t-none bg-neutral px-4 py-4;
-	}
-
-	.docs-terminal-body::before {
-		display: none;
+		@apply rounded-t-none bg-neutral px-4 py-4;
 	}
 
 	.docs-terminal-body pre {

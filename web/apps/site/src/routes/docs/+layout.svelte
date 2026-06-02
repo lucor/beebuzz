@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import SectionLayout from '$lib/components/section-layout.svelte';
-	import { Zap, type Icon } from '@lucide/svelte';
+	import { Zap, CodeXml, type Icon } from '@lucide/svelte';
 
 	let { children }: { children: import('svelte').Snippet } = $props();
 
@@ -21,6 +21,11 @@
 				{ label: 'Local Dev', href: '/docs/local-dev' },
 				{ label: 'Browser Support', href: '/docs/browser-support' }
 			]
+		},
+		{
+			title: 'Reference',
+			icon: CodeXml,
+			items: [{ label: 'API Reference', href: '/docs/api' }]
 		}
 	];
 

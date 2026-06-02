@@ -168,3 +168,7 @@ run = "go build -o ./bin/beebuzzd ."
 [tasks.quickstart-demo]
 description = "Run the end-to-end quickstart demo against the local stack"
 run = "./scripts/quickstart-demo.sh"
+
+[tasks.ci]
+description = "Run the full pre-release verification pipeline (server + frontend)"
+depends = ["setup", "tidy", "check", "test", "test-race", "lint", "vuln", "build"]

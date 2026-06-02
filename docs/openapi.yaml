@@ -3,9 +3,8 @@ info:
   title: BeeBuzz API
   version: 0.9.0
   description: |
-    First-pass OpenAPI contract generated from the current BeeBuzz backend handlers.
-    It documents the API as implemented today so request/response semantics can be
-    reviewed before release.
+    BeeBuzz public API reference. Send push notifications, manage webhooks, and
+    retrieve paired device public keys for end-to-end payload encryption.
 servers:
   - url: /
 tags:
@@ -24,8 +23,8 @@ paths:
   /health:
     get:
       tags: [Health]
-      operationId: getRootHealth
-      summary: Get service health
+      operationId: checkHealth
+      summary: Health check
       x-audience: [public]
       x-stability: stable
       responses:
@@ -38,8 +37,8 @@ paths:
   /v1/health:
     get:
       tags: [Health]
-      operationId: getApiHealth
-      summary: Get API health
+      operationId: checkApiHealth
+      summary: API health check
       x-audience: [public]
       x-stability: stable
       responses:
@@ -627,13 +626,14 @@ paths:
   /v1/push:
     post:
       tags: [Push]
-      operationId: sendPushDefaultTopic
-      summary: Send a push notification to the default topic
+      operationId: sendNotification
+      summary: Send a notification
       x-audience: [public]
       x-stability: stable
       description: |
-        JSON and multipart requests accept `priority` values `normal` or `high`.
-        Octet-stream requests use the `X-Priority` header with the same values.
+        <strong>Trusted path</strong> — send <code>application/json</code> or <code>multipart/form-data</code> with plaintext <code>title</code> and <code>body</code>. The server handles delivery to paired devices.
+
+        <strong>E2EE path</strong> — retrieve device age public keys from <code>GET /v1/push/keys</code>, encrypt your payload client-side, then send as <code>application/octet-stream</code>. Use the <code>X-Priority</code> header to set priority.
       security:
         - bearerAuth: []
       parameters:
@@ -642,12 +642,18 @@ paths:
         required: true
         content:
           application/json:
+            description: Trusted notification with plaintext title and body.
             schema:
               $ref: "#/components/schemas/SendRequest"
           multipart/form-data:
+            description: Trusted notification with file attachment.
             schema:
               $ref: "#/components/schemas/SendMultipartRequest"
           application/octet-stream:
+            description: |
+              E2EE encrypted payload. Encrypt with age public keys from
+              `GET /v1/push/keys` and send the raw ciphertext. Priority
+              is set via the `X-Priority` header.
             schema:
               type: string
               format: binary
@@ -698,13 +704,14 @@ paths:
   /v1/push/{topic}:
     post:
       tags: [Push]
-      operationId: sendPushForTopic
-      summary: Send a push notification to a specific topic
+      operationId: sendNotificationToTopic
+      summary: Send a notification to a topic
       x-audience: [public]
       x-stability: stable
       description: |
-        JSON and multipart requests accept `priority` values `normal` or `high`.
-        Octet-stream requests use the `X-Priority` header with the same values.
+        <strong>Trusted path</strong> — send <code>application/json</code> or <code>multipart/form-data</code> with plaintext <code>title</code> and <code>body</code>. The server handles delivery to paired devices.
+
+        <strong>E2EE path</strong> — retrieve device age public keys from <code>GET /v1/push/keys</code>, encrypt your payload client-side, then send as <code>application/octet-stream</code>. Use the <code>X-Priority</code> header to set priority.
       security:
         - bearerAuth: []
       parameters:
@@ -720,12 +727,18 @@ paths:
         required: true
         content:
           application/json:
+            description: Trusted notification with plaintext title and body.
             schema:
               $ref: "#/components/schemas/SendRequest"
           multipart/form-data:
+            description: Trusted notification with file attachment.
             schema:
               $ref: "#/components/schemas/SendMultipartRequest"
           application/octet-stream:
+            description: |
+              E2EE encrypted payload. Encrypt with age public keys from
+              `GET /v1/push/keys` and send the raw ciphertext. Priority
+              is set via the `X-Priority` header.
             schema:
               type: string
               format: binary
@@ -776,8 +789,12 @@ paths:
   /v1/push/keys:
     get:
       tags: [Push]
-      operationId: listDeviceKeys
-      summary: Get paired device age public keys
+      operationId: listDevicePublicKeys
+      summary: List device public keys
+      description: |
+        Returns the age public keys for all paired devices. Use these keys to
+        encrypt push payloads for E2EE delivery via <code>POST /v1/push</code> or
+        <code>POST /v1/push/{topic}</code> (send as <code>application/octet-stream</code>).
       x-audience: [public]
       x-stability: stable
       security:
@@ -925,8 +942,8 @@ paths:
   /v1/webhooks/{token}:
     post:
       tags: [Webhooks]
-      operationId: receiveWebhook
-      summary: Receive an incoming webhook payload
+      operationId: sendWebhookNotification
+      summary: Send a notification from a webhook
       x-audience: [public]
       x-stability: stable
       parameters:
@@ -942,13 +959,9 @@ paths:
             schema:
               type: object
               additionalProperties: true
-          text/plain:
-            schema:
-              type: string
-          application/octet-stream:
-            schema:
-              type: string
-              format: binary
+            example:
+              title: "Build succeeded"
+              body: "All tests passed in 12s"
       responses:
         "200":
           description: Webhook delivered
@@ -1444,6 +1457,7 @@ components:
           example: ok
         version:
           type: string
+          example: "0.9.0"
     MessageResponse:
       type: object
       required: [message]
@@ -1601,8 +1615,10 @@ components:
           format: date-time
         age_recipient:
           type: string
+          example: "age1..."
         age_recipient_fingerprint:
           type: string
+          example: "a1b2c3d4"
     CreatedDeviceResponse:
       type: object
       required: [device, pairing_code, pairing_url, qr_code, expires_at]
@@ -2058,9 +2074,11 @@ components:
           type: string
           minLength: 1
           maxLength: 64
+          example: "Hello from BeeBuzz!"
         body:
           type: string
           maxLength: 256
+          example: "This is a test notification"
         priority:
           type: string
           enum: [normal, high]
@@ -2075,9 +2093,11 @@ components:
           type: string
           minLength: 1
           maxLength: 64
+          example: "Hello from BeeBuzz!"
         body:
           type: string
           maxLength: 256
+          example: "This is a test notification"
         priority:
           type: string
           enum: [normal, high]
@@ -2115,6 +2135,7 @@ components:
       properties:
         key:
           type: string
+          example: "BC1aL..."
     AccountUsageDayResponse:
       type: object
       required:
