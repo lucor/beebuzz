@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 
 test.describe('login page', () => {
 	test('should display login form', async ({ page }) => {
-		await page.goto('/login');
+		await page.goto('/auth');
 
 		await expect(page.getByText(/private beta/i)).toBeVisible();
 		await expect(page.getByLabel('Email address')).toBeVisible();
@@ -10,14 +10,14 @@ test.describe('login page', () => {
 	});
 
 	test('should have disabled button when email is empty', async ({ page }) => {
-		await page.goto('/login');
+		await page.goto('/auth');
 
 		const button = page.getByRole('button', { name: /continue/i });
 		await expect(button).toBeDisabled();
 	});
 
 	test('should enable button when email is filled', async ({ page }) => {
-		await page.goto('/login');
+		await page.goto('/auth');
 
 		await page.getByLabel('Email address').fill('test@example.com');
 		await expect(page.getByRole('button', { name: /continue/i })).toBeEnabled();

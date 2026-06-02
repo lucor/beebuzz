@@ -5,8 +5,8 @@ import (
 	"log/slog"
 	"net/http"
 
-	"beebuzz.app/beebuzz/internal/core"
-	"beebuzz.app/beebuzz/internal/middleware"
+	"go.beebuzz.app/beebuzz/internal/core"
+	"go.beebuzz.app/beebuzz/internal/middleware"
 )
 
 // Handler handles topic HTTP requests.

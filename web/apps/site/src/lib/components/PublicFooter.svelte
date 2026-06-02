@@ -42,7 +42,8 @@
 				>
 					Status
 				</a>
-				<a href={resolve('/policies')} class="transition-colors hover:text-base-content">Policies</a>
+				<a href={resolve('/policies')} class="transition-colors hover:text-base-content">Policies</a
+				>
 				<a
 					href={RELEASE_URL}
 					target="_blank"

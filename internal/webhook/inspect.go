@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"beebuzz.app/beebuzz/internal/secure"
+	"go.beebuzz.app/beebuzz/internal/secure"
 )
 
 const inspectSessionTTL = 10 * time.Minute

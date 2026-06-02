@@ -70,14 +70,14 @@
 	const handleBack = async () => {
 		localStorage.removeItem(STORAGE_KEY_STATE);
 		sessionStorage.removeItem(STORAGE_KEY_EMAIL);
-		await goto(resolve('/login'));
+		await goto(resolve('/auth'));
 	};
 
 	onMount(async () => {
 		const storedEmail = sessionStorage.getItem(STORAGE_KEY_EMAIL);
 
 		if (!storedEmail) {
-			void goto(resolve('/login'));
+			void goto(resolve('/auth'));
 			return;
 		}
 

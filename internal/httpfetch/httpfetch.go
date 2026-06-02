@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"time"
 
-	"beebuzz.app/beebuzz/internal/core"
+	"go.beebuzz.app/beebuzz/internal/core"
 )
 
 const (

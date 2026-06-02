@@ -6,7 +6,7 @@ import (
 	"log/slog"
 	"time"
 
-	"beebuzz.app/beebuzz/internal/core"
+	"go.beebuzz.app/beebuzz/internal/core"
 )
 
 var (

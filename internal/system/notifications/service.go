@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 
-	"beebuzz.app/beebuzz/internal/core"
+	"go.beebuzz.app/beebuzz/internal/core"
 )
 
 const signupCreatedTitle = "New BeeBuzz signup"

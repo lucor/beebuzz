@@ -5,8 +5,8 @@ import (
 	"log/slog"
 	"testing"
 
-	"beebuzz.app/beebuzz/internal/testutil"
-	"beebuzz.app/beebuzz/internal/topic"
+	"go.beebuzz.app/beebuzz/internal/testutil"
+	"go.beebuzz.app/beebuzz/internal/topic"
 )
 
 type testTopicProvider struct {

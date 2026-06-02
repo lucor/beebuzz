@@ -37,6 +37,7 @@ This is the frontend subdirectory of the `beebuzz` app repo. It is a pnpm worksp
 - For server env vars, use `$env/static/private`.
 - Do not use `Set` or `Map` inside `$state`.
 - Normalize backend or raw payload fields to frontend naming immediately after the boundary. Keep `snake_case` only in DTOs or raw payload shapes that intentionally mirror backend or API data.
+- **Never use `eslint-disable` or `eslint-disable-next-line` as a quick fix.** If a lint error is unclear, investigate the rule and fix the root cause. Only if the fix is genuinely impossible or a known framework limitation, report it and ask before suppressing.
 
 ## Documentation
 

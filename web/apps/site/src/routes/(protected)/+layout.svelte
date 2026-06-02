@@ -12,7 +12,7 @@
 			try {
 				await me();
 			} catch {
-				await goto(resolve('/login'));
+				await goto(resolve('/auth'));
 			}
 		};
 		void checkAuth();

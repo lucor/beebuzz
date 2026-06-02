@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const fetchBlobMock = vi.fn();
 const decryptBinaryMock = vi.fn();
 
-vi.mock('@beebuzz/shared/api', () => ({
+vi.mock('@beebuzz/shared/api/client', () => ({
 	fetchBlob: fetchBlobMock
 }));
 

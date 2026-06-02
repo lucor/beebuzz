@@ -111,7 +111,7 @@ In E2E mode, the BeeBuzz CLI fetches your paired-device public keys, encrypts th
 
 The easiest install path for most beta users is the published CLI release:
 
-1. open [BeeBuzz releases](https://codeberg.org/beebuzz/beebuzz-cli/releases)
+1. open [BeeBuzz releases](https://codeberg.org/beebuzz/cli/releases)
 2. download the archive for your OS and CPU architecture
 3. unpack it and put the `beebuzz` binary somewhere in your `PATH`
 4. run `beebuzz version`
@@ -121,7 +121,7 @@ BeeBuzz currently publishes CLI binaries for macOS and Linux on `amd64` and `arm
 If you already have Go installed, you can also install the CLI from source:
 
 ```bash
-go install beebuzz.app/cli/beebuzz@latest
+go install go.beebuzz.app/cli@latest
 ```
 
 ### Connect The CLI

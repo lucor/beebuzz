@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 
-	"beebuzz.app/beebuzz/internal/secure"
+	"go.beebuzz.app/beebuzz/internal/secure"
 )
 
 // Service provides token business logic.

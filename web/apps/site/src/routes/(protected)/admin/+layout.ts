@@ -6,7 +6,7 @@ import type { LayoutLoad } from './$types';
 export const prerender = false;
 export const ssr = false;
 
-/** Fetches current user and guards admin routes. Redirects to /login on 401, to /account if not admin. */
+/** Fetches current user and guards admin routes. Redirects to /auth on 401, to /account if not admin. */
 export const load: LayoutLoad = async () => {
 	let user: AuthUser;
 
@@ -17,7 +17,7 @@ export const load: LayoutLoad = async () => {
 		if (status === 403) {
 			redirect(302, '/account');
 		}
-		redirect(302, '/login');
+		redirect(302, '/auth');
 	}
 
 	auth.set(user);

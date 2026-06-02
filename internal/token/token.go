@@ -6,7 +6,7 @@ import (
 	"errors"
 	"time"
 
-	"beebuzz.app/beebuzz/internal/validator"
+	"go.beebuzz.app/beebuzz/internal/validator"
 )
 
 // APIToken is the DB struct — db tags only.

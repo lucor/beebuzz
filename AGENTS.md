@@ -2,7 +2,7 @@
 
 This repo contains the BeeBuzz application:
 
-- **Server** (Go) — at the repo root: HTTP API, SQLite, web-push delivery, auth, mailer, admin backend. Module path `beebuzz.app/beebuzz`, binary `beebuzz`.
+- **Server** (Go) — at the repo root: HTTP API, SQLite, web-push delivery, auth, mailer, admin backend. Module path `go.beebuzz.app/beebuzz`, binary `beebuzz`.
 - **Frontend** (SvelteKit pnpm workspace) — under `web/`: `apps/site`, `apps/hive`, `packages/shared`.
 - **Local-dev orchestration** — under `.mise/`: Procfile, Caddyfile, setup-dev.sh, .air.toml.
 
@@ -11,7 +11,7 @@ The backend and frontend share the OpenAPI contract in `docs/openapi.yaml` and s
 ## Local Rules
 
 - Use `mise` for tooling and task execution. The unified [mise.toml](./mise.toml) at the repo root covers Go, Node, pnpm, air, caddy, goreman, mailpit, and all dev/test/lint/build tasks.
-- Module path for the server is the immutable vanity import `beebuzz.app/beebuzz`. The repository URL may change; the module path may not.
+- Module path for the server is the immutable vanity import `go.beebuzz.app/beebuzz`. The repository URL may change; the module path may not.
 
 ## Commands
 
@@ -34,6 +34,7 @@ Run all commands from the repo root.
 | `mise run build` | Compile every Go package and build the frontend |
 | `mise run binary` | Build the `beebuzz` binary into `./bin` |
 | `mise run quickstart-demo` | Run the end-to-end quickstart demo against the local stack |
+| `mise run ci` | Full pre-release verification |
 
 ## Package Layout
 
@@ -44,8 +45,8 @@ Run all commands from the repo root.
 - `web/apps/site` — public site, account UI, admin UI, docs
 - `web/apps/hive` — Hive PWA receiver
 - `web/packages/shared` — shared frontend API clients, stores, services, components, types, assets
-- `docs/` — server docs (`openapi.yaml`, `DEPLOY.md`, `STYLE.md`, etc.)
-- `deploy/server.Dockerfile`, `deploy/web.Dockerfile`, `deploy/Caddyfile` — production images built by `beebuzz-release`
+- `docs/` — server docs (`openapi.yaml`, `STYLE.md`, etc.)
+- `deploy/server.Dockerfile`, `deploy/web.Dockerfile`, `deploy/Caddyfile` — production container images
 - `scripts/quickstart-demo.sh` — full-stack demo recorder
 - `.mise/` — local-dev orchestration (Procfile, Caddyfile, setup-dev.sh, .air.toml)
 
@@ -53,20 +54,13 @@ Run all commands from the repo root.
 
 - Server: follow `docs/STYLE.md`. Prefer clarity over cleverness, early returns, shallow nesting, brief comments on exported and significant unexported functions, never silently swallow errors, never log sensitive data. One test per main behavior; use `t.Run(...)` for sub-cases.
 - Frontend: see [web/AGENTS.md](./web/AGENTS.md) for Svelte 5 / TypeScript / accessibility conventions.
+- **Conventions:** "age" (cryptographic library) is always lowercase in identifiers, comments, and docs — never "AGE" or "Age".
 
 ## Dependency Rules
 
-- **Server is the API provider; it does not depend on the client SDK.** The `beebuzz.app/beebuzz-go` client is a consumer of the public HTTP contract documented in `docs/openapi.yaml`. The server defines its own types internally and must not import the SDK.
-- **No reach-throughs into other repos.** Never import from the `beebuzz-cli` repo or from any other repo's `internal/` packages.
+- **Server is the API provider; it does not depend on the client SDK.** The `go.beebuzz.app/beebuzz-go` client is a consumer of the public HTTP contract documented in `docs/openapi.yaml`. The server defines its own types internally and must not import the SDK.
+- **No reach-throughs into other repos.** Never import from the `cli` repo or from any other repo's `internal/` packages.
 - Server-specific packages (`internal/push`, `internal/notification`, etc.) remain local; do not try to replace them with SDK packages.
 - Frontend ↔ server contract: `docs/openapi.yaml` is the source of truth. The frontend must conform.
 
-## Release Workflow
 
-The app is tagged **after** `beebuzz-go` SDK is tagged. Order:
-
-1. Tag `beebuzz-go vX.Y.Z` (in the SDK repo).
-2. In this repo: bump `go.mod` to the new SDK tag, run the full pre-release verification pipeline (`mise run setup`, `tidy`, `check`, `test`, `test-race`, `lint`, `vuln`, `build`), then run `releaser release beebuzz` to build and push the server and web images and push a `beebuzz@<date>.<n>-<short_sha>` tag.
-3. Deploy via the image tag produced by `beebuzz-release`. The server does **not** use GoReleaser, and this repo does not assume GitHub CI/release workflows.
-
-Never the reverse.

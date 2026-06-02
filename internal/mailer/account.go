@@ -18,7 +18,7 @@ func (m *mailer) SendAccountApproved(ctx context.Context, to string) error {
 	data := struct {
 		LoginURL string
 	}{
-		LoginURL: m.siteURL + "/login",
+		LoginURL: m.siteURL + "/auth",
 	}
 	return m.sendTemplate(ctx, to, accountApprovedTmplName, accountApprovedSubject, data)
 }

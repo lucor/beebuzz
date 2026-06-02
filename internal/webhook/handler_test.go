@@ -12,9 +12,9 @@ import (
 	"strings"
 	"testing"
 
-	"beebuzz.app/beebuzz/internal/auth"
-	"beebuzz.app/beebuzz/internal/testutil"
-	"beebuzz.app/beebuzz/internal/topic"
+	"go.beebuzz.app/beebuzz/internal/auth"
+	"go.beebuzz.app/beebuzz/internal/testutil"
+	"go.beebuzz.app/beebuzz/internal/topic"
 )
 
 func newTestWebhookHandler(t *testing.T) *Handler {

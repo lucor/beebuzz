@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"beebuzz.app/beebuzz/internal/config"
+	"go.beebuzz.app/beebuzz/internal/config"
 )
 
 func TestLookupTemplates(t *testing.T) {

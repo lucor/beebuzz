@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"strconv"
 
-	"beebuzz.app/beebuzz/internal/core"
-	"beebuzz.app/beebuzz/internal/middleware"
+	"go.beebuzz.app/beebuzz/internal/core"
+	"go.beebuzz.app/beebuzz/internal/middleware"
 )
 
 const defaultDashboardDays = 30

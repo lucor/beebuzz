@@ -53,10 +53,10 @@ describe('admin layout load guard', () => {
 		expect(authSetMock).toHaveBeenCalledWith(user);
 	});
 
-	it('redirects unauthenticated users to /login', async () => {
+	it('redirects unauthenticated users to /auth', async () => {
 		meMock.mockRejectedValueOnce(new ApiError('invalid_session', 401, 'unauthorized'));
 
-		await expect(callLoad()).rejects.toMatchObject({ status: 302, location: '/login' });
+		await expect(callLoad()).rejects.toMatchObject({ status: 302, location: '/auth' });
 		expect(authSetMock).not.toHaveBeenCalled();
 	});
 

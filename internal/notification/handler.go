@@ -11,10 +11,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"beebuzz.app/beebuzz/internal/core"
-	"beebuzz.app/beebuzz/internal/middleware"
-	"beebuzz.app/beebuzz/internal/push"
-	"beebuzz.app/beebuzz/internal/validator"
+	"go.beebuzz.app/beebuzz/internal/core"
+	"go.beebuzz.app/beebuzz/internal/middleware"
+	"go.beebuzz.app/beebuzz/internal/push"
+	"go.beebuzz.app/beebuzz/internal/validator"
 )
 
 const (

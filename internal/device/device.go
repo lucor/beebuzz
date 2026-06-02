@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"time"
 
-	"beebuzz.app/beebuzz/internal/secure"
-	"beebuzz.app/beebuzz/internal/validator"
+	"go.beebuzz.app/beebuzz/internal/secure"
+	"go.beebuzz.app/beebuzz/internal/validator"
 )
 
 const (

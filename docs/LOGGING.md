@@ -232,7 +232,7 @@ Logging responsibilities are split by architectural layer. Never duplicate logs 
 
 ## Error Capture (Sentry / GlitchTip)
 
-BeeBuzz uses Sentry-compatible error capture for unexpected server failures. Capture is enabled when `BEEBUZZ_SENTRY_DSN` is set (see [DEPLOY.md](DEPLOY.md) for runtime configuration). When the DSN is empty, all capture operations are no-ops.
+BeeBuzz uses Sentry-compatible error capture for unexpected server failures. Capture is enabled when `BEEBUZZ_SENTRY_DSN` is set. When the DSN is empty, all capture operations are no-ops.
 
 ### When To Capture vs Log Only
 

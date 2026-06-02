@@ -9,6 +9,12 @@
 	import { Info } from '@lucide/svelte';
 	import { isSaasMode } from '$lib/config/deployment';
 
+	interface Props {
+		redirectAfterSubmit?: '/auth/verify' | '/account';
+	}
+
+	let { redirectAfterSubmit = '/auth/verify' }: Props = $props();
+
 	let email = $state('');
 	let reason = $state('');
 	let referralCode = $state('');
@@ -23,7 +29,7 @@
 
 		try {
 			await login(email, reason.trim() || undefined, referralCode || undefined);
-			await goto(resolve('/verify'));
+			await goto(resolve(redirectAfterSubmit));
 		} catch (err) {
 			if (err instanceof ApiError && isInlineError(err.code)) {
 				error = err.userMessage;

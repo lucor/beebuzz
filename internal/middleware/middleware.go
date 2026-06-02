@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"slices"
 
-	"beebuzz.app/beebuzz/internal/core"
+	"go.beebuzz.app/beebuzz/internal/core"
 )
 
 const (

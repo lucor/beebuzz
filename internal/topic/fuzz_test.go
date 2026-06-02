@@ -5,7 +5,7 @@ import (
 	"testing"
 	"unicode/utf8"
 
-	"beebuzz.app/beebuzz/internal/validator"
+	"go.beebuzz.app/beebuzz/internal/validator"
 )
 
 // FuzzCreateTopicRequestValidate verifies that CreateTopicRequest.Validate never panics

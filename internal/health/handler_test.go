@@ -8,7 +8,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"beebuzz.app/beebuzz/internal/health"
+	"go.beebuzz.app/beebuzz/internal/health"
 )
 
 type stubPinger struct {

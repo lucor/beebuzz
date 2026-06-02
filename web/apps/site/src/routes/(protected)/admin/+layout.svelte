@@ -47,10 +47,10 @@
 		try {
 			await logout();
 			toast.success('Logged out successfully');
-			await goto(resolve('/login'));
+			await goto(resolve('/auth'));
 		} catch (err) {
 			toast.error(err instanceof ApiError ? err.userMessage : 'Logout failed');
-			await goto(resolve('/login'));
+			await goto(resolve('/auth'));
 		}
 	};
 </script>

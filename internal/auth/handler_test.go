@@ -10,12 +10,12 @@ import (
 	"testing"
 	"time"
 
-	"beebuzz.app/beebuzz/internal/config"
-	"beebuzz.app/beebuzz/internal/mailer"
-	"beebuzz.app/beebuzz/internal/middleware"
-	"beebuzz.app/beebuzz/internal/secure"
-	"beebuzz.app/beebuzz/internal/testutil"
-	"beebuzz.app/beebuzz/internal/topic"
+	"go.beebuzz.app/beebuzz/internal/config"
+	"go.beebuzz.app/beebuzz/internal/mailer"
+	"go.beebuzz.app/beebuzz/internal/middleware"
+	"go.beebuzz.app/beebuzz/internal/secure"
+	"go.beebuzz.app/beebuzz/internal/testutil"
+	"go.beebuzz.app/beebuzz/internal/topic"
 )
 
 type countingMailer struct {

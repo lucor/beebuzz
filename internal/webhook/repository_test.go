@@ -4,11 +4,11 @@ import (
 	"context"
 	"testing"
 
-	"beebuzz.app/beebuzz/internal/auth"
-	"beebuzz.app/beebuzz/internal/push"
-	"beebuzz.app/beebuzz/internal/secure"
-	"beebuzz.app/beebuzz/internal/testutil"
-	"beebuzz.app/beebuzz/internal/topic"
+	"go.beebuzz.app/beebuzz/internal/auth"
+	"go.beebuzz.app/beebuzz/internal/push"
+	"go.beebuzz.app/beebuzz/internal/secure"
+	"go.beebuzz.app/beebuzz/internal/testutil"
+	"go.beebuzz.app/beebuzz/internal/topic"
 )
 
 func TestGetByTokenHash_ActiveUser(t *testing.T) {

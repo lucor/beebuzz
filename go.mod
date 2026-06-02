@@ -1,4 +1,4 @@
-module beebuzz.app/beebuzz
+module go.beebuzz.app/beebuzz
 
 go 1.25.0
 

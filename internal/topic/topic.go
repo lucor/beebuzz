@@ -5,7 +5,7 @@ import (
 	"errors"
 	"time"
 
-	"beebuzz.app/beebuzz/internal/validator"
+	"go.beebuzz.app/beebuzz/internal/validator"
 )
 
 // Topic is the DB struct — db tags only, no json tags.

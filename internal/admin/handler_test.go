@@ -9,7 +9,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"beebuzz.app/beebuzz/internal/testutil"
+	"go.beebuzz.app/beebuzz/internal/testutil"
 )
 
 // stubSessionRevoker satisfies the SessionRevoker interface for handler tests.

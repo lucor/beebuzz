@@ -104,7 +104,7 @@ test.describe('Push Stub E2E', () => {
 		});
 
 		// Step 1: open Site and Hive
-		await Promise.all([sitePage.goto(`${siteURL}/login`), hivePage.goto(`${hiveURL}/pair`)]);
+		await Promise.all([sitePage.goto(`${siteURL}/auth`), hivePage.goto(`${hiveURL}/pair`)]);
 
 		// Step 2: skip install fallback on Hive
 		const fallbackButton = hivePage.getByRole('button', { name: /continue in browser/i });

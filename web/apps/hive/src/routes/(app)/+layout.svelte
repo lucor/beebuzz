@@ -36,7 +36,7 @@
 	import type { PushMessage } from '@beebuzz/shared/types';
 
 	const DEBUG = import.meta.env.VITE_BEEBUZZ_DEBUG === true;
-	const GITHUB_RELEASES_URL = 'https://codeberg.org/beebuzz/beebuzz-cli/releases';
+	const GITHUB_RELEASES_URL = 'https://codeberg.org/beebuzz/cli/releases';
 	const STARTUP_TIMEOUT_MS = 10000;
 
 	let { children }: { children: import('svelte').Snippet } = $props();

@@ -133,7 +133,7 @@
 			<div class="text-center text-sm text-base-content/60">
 				Don't have a Pairing Code?
 				<a
-					href={SITE_URL + resolve('/login' as '/')}
+					href={SITE_URL + resolve('/auth' as '/')}
 					class="text-primary font-semibold hover:underline"
 				>
 					Sign in to generate one.

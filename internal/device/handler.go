@@ -9,8 +9,8 @@ import (
 
 	"rsc.io/qr"
 
-	"beebuzz.app/beebuzz/internal/core"
-	"beebuzz.app/beebuzz/internal/middleware"
+	"go.beebuzz.app/beebuzz/internal/core"
+	"go.beebuzz.app/beebuzz/internal/middleware"
 )
 
 // Handler handles device HTTP requests.

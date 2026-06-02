@@ -7,9 +7,9 @@ import (
 	"log/slog"
 	"testing"
 
-	"beebuzz.app/beebuzz/internal/auth"
-	"beebuzz.app/beebuzz/internal/core"
-	"beebuzz.app/beebuzz/internal/testutil"
+	"go.beebuzz.app/beebuzz/internal/auth"
+	"go.beebuzz.app/beebuzz/internal/core"
+	"go.beebuzz.app/beebuzz/internal/testutil"
 )
 
 type trackingMailer struct {

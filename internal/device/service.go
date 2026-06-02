@@ -8,8 +8,8 @@ import (
 
 	"github.com/google/uuid"
 
-	"beebuzz.app/beebuzz/internal/secure"
-	"beebuzz.app/beebuzz/internal/validator"
+	"go.beebuzz.app/beebuzz/internal/secure"
+	"go.beebuzz.app/beebuzz/internal/validator"
 )
 
 // Service handles device business logic.

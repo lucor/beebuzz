@@ -8,7 +8,7 @@ import (
 	"syscall"
 	"testing"
 
-	"beebuzz.app/beebuzz/internal/config"
+	"go.beebuzz.app/beebuzz/internal/config"
 )
 
 func TestRunHTTPServerReturnsStartupError(t *testing.T) {

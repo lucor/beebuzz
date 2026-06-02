@@ -38,7 +38,7 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
 	if (!response.ok) {
 		if (response.status === STATUS_UNAUTHORIZED) {
 			auth.clear();
-			await goto(new URL('/login', SITE_URL).toString(), { replaceState: true });
+			await goto(new URL('/auth', SITE_URL).toString(), { replaceState: true });
 		}
 		if (response.status === STATUS_FORBIDDEN) {
 			await goto(new URL('/account', SITE_URL).toString(), { replaceState: true });

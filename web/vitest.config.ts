@@ -14,6 +14,10 @@ export default defineConfig({
 				import.meta.dirname,
 				'packages/shared/src/testing/sveltekit-environment.ts'
 			),
+			'$app/navigation': path.resolve(
+				import.meta.dirname,
+				'packages/shared/src/testing/sveltekit-navigation.ts'
+			),
 			$lib: path.resolve(import.meta.dirname, 'apps/hive/src/lib'),
 			'@beebuzz/shared': path.resolve(import.meta.dirname, 'packages/shared/src')
 		}

@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"strings"
 
-	"beebuzz.app/beebuzz/internal/secure"
+	"go.beebuzz.app/beebuzz/internal/secure"
 )
 
 const (

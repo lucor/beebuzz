@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"beebuzz.app/beebuzz/internal/core"
-	"beebuzz.app/beebuzz/internal/validator"
+	"go.beebuzz.app/beebuzz/internal/core"
+	"go.beebuzz.app/beebuzz/internal/validator"
 )
 
 type User struct {

@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"beebuzz.app/beebuzz/internal/testutil"
+	"go.beebuzz.app/beebuzz/internal/testutil"
 	"github.com/jmoiron/sqlx"
 )
 

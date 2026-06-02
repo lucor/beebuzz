@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"beebuzz.app/beebuzz/internal/database"
+	"go.beebuzz.app/beebuzz/internal/database"
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 )

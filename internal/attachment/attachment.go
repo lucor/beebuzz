@@ -4,7 +4,7 @@ package attachment
 import (
 	"fmt"
 
-	"beebuzz.app/beebuzz/internal/core"
+	"go.beebuzz.app/beebuzz/internal/core"
 )
 
 type DBAttachment struct {

@@ -2,53 +2,39 @@
     <img src="docs/assets/readme/beebuzz-logo.svg" alt="BeeBuzz logo" width="96">
 </div>
 
-<h1 align="center">Your tools. Your notifications. Your keys.</h1>
+<h1 align="center">Minimalist, privacy-first push notifications.</h1>
 
-<p align="center">
-  End-to-end encrypted delivery first. Trusted delivery when needed.
-</p>
+BeeBuzz sends notifications from your tools to your devices.
 
-BeeBuzz is a focused push delivery system for private machine-to-person notifications from
-servers, automations, scripts, apps, and webhooks.
+No app stores, no native apps: just the Hive PWA in your browser.
 
-It is built for developers, homelabbers, and small teams sending notifications from
-systems they control. Not chat, not a team inbox, not a general messaging
-platform.
+Use end-to-end encryption when possible, or trusted delivery when needed.
 
-It supports two delivery modes:
-
-- **End-to-end encrypted delivery** for senders you control, when they can encrypt before sending to BeeBuzz and BeeBuzz stores only ciphertext.
-- **Trusted delivery** for fast HTTP, webhook, and third-party service integrations when they cannot encrypt before sending.
-
-BeeBuzz is built around paired personal devices, short-lived delivery state, and
-a small auditable stack: Go, SQLite, SvelteKit, Web Push, and Hive, its PWA
-receiver.
+**Your tools. Your notifications. Your keys.**
 
 ## Quickstart Demo
 
 Hosted beta flow, showing setup in BeeBuzz and delivery in Hive side by side.
 
-<https://github.com/user-attachments/assets/edcd0981-119a-47e8-a947-91c70f888782>
+<video src="docs/assets/readme/demo.mp4" poster="docs/assets/readme/demo-poster.png" controls playsinline width="720">
+  <a href="docs/assets/readme/demo.mp4"><img src="docs/assets/readme/demo-poster-play.png" alt="Quickstart demo" width="720"></a>
+</video>
 
 <p align="center">
   Sign in, create a pairing code, pair Hive, create a token, and deliver the first notification.
 </p>
 
-## BeeBuzz.app
+## Built for tools that need to reach you
 
-[BeeBuzz.app](https://beebuzz.app) is the hosted BeeBuzz SaaS.
+For developers, homelabbers, and small teams sending notifications from systems they control. Not chat, not a team inbox, not a general messaging platform.
 
-Hosted access is currently a beta for approved users. Hosted access is free
-during beta. After beta, the hosted service is expected to
-move to a single paid plan so the project can stay sustainable. Self-hosting
-remains free, open source, and available under the AGPL license.
+- **Servers & homelabs** — notifications from servers, routers, backups, and cron jobs. Use the CLI or Go SDK.
+- **Scripts & CI/CD** — notifications from scripts, deployments, and pipelines. Use webhooks, cURL, or the HTTP API.
+- **Home Assistant** — connect automations and alerts to BeeBuzz with a dedicated integration.
 
-Start here: [BeeBuzz quickstart](https://beebuzz.app/docs/quickstart).
+## How delivery works
 
-## How It Works
-
-BeeBuzz has two delivery paths because not every sender can encrypt before
-sending to BeeBuzz.
+Two delivery modes, chosen by one question: can the sender encrypt before it talks to BeeBuzz?
 
 <table>
   <tr>
@@ -61,13 +47,19 @@ sending to BeeBuzz.
   </tr>
 </table>
 
-In both paths, Web Push transport is encrypted in transit between BeeBuzz and
-the receiving browser. The difference is what BeeBuzz handles before delivery.
-In trusted delivery, BeeBuzz receives the message, prepares delivery, handles
-short-lived attachment data when present, and dispatches the notification to
-paired devices. In end-to-end encrypted delivery, BeeBuzz stores ciphertext and
-relays a minimal delivery envelope while Hive fetches and decrypts the message
-on the receiving device.
+**End-to-end encrypted delivery** (recommended). The sender encrypts locally. BeeBuzz stores ciphertext only and never sees the content. **BeeBuzz can't read the message.**
+
+**Trusted delivery** (when needed). The sender sends plaintext. BeeBuzz reads to route, then delivers to your devices. **BeeBuzz can read the message to prepare delivery.**
+
+In both modes, Web Push transport is encrypted in transit between BeeBuzz and the receiving browser.
+
+## BeeBuzz.app
+
+[BeeBuzz.app](https://beebuzz.app) is the hosted BeeBuzz SaaS.
+
+Hosted access is currently a beta for approved users and is free during beta. After beta, the hosted service is expected to move to a single paid plan so the project can stay sustainable. Self-hosting remains free, open source, and available under the AGPL license.
+
+Start here: [BeeBuzz quickstart](https://beebuzz.app/docs/quickstart).
 
 ## Try It
 
@@ -80,11 +72,11 @@ curl https://push.beebuzz.app \
   -F body="Trusted mode test"
 ```
 
-Install the CLI from the [latest release](https://codeberg.org/beebuzz/beebuzz-cli/releases)
+Install the CLI from the [latest release](https://codeberg.org/beebuzz/cli/releases)
 or with Go:
 
 ```bash
-go install beebuzz.app/cli/beebuzz@latest
+go install go.beebuzz.app/cli@latest
 ```
 
 Then connect the CLI and send an encrypted notification:
@@ -99,12 +91,17 @@ locally with [age](https://age-encryption.org), and sends ciphertext as
 `application/octet-stream`. Hive fetches and decrypts the notification on the
 receiving device.
 
-## What's Inside
+## What's in this repo
 
 - **Server**: Go + SQLite API for accounts, topics, API tokens, devices, attachments, and Web Push dispatch.
 - **Site**: SvelteKit web app for sign-in, device pairing, API tokens, webhook setup, and administration.
 - **Hive**: PWA receiver that handles Web Push, stores pairing state locally, and decrypts E2E notifications on-device.
-- **CLI**: sender for end-to-end encrypted notifications from terminals, scripts, and automation.
+
+## Companion projects
+
+- [**beebuzz-go**](https://codeberg.org/beebuzz/beebuzz-go) — public Go SDK for the BeeBuzz HTTP API.
+- [**cli**](https://codeberg.org/beebuzz/cli) — `beebuzz` CLI for sending end-to-end encrypted notifications from terminals, scripts, and automation.
+- [**home-assistant**](https://codeberg.org/beebuzz/home-assistant) — HACS integration for Home Assistant.
 
 ## Documentation
 

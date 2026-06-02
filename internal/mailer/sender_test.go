@@ -3,7 +3,7 @@ package mailer
 import (
 	"testing"
 
-	"beebuzz.app/beebuzz/internal/config"
+	"go.beebuzz.app/beebuzz/internal/config"
 )
 
 func TestNewTransport(t *testing.T) {

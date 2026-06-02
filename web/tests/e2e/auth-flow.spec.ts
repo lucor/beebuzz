@@ -5,12 +5,12 @@ const MAILPIT_API = 'http://localhost:8025/api/v1';
 
 test.describe('auth flow', () => {
 	test('full login flow with OTP', async ({ page }) => {
-		await page.goto('/login');
+		await page.goto('/auth');
 
 		await page.getByLabel('Email address').fill(ADMIN_EMAIL);
 		await page.getByRole('button', { name: /continue/i }).click();
 
-		await expect(page).toHaveURL('/verify');
+		await expect(page).toHaveURL('/auth/verify');
 
 		const messages = await fetch(`${MAILPIT_API}/messages`).then((r) => r.json());
 		const latestMsg = messages.messages[0];

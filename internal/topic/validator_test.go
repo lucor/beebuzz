@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"beebuzz.app/beebuzz/internal/validator"
+	"go.beebuzz.app/beebuzz/internal/validator"
 )
 
 func TestCreateTopicRequest_Validate(t *testing.T) {
