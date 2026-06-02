@@ -50,8 +50,13 @@ BOOTSTRAP_EMAIL=$(grep "^BEEBUZZ_BOOTSTRAP_ADMIN_EMAIL=" .env 2>/dev/null | cut 
 DEFAULT_ADMIN_EMAIL="admin@beebuzz.local"
 
 if [ -z "$BOOTSTRAP_EMAIL" ]; then
-  read -rp "[setup] Bootstrap admin email [${DEFAULT_ADMIN_EMAIL}] " answer
-  BOOTSTRAP_EMAIL="${answer:-${DEFAULT_ADMIN_EMAIL}}"
+  if [ -t 0 ]; then
+    read -rp "[setup] Bootstrap admin email [${DEFAULT_ADMIN_EMAIL}] " answer
+    BOOTSTRAP_EMAIL="${answer:-${DEFAULT_ADMIN_EMAIL}}"
+  else
+    BOOTSTRAP_EMAIL="${DEFAULT_ADMIN_EMAIL}"
+    echo "[setup] Non-interactive shell — using default admin email: ${BOOTSTRAP_EMAIL}"
+  fi
   echo "BEEBUZZ_BOOTSTRAP_ADMIN_EMAIL=${BOOTSTRAP_EMAIL}" >> .env
   echo "[setup] Set BEEBUZZ_BOOTSTRAP_ADMIN_EMAIL=${BOOTSTRAP_EMAIL} in .env"
 else
