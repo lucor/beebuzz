@@ -1,0 +1,24 @@
+{$BEEBUZZ_DOMAIN} {
+	tls .mise/certs/fullchain.pem .mise/certs/privkey.pem
+	reverse_proxy localhost:5173
+}
+
+api.{$BEEBUZZ_DOMAIN} {
+	tls .mise/certs/fullchain.pem .mise/certs/privkey.pem
+	reverse_proxy localhost:8899
+}
+
+hive.{$BEEBUZZ_DOMAIN} {
+	tls .mise/certs/fullchain.pem .mise/certs/privkey.pem
+	reverse_proxy localhost:5174
+}
+
+push.{$BEEBUZZ_DOMAIN} {
+	tls .mise/certs/fullchain.pem .mise/certs/privkey.pem
+	reverse_proxy localhost:8899
+}
+
+hook.{$BEEBUZZ_DOMAIN} {
+	tls .mise/certs/fullchain.pem .mise/certs/privkey.pem
+	reverse_proxy localhost:8899
+}

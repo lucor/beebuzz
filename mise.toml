@@ -1,41 +1,171 @@
-# BeeBuzz Server repo tooling.
+# BeeBuzz app repo tooling.
+#
+# This repo contains both the Go server (root) and the SvelteKit frontend
+# workspace (web/). Tasks are unified so `mise run dev` boots the full
+# local stack (server + site + hive + Caddy TLS + Mailpit).
+#
+# For single-service development, use the dedicated dev-* tasks
+# (dev-api, dev-site, dev-hive, dev-caddy, dev-mailpit).
 
 [tools]
+# Go toolchain
 go = "1.25.0"
 "go:golang.org/x/vuln/cmd/govulncheck" = "latest"
 "go:honnef.co/go/tools/cmd/staticcheck" = "latest"
+"go:github.com/air-verse/air" = "latest"
+
+# Node toolchain (frontend workspace lives in web/)
+node = "24.14"
+pnpm = "10.31.0"
+
+# Local dev orchestration
+"github:caddyserver/caddy" = "latest"
+"github:mattn/goreman" = "latest"
+"github:axllent/mailpit" = "latest"
+
+[env]
+# Load .env if present (explicit [env] entries take precedence)
+_.file = ".env"
+
+# Mailer defaults — point at the local Mailpit instance started by `mise run dev`
+BEEBUZZ_MAILER_SMTP_ADDRESS = "localhost:1025"
+BEEBUZZ_MAILER_SMTP_USER = "dev"
+BEEBUZZ_MAILER_SMTP_PASSWORD = "dev"
+
+# Mailpit SMTP auth (matches the values above)
+MP_SMTP_AUTH = "dev:dev"
+MP_SMTP_AUTH_ALLOW_INSECURE = "true"
+
+# Frontend defaults (overridden by .env or by setup-dev.sh during full-stack dev)
+VITE_BEEBUZZ_DOMAIN = "example.com"
+VITE_BEEBUZZ_DEBUG = true
+VITE_BEEBUZZ_DEPLOYMENT_MODE = "self_hosted"
+
+# =============================================================================
+# Setup / housekeeping
+# =============================================================================
 
 [tasks.setup]
-description = "Download Go module dependencies"
-run = "go mod download"
+description = "Install Go modules and frontend dependencies"
+run = [
+  "mkdir -p data bin",
+  "go mod download",
+  "pnpm -C web install --frozen-lockfile",
+  "echo 'Setup complete. Run \"mise run dev\" to start the full local stack.'",
+]
 
 [tasks.tidy]
 description = "Tidy go.mod / go.sum"
 run = "go mod tidy"
 
-[tasks.test]
-description = "Run unit tests"
+# =============================================================================
+# Local development (full stack and per-service)
+# =============================================================================
+
+[tasks.dev]
+description = "Run the full local stack (server + site + hive + Caddy TLS + Mailpit)"
+run = """
+#!/usr/bin/env bash
+set -euo pipefail
+source .mise/setup-dev.sh
+cd .mise && goreman -f Procfile start
+"""
+
+[tasks.dev-api]
+description = "Run the Go server with hot reload (air)"
+run = "air -c ./.mise/.air.toml"
+
+[tasks.dev-site]
+description = "Run the SvelteKit site app with hot reload"
+run = "pnpm -C web/apps/site dev"
+
+[tasks.dev-hive]
+description = "Run the SvelteKit hive app with hot reload"
+run = "pnpm -C web/apps/hive dev"
+
+[tasks.dev-caddy]
+description = "Run Caddy reverse proxy with lancert.dev TLS"
+run = "caddy run --config ./.mise/Caddyfile"
+
+[tasks.dev-mailpit]
+description = "Run Mailpit for local email capture"
+run = "mailpit --smtp 0.0.0.0:1025 --listen 0.0.0.0:8025"
+
+# =============================================================================
+# Tests
+# =============================================================================
+
+[tasks.test-api]
+description = "Run Go unit tests"
 run = "go test ./..."
 
 [tasks.test-race]
-description = "Run unit tests with the race detector"
+description = "Run Go unit tests with the race detector"
 run = "go test -race ./..."
 
-[tasks.lint]
+[tasks.test-app]
+description = "Run frontend Vitest suite"
+run = "pnpm -C web run test"
+
+[tasks.test-e2e]
+description = "Run frontend Playwright end-to-end tests"
+run = "pnpm -C web run test:e2e"
+
+[tasks.test]
+description = "Run all unit tests (server + frontend)"
+run = [
+  "mise run test-api",
+  "mise run test-app",
+]
+
+# =============================================================================
+# Lint / vuln / build
+# =============================================================================
+
+[tasks.lint-api]
 description = "Run go vet and staticcheck"
 run = [
   "go vet ./...",
   "staticcheck ./...",
 ]
 
+[tasks.lint-app]
+description = "Run frontend formatter check and ESLint"
+run = "pnpm -C web run lint"
+
+[tasks.lint]
+description = "Lint server + frontend"
+run = [
+  "mise run lint-api",
+  "mise run lint-app",
+]
+
+[tasks.check]
+description = "Run Svelte / TypeScript checks for site and Hive"
+run = [
+  "pnpm -C web/apps/site run check",
+  "pnpm -C web/apps/hive run check",
+]
+
 [tasks.vuln]
-description = "Run govulncheck"
+description = "Run govulncheck on Go modules"
 run = "govulncheck ./..."
 
 [tasks.build]
-description = "Compile every package"
-run = "go build ./..."
+description = "Compile every Go package and build the frontend"
+run = [
+  "go build ./...",
+  "pnpm -C web run build",
+]
 
 [tasks.binary]
-description = "Build the beebuzzd binary"
-run = "go build -o beebuzzd ."
+description = "Build the beebuzzd binary into ./bin"
+run = "go build -o ./bin/beebuzzd ."
+
+# =============================================================================
+# Demo
+# =============================================================================
+
+[tasks.quickstart-demo]
+description = "Run the end-to-end quickstart demo against the local stack"
+run = "./scripts/quickstart-demo.sh"
