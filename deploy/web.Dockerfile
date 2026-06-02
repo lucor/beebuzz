@@ -12,6 +12,7 @@ COPY web/packages/shared/package.json ./packages/shared/
 RUN pnpm install --frozen-lockfile
 
 COPY web/ ./
+COPY docs/openapi.yaml /build/docs/openapi.yaml
 
 ARG VITE_BEEBUZZ_DOMAIN
 ARG VITE_BEEBUZZ_DEBUG=false

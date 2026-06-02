@@ -5,6 +5,7 @@ data/
 tmp/
 bin/
 build/
-docs/
+docs/*
+!docs/openapi.yaml
 .env
 *.md
