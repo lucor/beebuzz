@@ -44,9 +44,8 @@
 				{/if}
 			</button>
 
-			<a href={resolve('/')} class="hidden items-center gap-2 sm:flex">
-				<BeeBuzzLogo variant="img" class="h-10 w-10" />
-				<BeeBuzzLogo variant="text" class="hidden h-8 w-24 md:block" />
+			<a href={resolve('/')} class="hidden sm:flex">
+				<BeeBuzzLogo variant="full" class="h-10 w-auto" />
 			</a>
 		</div>
 

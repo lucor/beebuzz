@@ -36,7 +36,7 @@
 	import type { PushMessage } from '@beebuzz/shared/types';
 
 	const DEBUG = import.meta.env.VITE_BEEBUZZ_DEBUG === true;
-	const GITHUB_RELEASES_URL = 'https://github.com/beebuzz-hive/beebuzz/releases';
+	const GITHUB_RELEASES_URL = 'https://codeberg.org/beebuzz/beebuzz/releases';
 	const STARTUP_TIMEOUT_MS = 10000;
 
 	let { children }: { children: import('svelte').Snippet } = $props();
@@ -467,9 +467,8 @@
 					{/if}
 				</button>
 
-				<a href={resolve('/')} class="flex items-center gap-2 hidden sm:flex">
-					<BeeBuzzLogo variant="img" class="w-10 h-10" />
-					<BeeBuzzLogo variant="text" class="w-24 h-8 hidden md:block" />
+				<a href={resolve('/')} class="hidden sm:flex">
+					<BeeBuzzLogo variant="full" class="h-10 w-auto" />
 				</a>
 			</div>
 

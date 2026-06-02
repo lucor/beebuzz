@@ -21,7 +21,7 @@ It is intentionally focused on development, not production self-hosting.
 ## 1. Clone The Repo
 
 ```bash
-git clone https://github.com/beebuzz-hive/beebuzz.git
+git clone https://codeberg.org/beebuzz/beebuzz.git
 cd beebuzz
 ```
 

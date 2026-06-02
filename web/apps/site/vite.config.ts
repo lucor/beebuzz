@@ -179,6 +179,37 @@ function renderTable(header: string, body: string): string {
 	return `<div class="not-prose my-6 overflow-x-auto"><table class="table table-zebra w-full">${header}${body}</table></div>`;
 }
 
+function extractPlainText(value: unknown): string {
+	if (typeof value === 'string') {
+		return value;
+	}
+
+	if (typeof value !== 'object' || value === null) {
+		return '';
+	}
+
+	if ('text' in value && typeof value.text === 'string') {
+		return value.text;
+	}
+
+	if ('tokens' in value && Array.isArray(value.tokens)) {
+		return value.tokens.map(extractPlainText).join('');
+	}
+
+	return '';
+}
+
+function slugifyHeading(value: string): string {
+	const slug = value
+		.toLowerCase()
+		.replace(/<[^>]*>/g, '')
+		.replace(/&[a-z0-9#]+;/gi, '')
+		.replace(/[^a-z0-9]+/g, '-')
+		.replace(/^-+|-+$/g, '');
+
+	return slug || 'section';
+}
+
 async function transformMarkdown(body: string): Promise<string> {
 	const codeBlockPattern = /```([\w-]+)?\n([\s\S]*?)\n```/g;
 	let transformedBody = '';
@@ -204,6 +235,17 @@ const markdownPlugin: Plugin = {
 
 		const { frontmatter, body } = parseFrontmatter(code);
 		const renderer = new marked.Renderer();
+		const headingCounts = new Map<string, number>();
+
+		renderer.heading = function (token) {
+			const text = this.parser.parseInline(token.tokens);
+			const baseSlug = slugifyHeading(extractPlainText(token));
+			const count = headingCounts.get(baseSlug) ?? 0;
+			headingCounts.set(baseSlug, count + 1);
+			const slug = count === 0 ? baseSlug : `${baseSlug}-${count + 1}`;
+
+			return `<h${token.depth} id="${slug}">${text}</h${token.depth}>`;
+		};
 
 		renderer.table = function (token) {
 			let header = '';

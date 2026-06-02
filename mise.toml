@@ -38,7 +38,6 @@ MP_SMTP_AUTH_ALLOW_INSECURE = "true"
 
 # Frontend defaults
 VITE_BEEBUZZ_DEBUG = true
-VITE_BEEBUZZ_DEPLOYMENT_MODE = "self_hosted"
 
 # =============================================================================
 # Setup / housekeeping

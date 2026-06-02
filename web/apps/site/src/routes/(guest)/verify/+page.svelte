@@ -97,8 +97,7 @@
 		<!-- Header -->
 		<div class="text-center mb-8">
 			<div class="flex flex-col items-center justify-center">
-				<BeeBuzzLogo variant="img" class="w-16 h-16 mb-2" />
-				<BeeBuzzLogo variant="text" class="w-48 h-12" />
+				<BeeBuzzLogo variant="full" class="h-16 w-auto mb-2" />
 			</div>
 			<h1 class="text-xl font-bold text-base-content mt-4">Check your email</h1>
 			{#if email}

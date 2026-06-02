@@ -111,7 +111,7 @@ In E2E mode, the BeeBuzz CLI fetches your paired-device public keys, encrypts th
 
 The easiest install path for most beta users is the published CLI release:
 
-1. open [BeeBuzz releases](https://github.com/beebuzz-hive/beebuzz/releases)
+1. open [BeeBuzz releases](https://codeberg.org/beebuzz/beebuzz-cli/releases)
 2. download the archive for your OS and CPU architecture
 3. unpack it and put the `beebuzz` binary somewhere in your `PATH`
 4. run `beebuzz version`

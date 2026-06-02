@@ -4,8 +4,7 @@
 	import { isSaasMode } from '$lib/config/deployment';
 
 	const CONTACT_EMAIL = 'support@beebuzz.app';
-	const ISSUES_URL = 'https://github.com/beebuzz-hive/beebuzz/issues';
-	const DISCUSSIONS_URL = 'https://github.com/beebuzz-hive/beebuzz/discussions';
+	const ISSUES_URL = 'https://codeberg.org/beebuzz/beebuzz/issues';
 	const MAINTENANCE_POLICY_URL = 'https://lucor.dev/projects/#maintenance-policy';
 	const SECURITY_POLICY_URL = 'https://lucor.dev/projects/#security';
 </script>
@@ -66,15 +65,7 @@
 				target="_blank"
 				rel="noopener noreferrer"
 				class="underline hover:text-base-content">issues</a
-			> for bug reports and feature requests.
-		</p>
-		<p class="mt-4 text-base leading-7 text-base-content/75">
-			Use <a
-				href={DISCUSSIONS_URL}
-				target="_blank"
-				rel="noopener noreferrer"
-				class="underline hover:text-base-content">discussions</a
-			> for general questions and product feedback.
+			> for bug reports, feature requests, and general questions.
 		</p>
 	</section>
 

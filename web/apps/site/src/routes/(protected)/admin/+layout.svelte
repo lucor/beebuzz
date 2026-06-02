@@ -72,9 +72,8 @@
 				{/if}
 			</button>
 
-			<a href={resolve('/')} class="flex items-center gap-2 hidden sm:flex">
-				<BeeBuzzLogo variant="img" class="w-10 h-10" />
-				<BeeBuzzLogo variant="text" class="w-24 h-8 hidden md:block" />
+			<a href={resolve('/')} class="hidden sm:flex">
+				<BeeBuzzLogo variant="full" class="h-10 w-auto" />
 			</a>
 
 			<!-- Admin Badge -->

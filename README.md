@@ -80,7 +80,7 @@ curl https://push.beebuzz.app \
   -F body="Trusted mode test"
 ```
 
-Install the CLI from the [latest release](https://github.com/beebuzz-hive/beebuzz-cli/releases)
+Install the CLI from the [latest release](https://codeberg.org/beebuzz/beebuzz-cli/releases)
 or with Go:
 
 ```bash

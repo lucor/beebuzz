@@ -3,7 +3,7 @@
 
 	const LAST_UPDATED = 'April 23, 2026';
 	const CONTACT_EMAIL = 'support@beebuzz.app';
-	const RELEASE_URL = 'https://github.com/beebuzz-hive/beebuzz';
+	const RELEASE_URL = 'https://codeberg.org/beebuzz/beebuzz';
 </script>
 
 <svelte:head>

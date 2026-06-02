@@ -3,7 +3,7 @@
 	import { isSaasMode } from '$lib/config/deployment';
 
 	const CREATOR_URL = 'https://lucor.dev';
-	const RELEASE_URL = 'https://github.com/beebuzz-hive/beebuzz';
+	const RELEASE_URL = 'https://codeberg.org/beebuzz/beebuzz';
 	const STATUS_URL = 'https://status.beebuzz.app';
 </script>
 
@@ -12,7 +12,11 @@
 		class="mx-auto flex max-w-6xl flex-col items-center gap-3 text-center md:flex-row md:items-center md:justify-between md:gap-6 md:text-left"
 	>
 		<p class="leading-6">
-			BeeBuzz is designed, built{#if isSaasMode}, and operated{/if} by
+			{#if isSaasMode}
+				BeeBuzz is designed, built, and operated by
+			{:else}
+				BeeBuzz is designed and built by
+			{/if}
 			<a
 				href={CREATOR_URL}
 				target="_blank"
@@ -38,8 +42,7 @@
 				>
 					Status
 				</a>
-				<a href={resolve('/policies')} class="transition-colors hover:text-base-content">Policies</a
-				>
+				<a href={resolve('/policies')} class="transition-colors hover:text-base-content">Policies</a>
 				<a
 					href={RELEASE_URL}
 					target="_blank"

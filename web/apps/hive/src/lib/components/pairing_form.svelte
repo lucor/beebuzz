@@ -40,8 +40,7 @@
 		<!-- Header -->
 		<div class="text-center mb-8">
 			<div class="flex flex-col items-center justify-center mb-4">
-				<BeeBuzzLogo variant="img" class="w-16 h-16 mb-2" />
-				<BeeBuzzLogo variant="text" class="w-48 h-12" />
+				<BeeBuzzLogo variant="full" class="h-16 w-auto mb-2" />
 			</div>
 			<p class="text-lg text-base-content/80 font-medium">
 				Connect a device to start receiving notifications
