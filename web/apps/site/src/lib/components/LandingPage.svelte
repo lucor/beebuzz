@@ -506,7 +506,7 @@
 											</span>
 										</div>
 										<!-- Inbox content -->
-										<div class="min-h-[18rem] p-4">
+										<div class="min-h-96 p-4 sm:min-h-[30rem]">
 											<div class="mb-4 flex items-center justify-between">
 												<div>
 													<h3 class="text-lg font-semibold text-base-content">Inbox</h3>
