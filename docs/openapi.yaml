@@ -1504,10 +1504,13 @@ components:
           type: string
         name:
           type: string
+          maxLength: 32
+          pattern: '^[a-z][a-z0-9_]{0,31}$'
         description:
           type:
             - string
             - "null"
+          maxLength: 128
         created_at:
           type: string
           format: date-time
@@ -1528,13 +1531,18 @@ components:
       properties:
         name:
           type: string
+          minLength: 1
+          maxLength: 32
+          pattern: '^[a-z][a-z0-9_]{0,31}$'
         description:
           type: string
+          maxLength: 128
     UpdateTopicRequest:
       type: object
       properties:
         description:
           type: string
+          maxLength: 128
     DeviceResponse:
       type: object
       required: [id, name, description, is_active, pairing_status, topic_ids, created_at, updated_at]
@@ -1629,8 +1637,11 @@ components:
       properties:
         name:
           type: string
+          minLength: 1
+          maxLength: 64
         description:
           type: string
+          maxLength: 128
         topics:
           type: array
           items:
@@ -1641,8 +1652,11 @@ components:
       properties:
         name:
           type: string
+          minLength: 1
+          maxLength: 64
         description:
           type: string
+          maxLength: 128
         topics:
           type: array
           items:
@@ -1728,8 +1742,11 @@ components:
       properties:
         name:
           type: string
+          minLength: 1
+          maxLength: 64
         description:
           type: string
+          maxLength: 64
         topics:
           type: array
           items:
@@ -1740,8 +1757,11 @@ components:
       properties:
         name:
           type: string
+          minLength: 1
+          maxLength: 64
         description:
           type: string
+          maxLength: 64
         topics:
           type: array
           items:
@@ -1823,8 +1843,11 @@ components:
       properties:
         name:
           type: string
+          minLength: 1
+          maxLength: 64
         description:
           type: string
+          maxLength: 128
         payload_type:
           type: string
           const: beebuzz
@@ -1848,8 +1871,11 @@ components:
       properties:
         name:
           type: string
+          minLength: 1
+          maxLength: 64
         description:
           type: string
+          maxLength: 128
         payload_type:
           type: string
           const: custom
@@ -1877,8 +1903,11 @@ components:
       properties:
         name:
           type: string
+          minLength: 1
+          maxLength: 64
         description:
           type: string
+          maxLength: 128
         payload_type:
           type: string
           const: beebuzz
@@ -1902,8 +1931,11 @@ components:
       properties:
         name:
           type: string
+          minLength: 1
+          maxLength: 64
         description:
           type: string
+          maxLength: 128
         payload_type:
           type: string
           const: custom
@@ -2024,6 +2056,7 @@ components:
       properties:
         title:
           type: string
+          minLength: 1
           maxLength: 64
         body:
           type: string
@@ -2040,6 +2073,7 @@ components:
       properties:
         title:
           type: string
+          minLength: 1
           maxLength: 64
         body:
           type: string

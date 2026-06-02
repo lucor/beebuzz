@@ -57,7 +57,7 @@ Run all commands from the repo root.
 
 ## Dependency Rules
 
-- **SDK is the contract.** The server may only consume public symbols from `beebuzz.app/beebuzz-go`. Do not duplicate SDK types locally.
+- **Server is the API provider; it does not depend on the client SDK.** The `beebuzz.app/beebuzz-go` client is a consumer of the public HTTP contract documented in `docs/openapi.yaml`. The server defines its own types internally and must not import the SDK.
 - **No reach-throughs into other repos.** Never import from the `beebuzz-cli` repo or from any other repo's `internal/` packages.
 - Server-specific packages (`internal/push`, `internal/notification`, etc.) remain local; do not try to replace them with SDK packages.
 - Frontend ↔ server contract: `docs/openapi.yaml` is the source of truth. The frontend must conform.

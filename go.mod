@@ -2,8 +2,6 @@ module beebuzz.app/beebuzz
 
 go 1.25.0
 
-replace beebuzz.app/beebuzz-go => ../beebuzz-go
-
 require (
 	filippo.io/age v1.3.1
 	github.com/SherClockHolmes/webpush-go v1.4.0

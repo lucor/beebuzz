@@ -2,6 +2,7 @@
 package database
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -17,18 +18,57 @@ const (
 	connMaxLifetime = 0
 )
 
+// dbFileName is the on-disk name of the SQLite database. SQLite creates
+// companion -journal, -wal, and -shm files alongside it.
+const dbFileName = "beebuzz.db"
+
 // New creates or opens a SQLite database on disk at the given directory.
-// It applies recommended pragmas for concurrency and integrity, and configures
-// the connection pool. Returns a *DB or an error if initialization fails.
+// It applies recommended pragmas for concurrency and integrity, configures
+// the connection pool, and tightens filesystem permissions on the DB
+// directory and its files. Returns a *DB or an error if initialization fails.
 func New(dbDir string) (*sqlx.DB, error) {
-	if err := os.MkdirAll(dbDir, 0755); err != nil {
+	if err := os.MkdirAll(dbDir, 0o700); err != nil {
 		return nil, fmt.Errorf("failed to create DB directory: %w", err)
 	}
 
-	dbPath := filepath.Join(dbDir, "beebuzz.db")
+	dbPath := filepath.Join(dbDir, dbFileName)
 	dsn := fmt.Sprintf("file:%s?mode=rwc&parseTime=true&_txlock=immediate", dbPath)
 
-	return newWithDSN(dsn)
+	db, err := newWithDSN(dsn)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := tightenPerms(dbDir); err != nil {
+		_ = db.Close()
+		return nil, err
+	}
+	return db, nil
+}
+
+// tightenPerms restricts permissions on the SQLite directory and any
+// of its journal/WAL/SHM companion files to owner-only access.
+//
+// SQLite honors the process umask when creating the WAL/SHM files,
+// which on most Linux systems leaves them group/world readable. The
+// database stores session, API-key, and webhook secret hashes plus
+// user identifying data, so we set the modes explicitly on every
+// startup to also tighten files left over from a previous looser
+// configuration.
+func tightenPerms(dbDir string) error {
+	if err := os.Chmod(dbDir, 0o700); err != nil {
+		return fmt.Errorf("chmod DB directory: %w", err)
+	}
+	for _, suffix := range []string{"", "-journal", "-wal", "-shm"} {
+		path := filepath.Join(dbDir, dbFileName+suffix)
+		if err := os.Chmod(path, 0o600); err != nil {
+			if errors.Is(err, os.ErrNotExist) {
+				continue
+			}
+			return fmt.Errorf("chmod %s: %w", filepath.Base(path), err)
+		}
+	}
+	return nil
 }
 
 // newWithDSN opens the SQLite database using the provided DSN,

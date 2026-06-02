@@ -140,8 +140,12 @@ func Load() (*Config, error) {
 		},
 	}
 
-	// Ensure storage directories exist
-	if err := os.MkdirAll(cfg.DBDir, 0o755); err != nil {
+	// Ensure storage directories exist. The DB directory holds session,
+	// API-key, and webhook secret hashes plus user identifying data, so
+	// it must not be readable by other local users. database.New
+	// re-applies these permissions at startup to tighten directories
+	// that were created with the previous looser mode.
+	if err := os.MkdirAll(cfg.DBDir, 0o700); err != nil {
 		return nil, fmt.Errorf("failed to create DB directory: %w", err)
 	}
 	if err := os.MkdirAll(cfg.AttachmentsDir, 0o700); err != nil {
