@@ -16,9 +16,7 @@ Use end-to-end encryption when possible, or trusted delivery when needed.
 
 Hosted beta flow, showing setup in BeeBuzz and delivery in Hive side by side.
 
-<video src="docs/assets/readme/demo.mp4" poster="docs/assets/readme/demo-poster.png" controls playsinline width="720">
-  <a href="docs/assets/readme/demo.mp4"><img src="docs/assets/readme/demo-poster-play.png" alt="Quickstart demo" width="720"></a>
-</video>
+<a href="https://codeberg.org/beebuzz/beebuzz/raw/branch/main/docs/assets/readme/demo.mp4"><img src="docs/assets/readme/demo-poster-play.png" alt="Quickstart demo" width="720"></a>
 
 <p align="center">
   Sign in, create a pairing code, pair Hive, create a token, and deliver the first notification.
