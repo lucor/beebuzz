@@ -21,48 +21,27 @@ It is intentionally focused on development, not production self-hosting.
 ## 1. Clone The Repo
 
 ```bash
-git clone https://github.com/beebuzz-hive/beebuzzd.git
-git clone https://github.com/beebuzz-hive/web.git
-cd beebuzzd
+git clone https://github.com/beebuzz-hive/beebuzz.git
+cd beebuzz
 ```
 
-## 2. Prepare The Environment
-
-Copy the dev template:
-
-```bash
-cp .env.example .env
-```
-
-Set a bootstrap admin email in `.env` so you can sign in immediately during private beta:
-
-```bash
-BEEBUZZ_BOOTSTRAP_ADMIN_EMAIL=you@example.com
-```
-
-Generate VAPID keys once:
-
-```bash
-go run ./cmd/beebuzz-server vapid generate
-```
-
-Paste the generated public and private keys into `.env`.
-
-## 3. Install Tools And Dependencies
+## 2. One-Time Setup
 
 ```bash
 mise run setup
 ```
 
-This installs the required tools, frontend dependencies, Go modules, and local Caddy trust.
+This installs tools and dependencies, creates `.env` from the template, generates VAPID keys, and prompts for a bootstrap admin email (defaults to `admin@beebuzz.local`).
 
-## 4. Start The Full Dev Stack
+## 3. Start The Full Dev Stack
 
 ```bash
 mise run dev
 ```
 
-On first run, BeeBuzz:
+`mise run dev` fails with a clear message if you skipped setup.
+
+On first run it:
 
 - detects your LAN IP
 - derives a `*.lancert.dev` domain (e.g. `192-168-1-42.lancert.dev`)
@@ -77,7 +56,7 @@ The stack includes:
 - Caddy
 - Mailpit
 
-## 5. Open The Local Apps
+## 4. Open The Local Apps
 
 Once the stack is up, use these URLs:
 
@@ -86,13 +65,13 @@ Once the stack is up, use these URLs:
 - API: `https://api.$BEEBUZZ_DOMAIN`
 - Mailpit: `http://localhost:8025`
 
-## 6. Sign In
+## 5. Sign In
 
 Open the site and request access with the bootstrap email you configured.
 
 The OTP email lands in Mailpit, so you can complete sign-in locally without external email infrastructure.
 
-## 7. Pair A Device
+## 6. Pair A Device
 
 Open **Account** -> **Devices** and click **Add Device**.
 
@@ -105,13 +84,13 @@ Then:
 
 For the smoothest results, pair on the same machine first, then test on additional devices if needed.
 
-## 8. Create A Token
+## 7. Create A Token
 
 Open **Account** -> **API Tokens** and create a token for the topic you want to use.
 
 Copy the token immediately.
 
-## 9. Connect The CLI
+## 8. Connect The CLI
 
 ```bash
 beebuzz connect --api-url "https://api.$BEEBUZZ_DOMAIN"
@@ -119,7 +98,7 @@ beebuzz connect --api-url "https://api.$BEEBUZZ_DOMAIN"
 
 Paste the token when prompted.
 
-## 10. Send A Test Message
+## 9. Send A Test Message
 
 ```bash
 beebuzz send "Local dev works"

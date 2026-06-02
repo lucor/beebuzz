@@ -14,7 +14,7 @@ Reference document for the current production deployment model.
 
 | Service | Image | Role |
 |---|---|---|
-| `api` | `ghcr.io/lucor/beebuzz:server` | Go backend, SQLite, push delivery, auth, webhooks |
+| `api` | `${REGISTRY_HOST}/${REGISTRY_OWNER}/beebuzzd:server` | Go backend, SQLite, push delivery, auth, webhooks |
 
 ## Domains
 
@@ -35,17 +35,17 @@ The frontend (`web/` repo) handles `{domain}` (main site) and `hive.{domain}` (H
 ### How to release
 
 ```bash
-./scripts/release.sh
+releaser release
 ```
 
-The script previews the tag and commits since the last release, then prompts for confirmation before creating and pushing the tag.
+The tool previews the tag and commits since the last release, then prompts for confirmation before building the image, creating the forge release, and pushing the tag.
 
 ## Image Build
 
 - Dockerfile: `deploy/server.Dockerfile`
 - tags:
-  - `ghcr.io/lucor/beebuzz:server`
-  - `ghcr.io/lucor/beebuzz:server-<short_sha>`
+  - `${REGISTRY_HOST}/${REGISTRY_OWNER}/beebuzzd:server`
+  - `${REGISTRY_HOST}/${REGISTRY_OWNER}/beebuzzd:server-<short_sha>`
 
 ## Runtime Server Configuration
 

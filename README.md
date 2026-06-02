@@ -80,11 +80,11 @@ curl https://push.beebuzz.app \
   -F body="Trusted mode test"
 ```
 
-Install the CLI from a [GitHub release](https://github.com/lucor/beebuzz/releases)
+Install the CLI from the [latest release](https://github.com/beebuzz-hive/beebuzz-cli/releases)
 or with Go:
 
 ```bash
-go install lucor.dev/beebuzz/cmd/beebuzz@latest
+go install beebuzz.app/beebuzz@latest
 ```
 
 Then connect the CLI and send an encrypted notification:

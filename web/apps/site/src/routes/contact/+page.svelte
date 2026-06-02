@@ -3,8 +3,8 @@
 	import { Shield, MessageSquare, ScrollText } from '@lucide/svelte';
 
 	const CONTACT_EMAIL = 'support@beebuzz.app';
-	const GITHUB_ISSUES_URL = 'https://github.com/beebuzz-hive/web/issues';
-	const GITHUB_DISCUSSIONS_URL = 'https://github.com/beebuzz-hive/web/discussions';
+	const ISSUES_URL = 'https://github.com/beebuzz-hive/beebuzz/issues';
+	const DISCUSSIONS_URL = 'https://github.com/beebuzz-hive/beebuzz/discussions';
 	const MAINTENANCE_POLICY_URL = 'https://lucor.dev/projects/#maintenance-policy';
 	const SECURITY_POLICY_URL = 'https://lucor.dev/projects/#security';
 </script>
@@ -60,16 +60,16 @@
 			> for support and contribution expectations.
 		</p>
 		<p class="mt-4 text-base leading-7 text-base-content/75">
-			Use GitHub <a
-				href={GITHUB_ISSUES_URL}
+			Use <a
+				href={ISSUES_URL}
 				target="_blank"
 				rel="noopener noreferrer"
 				class="underline hover:text-base-content">issues</a
 			> for bug reports and feature requests.
 		</p>
 		<p class="mt-4 text-base leading-7 text-base-content/75">
-			Use GitHub <a
-				href={GITHUB_DISCUSSIONS_URL}
+			Use <a
+				href={DISCUSSIONS_URL}
 				target="_blank"
 				rel="noopener noreferrer"
 				class="underline hover:text-base-content">discussions</a

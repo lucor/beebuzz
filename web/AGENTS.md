@@ -1,6 +1,6 @@
 # BeeBuzz Web Agent Guide
 
-This repo owns the BeeBuzz frontend workspace:
+This is the frontend subdirectory of the merged `beebuzz` app repo. It is a pnpm workspace:
 
 - `apps/site`: public site, account UI, admin UI, and docs
 - `apps/hive`: Hive PWA
@@ -8,21 +8,22 @@ This repo owns the BeeBuzz frontend workspace:
 
 ## Local Rules
 
-- Treat this repo as isolated. Run commands from this repo root, not from the parent workspace.
-- Use `mise` for tooling and task execution.
+- This is **not** a standalone repo. All tasks (setup, dev, test, lint, build) are defined in the unified `mise.toml` at the parent repo root and must be invoked from there. See [../AGENTS.md](../AGENTS.md) for the full task list.
 - Use `pnpm` for frontend work. Do not use `npm` or `bun`.
-- Keep `pnpm-lock.yaml` as the only package lock.
-- Do not edit the legacy reference repo at `~/Developer/beebuzz`; it is read-only migration input.
+- Keep `pnpm-lock.yaml` here as the only package lock.
+- Do not edit the legacy reference repo at `~/Developer/beebuzz`; it is the read-only archive of the pre-split monorepo.
 
-## Commands
+## Commands (run from the parent repo root)
 
-- Setup: `mise run setup`
+- Setup: `mise run setup` (installs Go modules + frontend dependencies)
 - Type/Svelte checks: `mise run check`
-- Lint/format check: `mise run lint`
-- Unit tests: `mise run test`
+- Lint/format check: `mise run lint-app`
+- Unit tests: `mise run test-app`
+- E2E tests: `mise run test-e2e`
 - Build: `mise run build`
-- Site dev server: `mise run dev-site`
-- Hive dev server: `mise run dev-hive`
+- Site dev server (standalone): `mise run dev-site`
+- Hive dev server (standalone): `mise run dev-hive`
+- Full local stack (server + site + hive + Caddy + Mailpit): `mise run dev`
 
 ## Frontend Conventions
 

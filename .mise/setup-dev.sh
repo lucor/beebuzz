@@ -3,9 +3,10 @@
 # Meant to be sourced (not executed) so env vars propagate to the caller.
 #
 # What it does:
-#   1. Detects LAN IP and derives a lancert.dev domain (e.g. 192-168-1-50.lancert.dev)
-#   2. Optionally persists BEEBUZZ_DOMAIN to .env (asks for confirmation)
-#   3. Fetches TLS certs from lancert.dev if not cached locally
+#   1. Validates that .env exists and required keys are configured
+#   2. Detects LAN IP and derives a lancert.dev domain (e.g. 192-168-1-50.lancert.dev)
+#   3. Optionally persists BEEBUZZ_DOMAIN to .env (asks for confirmation)
+#   4. Fetches TLS certs from lancert.dev if not cached locally
 #
 # lancert.dev provides real Let's Encrypt wildcard certs for RFC 1918 IPs,
 # so *.192-168-1-50.lancert.dev covers all subdomains (api., hive., push., hook.).
@@ -18,6 +19,22 @@ set -euo pipefail
 
 LANCERT_URL="https://lancert.dev"
 CERT_DIR=".mise/certs"
+
+# --- Validate .env is configured ---
+if [ ! -f .env ]; then
+  echo "ERROR: .env not found. Run 'mise run setup' first." >&2
+  return 1
+fi
+
+if [ -z "${BEEBUZZ_VAPID_PRIVATE_KEY:-}" ] || [ -z "${BEEBUZZ_VAPID_PUBLIC_KEY:-}" ]; then
+  echo "ERROR: VAPID keys not configured. Run 'mise run setup' first." >&2
+  return 1
+fi
+
+if [ -z "${BEEBUZZ_BOOTSTRAP_ADMIN_EMAIL:-}" ]; then
+  echo "ERROR: BEEBUZZ_BOOTSTRAP_ADMIN_EMAIL not set. Run 'mise run setup' first." >&2
+  return 1
+fi
 
 # --- Detect LAN IP (Linux + macOS) ---
 detect_local_ip() {
@@ -54,6 +71,11 @@ if [ -z "$DOMAIN" ] || [[ "$DOMAIN" != *.lancert.dev ]]; then
         sed -i.bak "s/^BEEBUZZ_DOMAIN=.*/BEEBUZZ_DOMAIN=${DOMAIN}/" .env && rm -f .env.bak
       else
         echo "BEEBUZZ_DOMAIN=${DOMAIN}" >> .env
+      fi
+      if [ -f .env ] && grep -q "^VITE_BEEBUZZ_DOMAIN=" .env; then
+        sed -i.bak "s/^VITE_BEEBUZZ_DOMAIN=.*/VITE_BEEBUZZ_DOMAIN=${DOMAIN}/" .env && rm -f .env.bak
+      else
+        echo "VITE_BEEBUZZ_DOMAIN=${DOMAIN}" >> .env
       fi
       echo "[setup-dev] Updated .env"
     else

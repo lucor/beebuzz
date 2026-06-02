@@ -25,7 +25,7 @@
 		loggedIn = isLoggedIn();
 	});
 
-	const GITHUB_REPO_URL = 'https://github.com/beebuzz-hive/web';
+	const RELEASE_URL = 'https://github.com/beebuzz-hive/beebuzz';
 	const QUICKSTART_PATH = '/docs/quickstart';
 
 	type UseCase = {
@@ -102,12 +102,12 @@
 						>
 					{/if}
 					<a
-						href={GITHUB_REPO_URL}
+						href={RELEASE_URL}
 						target="_blank"
 						rel="noopener noreferrer"
 						class="transition-colors hover:text-base-content"
 					>
-						GitHub
+						Source code
 					</a>
 					{#if isSaasMode}
 						<a
@@ -151,13 +151,13 @@
 							</a>
 						{/if}
 						<a
-							href={GITHUB_REPO_URL}
+							href={RELEASE_URL}
 							target="_blank"
 							rel="noopener noreferrer"
 							class="btn btn-ghost btn-lg gap-2"
 						>
 							<ExternalLink class="h-5 w-5" />
-							Self-host on GitHub
+							Self-host
 						</a>
 					</div>
 

@@ -3,7 +3,7 @@
 	import { isSaasMode } from '$lib/config/deployment';
 
 	const CREATOR_URL = 'https://lucor.dev';
-	const GITHUB_REPO_URL = 'https://github.com/beebuzz-hive/web';
+	const RELEASE_URL = 'https://github.com/beebuzz-hive/beebuzz';
 	const STATUS_URL = 'https://status.beebuzz.app';
 </script>
 
@@ -41,12 +41,12 @@
 				<a href={resolve('/policies')} class="transition-colors hover:text-base-content">Policies</a
 				>
 				<a
-					href={GITHUB_REPO_URL}
+					href={RELEASE_URL}
 					target="_blank"
 					rel="noopener noreferrer"
 					class="transition-colors hover:text-base-content"
 				>
-					GitHub
+					Source code
 				</a>
 				<span>© Luca Corbo</span>
 			</nav>
@@ -56,12 +56,12 @@
 				class="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 md:justify-end"
 			>
 				<a
-					href={GITHUB_REPO_URL}
+					href={RELEASE_URL}
 					target="_blank"
 					rel="noopener noreferrer"
 					class="transition-colors hover:text-base-content"
 				>
-					GitHub
+					Source code
 				</a>
 				<span>© Luca Corbo</span>
 			</nav>

@@ -9,7 +9,7 @@
 
 [tools]
 # Go toolchain
-go = "1.25.0"
+go = "1.26.3"
 "go:golang.org/x/vuln/cmd/govulncheck" = "latest"
 "go:honnef.co/go/tools/cmd/staticcheck" = "latest"
 "go:github.com/air-verse/air" = "latest"
@@ -36,8 +36,7 @@ BEEBUZZ_MAILER_SMTP_PASSWORD = "dev"
 MP_SMTP_AUTH = "dev:dev"
 MP_SMTP_AUTH_ALLOW_INSECURE = "true"
 
-# Frontend defaults (overridden by .env or by setup-dev.sh during full-stack dev)
-VITE_BEEBUZZ_DOMAIN = "example.com"
+# Frontend defaults
 VITE_BEEBUZZ_DEBUG = true
 VITE_BEEBUZZ_DEPLOYMENT_MODE = "self_hosted"
 
@@ -46,11 +45,12 @@ VITE_BEEBUZZ_DEPLOYMENT_MODE = "self_hosted"
 # =============================================================================
 
 [tasks.setup]
-description = "Install Go modules and frontend dependencies"
+description = "Install Go modules, frontend dependencies, and configure .env"
 run = [
   "mkdir -p data bin",
   "go mod download",
   "pnpm -C web install --frozen-lockfile",
+  "bash .mise/setup-env.sh",
   "echo 'Setup complete. Run \"mise run dev\" to start the full local stack.'",
 ]
 

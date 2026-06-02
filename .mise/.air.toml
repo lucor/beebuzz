@@ -4,7 +4,7 @@ testdata_dir = "testdata"
 tmp_dir = "tmp"
 
 [build]
-  entrypoint = "./bin/beebuzzd"
+  entrypoint = "."
   cmd = "go build -o ./bin/beebuzzd ."
   delay = 1000
   exclude_dir = ["web", "bin", "tmp", "vendor", "data", "docs", "certs", "public", "node_modules", ".mise"]

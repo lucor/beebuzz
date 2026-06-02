@@ -3,7 +3,7 @@
 
 	const LAST_UPDATED = 'April 23, 2026';
 	const CONTACT_EMAIL = 'support@beebuzz.app';
-	const GITHUB_REPO_URL = 'https://github.com/beebuzz-hive/web';
+	const RELEASE_URL = 'https://github.com/beebuzz-hive/beebuzz';
 </script>
 
 <svelte:head>
@@ -190,7 +190,7 @@
 		</li>
 		<li>
 			you can
-			<a href={GITHUB_REPO_URL} target="_blank" rel="noopener noreferrer">self-host BeeBuzz</a>
+			<a href={RELEASE_URL} target="_blank" rel="noopener noreferrer">self-host BeeBuzz</a>
 			if you want full control over storage and retention
 		</li>
 	</ul>
@@ -209,7 +209,7 @@
 	<p>
 		These terms apply only to the BeeBuzz service we operate at beebuzz.app. The BeeBuzz source code
 		is separately licensed under
-		<a href={`${GITHUB_REPO_URL}/blob/main/LICENSE`} target="_blank" rel="noopener noreferrer"
+		<a href={`${RELEASE_URL}/blob/main/LICENSE`} target="_blank" rel="noopener noreferrer"
 			>AGPL-3.0-only</a
 		> for self-hosted use.
 	</p>
