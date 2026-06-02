@@ -10,34 +10,27 @@ Reference document for the current production deployment model.
 
 ## Architecture
 
-BeeBuzz runs as two containers:
+`beebuzzd` runs as a single container:
 
 | Service | Image | Role |
 |---|---|---|
 | `api` | `ghcr.io/lucor/beebuzz:server` | Go backend, SQLite, push delivery, auth, webhooks |
-| `web` | `ghcr.io/lucor/beebuzz:web` | Caddy + static `site` and `hive` builds |
 
 ## Domains
 
-All public subdomains are derived from `BEEBUZZ_DOMAIN`.
+The server handles these subdomains derived from `BEEBUZZ_DOMAIN`:
 
 | Host | Purpose |
 |---|---|
-| `{domain}` | main site |
-| `hive.{domain}` | Hive app |
 | `api.{domain}` | backend API |
 | `push.{domain}` | push API host |
 | `hook.{domain}` | webhook host |
 
-At runtime:
-
-- an edge proxy terminates TLS before traffic reaches the BeeBuzz containers
-- Caddy listens on HTTP only inside the `web` container
-- BeeBuzz cookies use `.{domain}` for cross-subdomain session sharing
+The frontend (`web/` repo) handles `{domain}` (main site) and `hive.{domain}` (Hive app).
 
 ## Release Process
 
-BeeBuzz uses an on-demand, tag-driven release model. Merging to `main` runs CI tests only; deployment happens when a `beebuzz@<short_sha>` tag is pushed.
+`beebuzzd` uses an on-demand, tag-driven release model. Deployment happens when a `beebuzzd@<short_sha>` tag is pushed.
 
 ### How to release
 
@@ -47,58 +40,12 @@ BeeBuzz uses an on-demand, tag-driven release model. Merging to `main` runs CI t
 
 The script previews the tag and commits since the last release, then prompts for confirmation before creating and pushing the tag.
 
-This triggers three workflows:
-
-1. **`docker.yml`** — runs tests, builds both Docker images, pushes to GHCR, and triggers Dokploy deploy.
-2. **`release.yml`** — creates a GitHub Release with auto-generated notes from merged PRs since the previous tag.
-3. **`cli-release.yml`** — only triggered by `v*` tags (see below).
-
-A `workflow_dispatch` trigger is available on `docker.yml` as an escape hatch for manual rebuilds without a tag.
-
-### CI on Pull Requests
-
-`.github/workflows/ci.yml` runs server and web tests on every PR targeting `main`. Tests are path-filtered: server tests run only when backend files change, web tests only when frontend files change.
-
-### CLI releases
-
-The `beebuzz` CLI is released independently via `v*` semver tags (e.g., `v0.9.0`). GoReleaser builds cross-platform binaries and publishes them as GitHub Releases. CLI releases are decoupled from server/web deploys.
-
-## Image Builds
-
-Images are built by `.github/workflows/docker.yml` on `beebuzz@*` tag push or `workflow_dispatch`.
-
-### Server image
+## Image Build
 
 - Dockerfile: `deploy/server.Dockerfile`
 - tags:
   - `ghcr.io/lucor/beebuzz:server`
   - `ghcr.io/lucor/beebuzz:server-<short_sha>`
-
-### Web image
-
-- Dockerfile: `deploy/web.Dockerfile`
-- tags:
-  - `ghcr.io/lucor/beebuzz:web`
-  - `ghcr.io/lucor/beebuzz:web-<short_sha>`
-
-## Build-Time Web Configuration
-
-The web image bakes these values at build time:
-
-| Variable | Source |
-|---|---|
-| `VITE_BEEBUZZ_DOMAIN` | GitHub Actions repo variable |
-| `VITE_BEEBUZZ_DEBUG` | GitHub Actions repo variable |
-| `VITE_BEEBUZZ_DEPLOYMENT_MODE` | GitHub Actions repo variable |
-
-These values are compiled into the static frontend build. Changing them requires rebuilding the web image.
-
-`VITE_BEEBUZZ_DEPLOYMENT_MODE` is the public-site deployment switch for hosted-only frontend features:
-
-- `self_hosted` (default): hides hosted public routes such as `/docs` and `/legal`
-- `saas`: enables the hosted public docs and legal hub
-
-This variable replaces the older docs-only gating flag. New hosted-only public site features should depend on the same deployment mode instead of introducing parallel build flags.
 
 ## Runtime Server Configuration
 
@@ -168,44 +115,15 @@ Server persistence points:
 
 These are the only persistent application data paths that need regular backup.
 
-## Caddy Responsibilities
-
-The `web` container serves:
-
-- static `site` files for `{domain}`
-- static `hive` files for `hive.{domain}`
-- reverse proxying for `api.{domain}`, `push.{domain}`, and `hook.{domain}` to `api:8899`
-
-Caddy also owns:
-
-- security headers
-- host-based routing
-- service worker delivery for the web apps
-
 ## Health Checks
 
 The server image uses `beebuzzd healthcheck`, which checks the backend `/health` endpoint.
-
-The `api` service should expose a healthcheck, and any dependent `web` service should wait for the API to become healthy before serving traffic.
-
-## Deployment Split
-
-The server and web images should be deployable as separate applications or services.
-
-Recommended split:
-
-- server app handles `api.{domain}`, `push.{domain}`, `hook.{domain}`
-- web app handles `{domain}` and `hive.{domain}`
-
-This keeps deploys independent and matches the image and routing model described above.
 
 ## Agent Maintenance Rule
 
 If you change any of the following, update the relevant section of this document in the same task:
 
 - add, remove, or rename a server environment variable in `internal/config/config.go`
-- add or change a build-time `VITE_` variable
-- change Dockerfiles in `deploy/`
-- change the Caddyfile routing or domain structure
+- change the server Dockerfile in `deploy/`
 - change the `beebuzzd` subcommands (e.g., `serve`, `healthcheck`, `vapid generate`)
 - change persistence paths or health check behavior
