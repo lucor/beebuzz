@@ -9,9 +9,7 @@
 
 [tools]
 # Go toolchain
-go = "1.26.3"
-"go:golang.org/x/vuln/cmd/govulncheck" = "latest"
-"go:honnef.co/go/tools/cmd/staticcheck" = "latest"
+go = "1.26.4"
 "go:github.com/air-verse/air" = "latest"
 
 # Node toolchain (frontend workspace lives in web/)
@@ -122,10 +120,11 @@ run = [
 # =============================================================================
 
 [tasks.lint-api]
-description = "Run go vet and staticcheck"
+description = "Run go vet, goimports check, and staticcheck"
 run = [
   "go vet ./...",
-  "staticcheck ./...",
+  "bash -c 'out=$(go tool goimports -l .); if [ -n \"$out\" ]; then echo \"goimports: wrong import ordering in:\"; echo \"$out\"; exit 1; fi'",
+  "go tool staticcheck ./...",
 ]
 
 [tasks.lint-app]
@@ -148,7 +147,7 @@ run = [
 
 [tasks.vuln]
 description = "Run govulncheck on Go modules"
-run = "govulncheck ./..."
+run = "go tool govulncheck ./..."
 
 [tasks.build]
 description = "Compile every Go package and build the frontend"
