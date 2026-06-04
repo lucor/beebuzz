@@ -9,11 +9,12 @@
 # Hive holds the user's E2E private key in memory, so a successful XSS
 # would let an attacker exfiltrate it. SvelteKit emits a hash-based CSP
 # meta tag for the deterministic inline scripts produced by the static
-# adapter, so we drop 'unsafe-inline' from script-src here. style-src
-# keeps 'unsafe-inline' for now (low XSS impact, would force a CSS
-# refactor across shared components).
+# adapter, but the edge header still needs 'unsafe-inline' because the
+# browser enforces both policies and the bootstrap inline script is not
+# covered by the header alone. style-src keeps 'unsafe-inline' for now
+# (low XSS impact, would force a CSS refactor across shared components).
 (hive_csp) {
-	header Content-Security-Policy "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; font-src 'self'; connect-src 'self' https://api.{$BEEBUZZ_DOMAIN}; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'"
+	header Content-Security-Policy "default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; font-src 'self'; connect-src 'self' https://api.{$BEEBUZZ_DOMAIN}; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'"
 }
 
 (security_headers) {
