@@ -25,7 +25,19 @@ ENV VITE_BEEBUZZ_DOMAIN=$VITE_BEEBUZZ_DOMAIN \
 RUN pnpm run build
 
 # Stage 2: Caddy + static files
-FROM caddy:alpine
+FROM caddy:2.11-alpine
+
+ARG VERSION=dev
+ARG SOURCE_REPO=https://codeberg.org/beebuzz/beebuzz
+
+LABEL org.opencontainers.image.title="BeeBuzz Web" \
+      org.opencontainers.image.description="BeeBuzz web frontend" \
+      org.opencontainers.image.url="https://beebuzz.app" \
+      org.opencontainers.image.documentation="https://beebuzz.app/docs" \
+      org.opencontainers.image.vendor="BeeBuzz" \
+      org.opencontainers.image.licenses="AGPL-3.0-only" \
+      org.opencontainers.image.version=${VERSION} \
+      org.opencontainers.image.source=${SOURCE_REPO}
 
 COPY --from=web-builder /build/web/build /srv/build
 COPY deploy/Caddyfile /etc/caddy/Caddyfile

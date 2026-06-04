@@ -16,6 +16,18 @@ RUN CGO_ENABLED=0 go build -trimpath \
 FROM gcr.io/distroless/base-debian12
 WORKDIR /app
 
+ARG VERSION=dev
+ARG SOURCE_REPO=https://codeberg.org/beebuzz/beebuzz
+
+LABEL org.opencontainers.image.title="BeeBuzz Server" \
+      org.opencontainers.image.description="BeeBuzz server — web push notification delivery" \
+      org.opencontainers.image.url="https://beebuzz.app" \
+      org.opencontainers.image.documentation="https://beebuzz.app/docs" \
+      org.opencontainers.image.vendor="BeeBuzz" \
+      org.opencontainers.image.licenses="AGPL-3.0-only" \
+      org.opencontainers.image.version=${VERSION} \
+      org.opencontainers.image.source=${SOURCE_REPO}
+
 COPY --from=server-builder /build/beebuzzd /app/beebuzzd
 
 VOLUME ["/var/lib/beebuzz/db", "/var/lib/beebuzz/attachments"]
