@@ -2,7 +2,7 @@
 	"name": "beebuzz-web",
 	"private": true,
 	"type": "module",
-	"packageManager": "pnpm@10.31.0",
+	"packageManager": "pnpm@10.34.1",
 	"engines": {
 		"node": ">=24.0.0"
 	},
