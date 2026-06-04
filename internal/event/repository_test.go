@@ -5,8 +5,9 @@ import (
 	"testing"
 	"time"
 
-	"go.beebuzz.app/beebuzz/internal/testutil"
 	"github.com/jmoiron/sqlx"
+
+	"go.beebuzz.app/beebuzz/internal/testutil"
 )
 
 // seedUser inserts a minimal user row so FK constraints pass.

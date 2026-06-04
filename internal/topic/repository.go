@@ -7,9 +7,10 @@ import (
 	"strings"
 	"time"
 
-	"go.beebuzz.app/beebuzz/internal/database"
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
+
+	"go.beebuzz.app/beebuzz/internal/database"
 )
 
 // Repository provides data access for the topic domain.
