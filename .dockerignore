@@ -6,6 +6,7 @@ tmp/
 bin/
 build/
 docs/*
+!docs/openapi.go
 !docs/openapi.yaml
 .env
 *.md

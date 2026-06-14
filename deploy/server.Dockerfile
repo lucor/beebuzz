@@ -6,7 +6,9 @@ ARG COMMIT_SHA=dev
 
 COPY go.mod go.sum ./
 RUN go mod download
-COPY . .
+COPY main.go healthcheck.go vapid.go ./
+COPY docs/openapi.go docs/openapi.yaml ./docs/
+COPY internal ./internal
 
 RUN CGO_ENABLED=0 go build -trimpath \
     -ldflags="-w -s -X main.commitHash=$(echo ${COMMIT_SHA} | cut -c1-7)" \
