@@ -59,7 +59,7 @@ type Mailer struct {
 	ResendAPIKey string // Resend API key
 	Sender       string // Email sender address
 	ReplyTo      string // Reply-To address
-	SiteURL      string // Site base URL for email links
+	SiteURL      string // Dashboard base URL for email links
 }
 
 // Config holds the application configuration loaded from environment variables.
@@ -69,7 +69,7 @@ type Config struct {
 	DBDir               string       // Directory for the SQLite database file
 	AttachmentsDir      string       // Directory for attachment file storage
 	URL                 string       // API base URL (https://api.{domain})
-	SiteURL             string       // Site base URL (https://{domain})
+	SiteURL             string       // Dashboard base URL (https://dashboard.{domain})
 	PrivateBeta         bool         // Enable private beta mode
 	BootstrapAdminEmail string       // Optional bootstrap admin identity promoted after OTP verification
 	Env                 string       // Environment (dev, staging, prod)
@@ -112,12 +112,12 @@ func Load() (*Config, error) {
 		DBDir:               getEnv(envDBDir, defaultDBDir),
 		AttachmentsDir:      getEnv(envAttachmentsDir, defaultAttachmentsDir),
 		URL:                 "https://api." + domain,
-		SiteURL:             "https://" + domain,
+		SiteURL:             "https://dashboard." + domain,
 		HiveURL:             "https://hive." + domain,
 		PushURL:             "https://push." + domain,
 		HookURL:             "https://hook." + domain,
 		CookieDomain:        "." + domain,
-		AllowedOrigins:      []string{"https://" + domain, "https://hive." + domain},
+		AllowedOrigins:      []string{"https://dashboard." + domain, "https://hive." + domain},
 		VAPIDSubject:        "https://" + domain,
 		ProxySubnet:         proxySubnet,
 		IPHashSalt:          getEnv(envIPHashSalt, ""),
@@ -136,7 +136,7 @@ func Load() (*Config, error) {
 			ResendAPIKey: getEnv(envMailerResendAPIKey, ""),
 			Sender:       getEnv(envMailerSender, defaultMailerSender),
 			ReplyTo:      getEnv(envMailerReplyTo, defaultMailerReplyTo),
-			SiteURL:      "https://" + domain,
+			SiteURL:      "https://dashboard." + domain,
 		},
 	}
 

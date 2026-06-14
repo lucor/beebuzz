@@ -36,7 +36,7 @@ if [ -z "${BEEBUZZ_DOMAIN:-}" ] || [[ "$BEEBUZZ_DOMAIN" != *.lancert.dev ]]; the
   export BEEBUZZ_DOMAIN="$(echo "$LOCAL_IP" | tr '.' '-').lancert.dev"
 fi
 
-export VITE_BEEBUZZ_DOMAIN="$BEEBUZZ_DOMAIN"
+# VITE_BEEBUZZ_DOMAIN is no longer needed — domain derived from BEEBUZZ_DOMAIN via Vite config
 
 if [ -z "${BEEBUZZ_VAPID_PRIVATE_KEY:-}" ] || [ -z "${BEEBUZZ_VAPID_PUBLIC_KEY:-}" ]; then
   eval "$(mise x -- go run . vapid generate)"
@@ -66,11 +66,11 @@ trap cleanup EXIT
 ) &
 STACK_PID=$!
 
-SITE_URL="https://${BEEBUZZ_DOMAIN}"
+DASHBOARD_URL="https://dashboard.${BEEBUZZ_DOMAIN}"
 HIVE_URL="https://hive.${BEEBUZZ_DOMAIN}"
 API_URL="https://api.${BEEBUZZ_DOMAIN}"
 
-echo "[quickstart-demo] site: $SITE_URL"
+echo "[quickstart-demo] dashboard: $DASHBOARD_URL"
 echo "[quickstart-demo] hive: $HIVE_URL"
 echo "[quickstart-demo] api:  $API_URL"
 

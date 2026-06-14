@@ -84,6 +84,7 @@ func NewRouter(
 
 		// Public
 		v1.Get("/health", healthHandler.Health)
+		v1.Get("/openapi.yaml", openAPIYAML)
 		v1.Get("/vapid-public-key", notificationHandler.VAPIDPublicKey)
 		v1.With(rateLimitPairing).Post("/pairing", deviceHandler.Pair)
 		v1.With(middleware.ExtractBearerToken, rateLimitPairing).Get("/pairing/{deviceID}", deviceHandler.PairingStatus)

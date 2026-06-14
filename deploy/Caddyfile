@@ -30,9 +30,9 @@
 }
 
 :80 {
-	@site host {$BEEBUZZ_DOMAIN}
-	handle @site {
-		root * /srv/build/site
+	@dashboard host dashboard.{$BEEBUZZ_DOMAIN}
+	handle @dashboard {
+		root * /srv/build/dashboard
 		encode zstd gzip
 
 		import security_headers

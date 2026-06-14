@@ -48,6 +48,21 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthResponse"
+  /v1/openapi.yaml:
+    get:
+      tags: [Health]
+      operationId: getOpenAPIYAML
+      summary: Get the OpenAPI document
+      description: Returns the canonical OpenAPI contract published by this API server.
+      x-audience: [public]
+      x-stability: stable
+      responses:
+        "200":
+          description: OpenAPI YAML document
+          content:
+            application/yaml:
+              schema:
+                type: string
   /v1/vapid-public-key:
     get:
       tags: [Push]

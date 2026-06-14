@@ -66,46 +66,6 @@
 	.bb-page {
 		@apply min-h-screen min-h-dvh bg-base-200 flex items-center justify-center px-4 py-10;
 	}
-
-	.docs-terminal {
-		@apply my-6 overflow-hidden rounded-box border border-base-300 bg-neutral text-neutral-content shadow-sm;
-	}
-
-	.docs-terminal-bar {
-		@apply flex items-center justify-between gap-3 border-b border-base-300/60 bg-neutral/80 px-4 py-3;
-	}
-
-	.docs-terminal-title {
-		@apply text-xs font-mono uppercase tracking-[0.2em] text-neutral-content/70;
-	}
-
-	.docs-terminal-body {
-		@apply rounded-t-none bg-neutral px-4 py-4;
-	}
-
-	.docs-terminal-body pre {
-		@apply whitespace-pre overflow-x-auto;
-	}
-
-	.docs-terminal-body code {
-		@apply font-mono text-sm;
-	}
-
-	.docs-terminal-copy {
-		@apply text-neutral-content hover:bg-neutral-content/10 relative;
-	}
-
-	.docs-terminal-copy [data-copy-icon] {
-		@apply absolute inset-0 m-auto;
-	}
-
-	.docs-terminal-copy [data-copy-icon='check'] {
-		@apply hidden;
-	}
-
-	.docs-terminal-copy:focus-visible {
-		@apply outline outline-2 outline-offset-2 outline-primary;
-	}
 }
 
 * {

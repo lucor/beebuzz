@@ -12,13 +12,13 @@
 		]
 	},
 	"scripts": {
-		"build": "pnpm -C apps/site run build && pnpm -C apps/hive run build",
-		"build:site": "pnpm -C apps/site run build",
+		"build": "pnpm -C apps/dashboard run build && pnpm -C apps/hive run build",
+		"build:dashboard": "pnpm -C apps/dashboard run build",
 		"build:hive": "pnpm -C apps/hive run build",
-		"dev:site": "pnpm -C apps/site run dev",
+		"dev:dashboard": "pnpm -C apps/dashboard run dev",
 		"dev:hive": "pnpm -C apps/hive run dev",
-		"check": "pnpm -C apps/site run check && pnpm -C apps/hive run check",
-		"check:site": "pnpm -C apps/site run check",
+		"check": "pnpm -C apps/dashboard run check && pnpm -C apps/hive run check",
+		"check:dashboard": "pnpm -C apps/dashboard run check",
 		"check:hive": "pnpm -C apps/hive run check",
 		"lint": "prettier --check . && eslint .",
 		"format": "prettier --write .",

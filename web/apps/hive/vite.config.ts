@@ -5,6 +5,12 @@ import { defineConfig } from 'vite';
 import { copySharedAssets } from '@beebuzz/shared/vite-plugin-copy-assets';
 import type { Plugin } from 'vite';
 
+const BEEBUZZ_DOMAIN = process.env.BEEBUZZ_DOMAIN;
+
+if (!BEEBUZZ_DOMAIN) {
+	throw new Error('BEEBUZZ_DOMAIN is required to build the Hive app.');
+}
+
 /** In dev mode, serves dev PWA assets (manifest, favicon, apple-touch-icon) at their canonical paths. */
 const devPwa = (appRoot: string, sharedStaticRoot: string): Plugin => ({
 	name: 'beebuzz-dev-pwa',
@@ -41,11 +47,12 @@ export default defineConfig({
 		sveltekit()
 	],
 	define: {
+		'import.meta.env.VITE_BEEBUZZ_DOMAIN': JSON.stringify(BEEBUZZ_DOMAIN),
 		'import.meta.env.VITE_BEEBUZZ_DEBUG': JSON.stringify(process.env.VITE_BEEBUZZ_DEBUG === 'true')
 	},
 	server: {
 		port: 5174,
-		allowedHosts: [`hive.${process.env.BEEBUZZ_DOMAIN ?? 'localhost'}`]
+		allowedHosts: [`hive.${BEEBUZZ_DOMAIN}`]
 	},
 	ssr: {
 		noExternal: ['@lucide/svelte']

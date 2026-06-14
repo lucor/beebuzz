@@ -3,7 +3,7 @@
 This repo contains the BeeBuzz application:
 
 - **Server** (Go) — at the repo root: HTTP API, SQLite, web-push delivery, auth, mailer, admin backend. Module path `go.beebuzz.app/beebuzz`, binary `beebuzz`.
-- **Frontend** (SvelteKit pnpm workspace) — under `web/`: `apps/site`, `apps/hive`, `packages/shared`.
+- **Frontend** (SvelteKit pnpm workspace) — under `web/`: `apps/dashboard`, `apps/hive`, `packages/shared`.
 - **Local-dev orchestration** — under `.mise/`: Procfile, Caddyfile, setup-dev.sh, .air.toml.
 
 The backend and frontend share the OpenAPI contract in `docs/openapi.yaml` and ship together as a single deployable unit.
@@ -20,9 +20,9 @@ Run all commands from the repo root.
 | Task | Description |
 |---|---|
 | `mise run setup` | Install Go modules and frontend dependencies |
-| `mise run dev` | Boot the full local stack (server + site + hive + Caddy TLS + Mailpit) |
+| `mise run dev` | Boot the full local stack (server + dashboard + hive + Caddy TLS + Mailpit) |
 | `mise run dev-api` | Hot-reload Go server only |
-| `mise run dev-site` | Vite dev server for `apps/site` only |
+| `mise run dev-dashboard` | Vite dev server for `apps/dashboard` only |
 | `mise run dev-hive` | Vite dev server for `apps/hive` only |
 | `mise run dev-caddy` | Caddy reverse proxy with lancert.dev TLS |
 | `mise run dev-mailpit` | Local Mailpit SMTP capture |
@@ -42,7 +42,7 @@ Run all commands from the repo root.
 - `healthcheck.go`, `vapid.go` — top-level subcommand implementations
 - `internal/server/` — service wiring, routing, cross-domain adapters
 - `internal/<domain>/` — business domains (auth, device, notification, etc.)
-- `web/apps/site` — public site, account UI, admin UI, docs
+- `web/apps/dashboard` — account UI and admin UI (dashboard.beebuzz.app)
 - `web/apps/hive` — Hive PWA receiver
 - `web/packages/shared` — shared frontend API clients, stores, services, components, types, assets
 - `docs/` — server docs (`openapi.yaml`, `STYLE.md`, etc.)

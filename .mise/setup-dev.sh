@@ -72,11 +72,6 @@ if [ -z "$DOMAIN" ] || [[ "$DOMAIN" != *.lancert.dev ]]; then
       else
         echo "BEEBUZZ_DOMAIN=${DOMAIN}" >> .env
       fi
-      if [ -f .env ] && grep -q "^VITE_BEEBUZZ_DOMAIN=" .env; then
-        sed -i.bak "s/^VITE_BEEBUZZ_DOMAIN=.*/VITE_BEEBUZZ_DOMAIN=${DOMAIN}/" .env && rm -f .env.bak
-      else
-        echo "VITE_BEEBUZZ_DOMAIN=${DOMAIN}" >> .env
-      fi
       echo "[setup-dev] Updated .env"
     else
       echo "[setup-dev] Skipped .env update (using $DOMAIN for this session only)"
@@ -86,8 +81,6 @@ fi
 
 IP=$(echo "${DOMAIN%.lancert.dev}" | tr '-' '.')
 export BEEBUZZ_DOMAIN="$DOMAIN"
-export VITE_BEEBUZZ_DOMAIN="$DOMAIN"
-
 echo "[setup-dev] Domain: $DOMAIN"
 
 # --- Fetch certs if not cached locally ---

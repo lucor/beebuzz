@@ -1,0 +1,17 @@
+@import 'tailwindcss';
+@import '@beebuzz/shared/app.css';
+@source "./";
+
+@layer base {
+	:root {
+		--font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans', Ubuntu, sans-serif;
+	}
+
+	html {
+		font-family: var(--font-family);
+	}
+
+	.bb-page-wrapper {
+		padding: 2rem 1.5rem;
+	}
+}

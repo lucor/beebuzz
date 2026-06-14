@@ -5,7 +5,7 @@
 	import { OTP_LENGTH } from '@beebuzz/shared/constants/auth';
 	import { Circle } from '@lucide/svelte';
 	import { resolve } from '$app/paths';
-	import { SITE_URL } from '@beebuzz/shared/config';
+	import { DASHBOARD_URL } from '@beebuzz/shared/config';
 
 	interface Props {
 		showFirefoxHint?: boolean;
@@ -133,7 +133,7 @@
 			<div class="text-center text-sm text-base-content/60">
 				Don't have a Pairing Code?
 				<a
-					href={SITE_URL + resolve('/auth' as '/')}
+					href={DASHBOARD_URL + resolve('/auth' as '/')}
 					class="text-primary font-semibold hover:underline"
 				>
 					Sign in to generate one.

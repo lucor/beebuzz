@@ -4,7 +4,6 @@
 interface ImportMetaEnv {
 	readonly VITE_BEEBUZZ_DOMAIN: string;
 	readonly VITE_BEEBUZZ_DEBUG: boolean;
-	readonly VITE_BEEBUZZ_DEPLOYMENT_MODE?: 'self_hosted' | 'saas';
 }
 
 interface ImportMeta {

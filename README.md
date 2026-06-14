@@ -57,7 +57,7 @@ In both modes, Web Push transport is encrypted in transit between BeeBuzz and th
 
 Hosted access is currently a beta for approved users and is free during beta. After beta, the hosted service is expected to move to a single paid plan so the project can stay sustainable. Self-hosting remains free, open source, and available under the AGPL license.
 
-Start here: [BeeBuzz quickstart](https://beebuzz.app/docs/quickstart).
+Start here: [BeeBuzz quickstart](https://docs.beebuzz.app/quickstart/).
 
 ## Try It
 
@@ -74,7 +74,7 @@ Install the CLI from the [latest release](https://codeberg.org/beebuzz/cli/relea
 or with Go:
 
 ```bash
-go install go.beebuzz.app/cli@latest
+go install go.beebuzz.app/cli/cmd/beebuzz@latest
 ```
 
 Then connect the CLI and send an encrypted notification:
@@ -103,10 +103,10 @@ receiving device.
 
 ## Documentation
 
-- [Quickstart](https://beebuzz.app/docs/quickstart)
-- [Browser support](https://beebuzz.app/docs/browser-support)
-- [Local development](https://beebuzz.app/docs/local-dev)
-- [Webhooks](https://beebuzz.app/docs/webhooks)
+- [Quickstart](https://docs.beebuzz.app/quickstart/)
+- [Browser support](https://docs.beebuzz.app/browser-support/)
+- [Local development](https://docs.beebuzz.app/local-dev/)
+- [Webhooks](https://docs.beebuzz.app/webhooks/)
 - [E2E encryption model](docs/E2E_ENCRYPTION.md)
 - [Threat model](docs/THREAT_MODEL.md)
 - [OpenAPI contract](docs/openapi.yaml)

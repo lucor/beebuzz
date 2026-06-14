@@ -2,7 +2,7 @@
 
 This is the frontend subdirectory of the `beebuzz` app repo. It is a pnpm workspace:
 
-- `apps/site`: public site, account UI, admin UI, and docs
+- `apps/dashboard`: account UI and admin UI (dashboard.beebuzz.app)
 - `apps/hive`: Hive PWA
 - `packages/shared`: shared frontend API clients, stores, services, components, types, and assets
 
@@ -20,9 +20,9 @@ This is the frontend subdirectory of the `beebuzz` app repo. It is a pnpm worksp
 - Unit tests: `mise run test-app`
 - E2E tests: `mise run test-e2e`
 - Build: `mise run build`
-- Site dev server (standalone): `mise run dev-site`
+- Dashboard dev server (standalone): `mise run dev-dashboard`
 - Hive dev server (standalone): `mise run dev-hive`
-- Full local stack (server + site + hive + Caddy + Mailpit): `mise run dev`
+- Full local stack (server + dashboard + hive + Caddy + Mailpit): `mise run dev`
 
 ## Frontend Conventions
 
@@ -41,6 +41,5 @@ This is the frontend subdirectory of the `beebuzz` app repo. It is a pnpm worksp
 
 ## Documentation
 
-- `apps/site/src/routes/docs` contains user-facing docs.
+- User-facing docs live in the separate `docs.beebuzz.app` repo.
 - When docs mention the CLI, server, SDK, or deployment, keep references aligned with the split repos and target vanity imports.
-- If a doc depends on a later migration step, prefer a clear temporary note or defer the rewrite rather than inventing final behavior.

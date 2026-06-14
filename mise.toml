@@ -2,10 +2,10 @@
 #
 # This repo contains both the Go server (root) and the SvelteKit frontend
 # workspace (web/). Tasks are unified so `mise run dev` boots the full
-# local stack (server + site + hive + Caddy TLS + Mailpit).
+# local stack (server + dashboard + hive + Caddy TLS + Mailpit).
 #
 # For single-service development, use the dedicated dev-* tasks
-# (dev-api, dev-site, dev-hive, dev-caddy, dev-mailpit).
+# (dev-api, dev-dashboard, dev-hive, dev-caddy, dev-mailpit).
 
 [tools]
 # Go toolchain
@@ -34,7 +34,7 @@ BEEBUZZ_MAILER_SMTP_PASSWORD = "dev"
 MP_SMTP_AUTH = "dev:dev"
 MP_SMTP_AUTH_ALLOW_INSECURE = "true"
 
-# Frontend defaults
+# Frontend defaults — VITE_BEEBUZZ_DOMAIN is now derived from BEEBUZZ_DOMAIN via Vite define
 VITE_BEEBUZZ_DEBUG = true
 
 # =============================================================================
@@ -60,7 +60,7 @@ run = "go mod tidy"
 # =============================================================================
 
 [tasks.dev]
-description = "Run the full local stack (server + site + hive + Caddy TLS + Mailpit)"
+description = "Run the full local stack (server + dashboard + hive + Caddy TLS + Mailpit)"
 run = """
 #!/usr/bin/env bash
 set -euo pipefail
@@ -72,9 +72,9 @@ cd .mise && goreman -f Procfile start
 description = "Run the Go server with hot reload (air)"
 run = "air -c ./.mise/.air.toml"
 
-[tasks.dev-site]
-description = "Run the SvelteKit site app with hot reload"
-run = "pnpm -C web/apps/site dev"
+[tasks.dev-dashboard]
+description = "Run the SvelteKit dashboard app with hot reload"
+run = "pnpm -C web/apps/dashboard dev"
 
 [tasks.dev-hive]
 description = "Run the SvelteKit hive app with hot reload"
@@ -139,9 +139,9 @@ run = [
 ]
 
 [tasks.check]
-description = "Run Svelte / TypeScript checks for site and Hive"
+description = "Run Svelte / TypeScript checks for dashboard and Hive"
 run = [
-  "pnpm -C web/apps/site run check",
+  "pnpm -C web/apps/dashboard run check",
   "pnpm -C web/apps/hive run check",
 ]
 

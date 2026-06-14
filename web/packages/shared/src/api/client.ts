@@ -2,7 +2,7 @@
 import { goto } from '$app/navigation';
 import { ApiError } from '../errors';
 import { auth } from '../stores';
-import { API_URL, SITE_URL } from '../config';
+import { API_URL, DASHBOARD_URL } from '../config';
 
 const API_VERSION = '/v1';
 const API_BASE = `${API_URL}${API_VERSION}`;
@@ -38,10 +38,10 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
 	if (!response.ok) {
 		if (response.status === STATUS_UNAUTHORIZED) {
 			auth.clear();
-			await goto(new URL('/auth', SITE_URL).toString(), { replaceState: true });
+			await goto(new URL('/auth', DASHBOARD_URL).toString(), { replaceState: true });
 		}
 		if (response.status === STATUS_FORBIDDEN) {
-			await goto(new URL('/account', SITE_URL).toString(), { replaceState: true });
+			await goto(new URL('/account', DASHBOARD_URL).toString(), { replaceState: true });
 		}
 
 		const body = (await response.json().catch(() => null)) as {
