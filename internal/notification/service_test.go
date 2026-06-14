@@ -10,6 +10,9 @@ import (
 	"testing"
 
 	webpush "github.com/SherClockHolmes/webpush-go"
+	"github.com/jmoiron/sqlx"
+
+	"go.beebuzz.app/beebuzz/internal/testutil"
 )
 
 func TestMapPriorityToUrgency(t *testing.T) {
@@ -75,6 +78,12 @@ func (p *stubDeviceProvider) MarkSubscriptionGone(_ context.Context, _ string) e
 	return nil
 }
 
+type stubAttachmentStorer struct{}
+
+func (s *stubAttachmentStorer) Store(_ context.Context, _, _ string, _ int, _ []byte) (string, error) {
+	return "attachment-token", nil
+}
+
 type failingAttachmentStorer struct{}
 
 func (s *failingAttachmentStorer) Store(_ context.Context, _, _ string, _ int, _ []byte) (string, error) {
@@ -111,4 +120,147 @@ func TestSendFailsWhenAttachmentProcessingFails(t *testing.T) {
 	if !errors.Is(err, ErrAttachmentProcessingFailed) {
 		t.Fatalf("Send() error = %v, want %v", err, ErrAttachmentProcessingFailed)
 	}
+}
+
+func TestSendE2EStoresEnvelopeInOutbox(t *testing.T) {
+	ctx := context.Background()
+	db := testutil.NewDB(t)
+	userID := "user-send-e2e-outbox"
+	topicID := "topic-send-e2e-outbox"
+	deviceID := "device-send-e2e-outbox"
+	seedNotificationOutboxRows(t, ctx, db, userID, topicID, deviceID)
+
+	svc := NewService(
+		&stubDeviceProvider{
+			subs: []PushSub{
+				{
+					DeviceID:     deviceID,
+					Endpoint:     "https://fcm.googleapis.com/fcm/send/e2e-outbox",
+					P256dh:       "p256dh",
+					Auth:         "auth",
+					AgeRecipient: testAgeRecipient,
+				},
+			},
+		},
+		&stubAttachmentStorer{},
+		nil,
+		&VAPIDKeys{PublicKey: "public", PrivateKey: "private"},
+		"mailto:test@example.com",
+		slog.New(slog.NewTextHandler(io.Discard, nil)),
+	)
+	svc.SetOutbox(NewOutboxRepository(db))
+	svc.SetPushStubBroker(NewPushStubBroker(slog.New(slog.NewTextHandler(io.Discard, nil))))
+
+	report, err := svc.Send(ctx, userID, topicID, SendInput{
+		TopicName:    "alerts",
+		DeliveryMode: DeliveryModeE2E,
+		OpaqueBlob:   []byte("encrypted-payload"),
+	}, slog.Default())
+	if err != nil {
+		t.Fatalf("Send E2E: %v", err)
+	}
+	if report.TotalSent != 1 {
+		t.Fatalf("TotalSent = %d, want 1", report.TotalSent)
+	}
+
+	var envelopeJSON string
+	if err := db.GetContext(ctx, &envelopeJSON, `SELECT payload_json FROM notification_outbox WHERE id = (SELECT notification_id FROM notification_outbox_recipients WHERE device_id = ?)`, deviceID); err != nil {
+		t.Fatalf("query outbox: %v", err)
+	}
+	if envelopeJSON == "" {
+		t.Fatal("outbox envelope is empty")
+	}
+
+	var envelope E2EEnvelope
+	if err := json.Unmarshal([]byte(envelopeJSON), &envelope); err != nil {
+		t.Fatalf("unmarshal outbox envelope: %v", err)
+	}
+	if envelope.BeeBuzz.ID == "" {
+		t.Fatal("envelope missing id")
+	}
+	if envelope.BeeBuzz.Token == "" {
+		t.Fatal("envelope missing token")
+	}
+	if envelope.BeeBuzz.SentAt == "" {
+		t.Fatal("envelope missing sent_at")
+	}
+}
+
+func TestSendStoresTrustedPayloadInOutbox(t *testing.T) {
+	ctx := context.Background()
+	db := testutil.NewDB(t)
+	userID := "user-send-outbox"
+	topicID := "topic-send-outbox"
+	deviceID := "device-send-outbox"
+	seedNotificationOutboxRows(t, ctx, db, userID, topicID, deviceID)
+
+	svc := NewService(
+		&stubDeviceProvider{
+			subs: []PushSub{
+				{
+					DeviceID: deviceID,
+					Endpoint: "https://fcm.googleapis.com/fcm/send/outbox",
+					P256dh:   "p256dh",
+					Auth:     "auth",
+				},
+			},
+		},
+		nil,
+		nil,
+		&VAPIDKeys{PublicKey: "public", PrivateKey: "private"},
+		"mailto:test@example.com",
+		slog.New(slog.NewTextHandler(io.Discard, nil)),
+	)
+	svc.SetOutbox(NewOutboxRepository(db))
+	svc.SetPushStubBroker(NewPushStubBroker(slog.New(slog.NewTextHandler(io.Discard, nil))))
+
+	report, err := svc.Send(ctx, userID, topicID, SendInput{
+		TopicName:    "alerts",
+		Title:        "Title",
+		Body:         "Body",
+		DeliveryMode: DeliveryModeServerTrusted,
+	}, slog.Default())
+	if err != nil {
+		t.Fatalf("Send: %v", err)
+	}
+	if report.TotalSent != 1 {
+		t.Fatalf("TotalSent = %d, want 1", report.TotalSent)
+	}
+
+	var count int
+	if err := db.GetContext(ctx, &count, `SELECT COUNT(*) FROM notification_outbox_recipients WHERE device_id = ?`, deviceID); err != nil {
+		t.Fatalf("count recipients: %v", err)
+	}
+	if count != 1 {
+		t.Fatalf("recipient count = %d, want 1", count)
+	}
+}
+
+func seedNotificationOutboxRows(t *testing.T, ctx context.Context, db *sqlx.DB, userID, topicID, deviceID string) {
+	t.Helper()
+
+	now := int64(1000)
+	testutil.InsertUsers(t, ctx, db, userID)
+	exec := func(query string, args ...any) {
+		t.Helper()
+		if _, err := db.ExecContext(ctx, query, args...); err != nil {
+			t.Fatalf("exec seed query: %v", err)
+		}
+	}
+	exec(
+		`INSERT INTO topics (id, user_id, name, description, created_at, updated_at)
+		 VALUES (?, ?, 'alerts', '', ?, ?)`,
+		topicID,
+		userID,
+		now,
+		now,
+	)
+	exec(
+		`INSERT INTO devices (id, user_id, name, description, is_active, pairing_status, created_at, updated_at)
+		 VALUES (?, ?, 'phone', '', 1, 'paired', ?, ?)`,
+		deviceID,
+		userID,
+		now,
+		now,
+	)
 }

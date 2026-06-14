@@ -94,6 +94,16 @@ func (a *testAttachmentStorer) Store(ctx context.Context, topicID, mimeType stri
 	return a.svc.Store(ctx, topicID, mimeType, originalSize, data)
 }
 
+// stubDeviceAuthenticator implements DeviceAuthenticator for tests.
+type stubDeviceAuthenticator struct{}
+
+func (a *stubDeviceAuthenticator) AuthenticateDevice(_ context.Context, _, deviceToken string) error {
+	if deviceToken == "" || deviceToken == "invalid" {
+		return ErrInvalidDeviceToken
+	}
+	return nil
+}
+
 type stubSender struct {
 	report *SendReport
 	err    error
@@ -105,6 +115,10 @@ func (s *stubSender) Send(_ context.Context, _, _ string, _ SendInput, _ *slog.L
 
 func (s *stubSender) VAPIDPublicKey() string {
 	return ""
+}
+
+func (s *stubSender) SyncDeviceNotifications(_ context.Context, _, _ string, _ int) (*DeviceNotificationSyncResponse, error) {
+	return &DeviceNotificationSyncResponse{Notifications: []DeviceNotificationSyncItem{}}, nil
 }
 
 // buildHandler creates a fully wired Handler backed by an in-memory DB.
@@ -914,6 +928,10 @@ func (s *sourceCaptureSender) VAPIDPublicKey() string {
 	return ""
 }
 
+func (s *sourceCaptureSender) SyncDeviceNotifications(_ context.Context, _, _ string, _ int) (*DeviceNotificationSyncResponse, error) {
+	return &DeviceNotificationSyncResponse{Notifications: []DeviceNotificationSyncItem{}}, nil
+}
+
 func TestSendHandler_SourceCLI(t *testing.T) {
 	sender := &sourceCaptureSender{report: &SendReport{}}
 	handler, rawToken, topicName := buildHandlerWithSender(t, sender)
@@ -954,5 +972,38 @@ func TestSendHandler_SourceAPI(t *testing.T) {
 	}
 	if sender.captured.Source != "api" {
 		t.Fatalf("source: got %q, want %q", sender.captured.Source, "api")
+	}
+}
+
+func TestSyncDeviceNotificationsHandler_MissingToken(t *testing.T) {
+	handler, _, _ := buildHandler(t)
+	handler.SetDeviceAuthenticator(&stubDeviceAuthenticator{})
+
+	req := httptest.NewRequest(http.MethodGet, "/v1/devices/dev-1/notifications", nil)
+	req = req.WithContext(testutil.WithRouteParams(req.Context(), map[string]string{"deviceID": "dev-1"}))
+	req = withBearer(req)
+	w := httptest.NewRecorder()
+
+	handler.SyncDeviceNotifications(w, req)
+
+	if w.Code != http.StatusUnauthorized {
+		t.Fatalf("status: got %d, want %d — body: %s", w.Code, http.StatusUnauthorized, w.Body.String())
+	}
+}
+
+func TestSyncDeviceNotificationsHandler_InvalidDeviceToken(t *testing.T) {
+	handler, _, _ := buildHandler(t)
+	handler.SetDeviceAuthenticator(&stubDeviceAuthenticator{})
+
+	req := httptest.NewRequest(http.MethodGet, "/v1/devices/dev-1/notifications", nil)
+	req.Header.Set("Authorization", "Bearer invalid")
+	req = req.WithContext(testutil.WithRouteParams(req.Context(), map[string]string{"deviceID": "dev-1"}))
+	req = withBearer(req)
+	w := httptest.NewRecorder()
+
+	handler.SyncDeviceNotifications(w, req)
+
+	if w.Code != http.StatusUnauthorized {
+		t.Fatalf("status: got %d, want %d — body: %s", w.Code, http.StatusUnauthorized, w.Body.String())
 	}
 }

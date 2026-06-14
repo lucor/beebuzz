@@ -3,6 +3,7 @@ package notification
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"io"
 	"log/slog"
@@ -36,6 +37,8 @@ const (
 var (
 	// ErrAttachmentProcessingFailed is returned when an attachment cannot be fetched, encrypted, or stored.
 	ErrAttachmentProcessingFailed = errors.New("attachment processing failed")
+	// ErrInvalidDeviceToken is returned when Hive presents invalid device credentials.
+	ErrInvalidDeviceToken = errors.New("invalid device token")
 )
 
 // VAPIDKeys holds VAPID keys for Web Push API.
@@ -182,6 +185,11 @@ type KeyProvider interface {
 	GetDeviceKeys(ctx context.Context, userID string) ([]device.DeviceKeyDescriptor, error)
 }
 
+// DeviceAuthenticator validates Hive device credentials.
+type DeviceAuthenticator interface {
+	AuthenticateDevice(ctx context.Context, deviceID, deviceToken string) error
+}
+
 // KeysResponse is the response for GET /v1/push/keys.
 type KeysResponse struct {
 	Data []device.DeviceKeyDescriptor `json:"data"`
@@ -204,4 +212,21 @@ type E2EEnvelopeToken struct {
 type Sender interface {
 	Send(ctx context.Context, userID, topicID string, input SendInput, log *slog.Logger) (*SendReport, error)
 	VAPIDPublicKey() string
+	SyncDeviceNotifications(ctx context.Context, deviceID, afterID string, limit int) (*DeviceNotificationSyncResponse, error)
+}
+
+// DeviceNotificationSyncResponse is returned to Hive when recovering missed notifications.
+type DeviceNotificationSyncResponse struct {
+	Notifications []DeviceNotificationSyncItem `json:"notifications"`
+	NextCursor    *string                      `json:"next_cursor"`
+	Gap           bool                         `json:"gap"`
+}
+
+// DeviceNotificationSyncItem carries one recoverable notification payload.
+type DeviceNotificationSyncItem struct {
+	ID           string          `json:"id"`
+	DeliveryMode string          `json:"delivery_mode"`
+	Payload      json.RawMessage `json:"payload"`
+	SentAt       string          `json:"sent_at"`
+	ExpiresAt    string          `json:"expires_at"`
 }

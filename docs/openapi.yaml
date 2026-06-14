@@ -539,6 +539,57 @@ paths:
           $ref: "#/components/responses/TooManyRequests"
         "500":
           $ref: "#/components/responses/InternalError"
+  /v1/devices/{deviceID}/notifications:
+    get:
+      tags: [Devices]
+      operationId: syncDeviceNotifications
+      summary: Sync recently missed notifications for a paired device
+      x-audience: [hive]
+      x-stability: beta
+      description: |
+        Returns unexpired notifications sent to this device within the short
+        recovery window aligned with attachment availability.
+      parameters:
+        - in: path
+          name: deviceID
+          required: true
+          schema:
+            type: string
+        - in: header
+          name: Authorization
+          required: true
+          schema:
+            type: string
+          description: Bearer device token returned by `POST /v1/pairing`
+        - in: query
+          name: after
+          required: false
+          schema:
+            type: string
+          description: Last notification UUIDv7 persisted by Hive.
+        - in: query
+          name: limit
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+      responses:
+        "200":
+          description: Recently recoverable notifications
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeviceNotificationSyncResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalError"
   /v1/tokens:
     get:
       tags: [Tokens]
@@ -1725,6 +1776,39 @@ components:
     PairingStatus:
       type: string
       enum: [pending, paired, unpaired, subscription_gone]
+    DeviceNotificationSyncResponse:
+      type: object
+      required: [notifications, gap]
+      properties:
+        notifications:
+          type: array
+          items:
+            $ref: "#/components/schemas/DeviceNotificationSyncItem"
+        next_cursor:
+          type: string
+          nullable: true
+        gap:
+          type: boolean
+          description: True when the requested cursor is older than the recovery window.
+    DeviceNotificationSyncItem:
+      type: object
+      required: [id, delivery_mode, payload, sent_at, expires_at]
+      properties:
+        id:
+          type: string
+        delivery_mode:
+          type: string
+          enum: [server_trusted, e2e]
+        payload:
+          type: object
+          description: Original push payload JSON. E2EE payloads are returned as the BeeBuzz attachment envelope.
+          additionalProperties: true
+        sent_at:
+          type: string
+          format: date-time
+        expires_at:
+          type: string
+          format: date-time
     APITokenResponse:
       type: object
       required: [id, name, last_four, created_at, is_active]

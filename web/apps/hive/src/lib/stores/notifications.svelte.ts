@@ -5,6 +5,7 @@ import type { Notification, NotificationPriority } from '@beebuzz/shared/types';
 
 const STORAGE_KEY_PREFIX = 'notifications:';
 const READ_IDS_KEY_PREFIX = 'notifications_read_ids:';
+const SYNC_CURSOR_KEY_PREFIX = 'notification_sync_cursor:';
 export type TopicSummary = {
 	name: string;
 	count: number;
@@ -51,6 +52,7 @@ function computeTopicSummaries(
 function createNotificationsStore() {
 	let notifications = $state<Notification[]>([]);
 	let activeDeviceId = $state<string | null>(null);
+	let syncCursor = $state<string | null>(null);
 	const unreadIds = new SvelteSet<string>();
 
 	function parseStoredNotification(record: unknown): Notification | null {
@@ -149,6 +151,21 @@ function createNotificationsStore() {
 		}
 	}
 
+	function loadSyncCursor() {
+		if (!browser || !activeDeviceId) return;
+		const saved = localStorage.getItem(`${SYNC_CURSOR_KEY_PREFIX}${activeDeviceId}`);
+		syncCursor = saved ?? null;
+	}
+
+	function saveSyncCursor() {
+		if (!browser || !activeDeviceId) return;
+		if (syncCursor) {
+			localStorage.setItem(`${SYNC_CURSOR_KEY_PREFIX}${activeDeviceId}`, syncCursor);
+		} else {
+			localStorage.removeItem(`${SYNC_CURSOR_KEY_PREFIX}${activeDeviceId}`);
+		}
+	}
+
 	/** Removes localStorage entries belonging to devices other than the active one. */
 	function removeStaleLocalStorage() {
 		if (!browser || !activeDeviceId) return;
@@ -179,12 +196,14 @@ function createNotificationsStore() {
 		activeDeviceId = deviceId;
 		removeStaleLocalStorage();
 		loadForActiveDevice();
+		loadSyncCursor();
 	}
 
 	function deactivateDevice() {
 		activeDeviceId = null;
 		notifications = [];
 		unreadIds.clear();
+		syncCursor = null;
 	}
 
 	async function loadFromIndexedDB(): Promise<void> {
@@ -279,6 +298,10 @@ function createNotificationsStore() {
 		save();
 	}
 
+	function latestNotificationId(): string | undefined {
+		return notifications[0]?.id;
+	}
+
 	function remove(id: string) {
 		if (!activeDeviceId) return;
 		notifications = notifications.filter((n) => n.id !== id);
@@ -354,6 +377,16 @@ function createNotificationsStore() {
 		},
 		get isEmpty() {
 			return notifications.length === 0;
+		},
+		get latestNotificationId() {
+			return latestNotificationId();
+		},
+		get syncCursor() {
+			return syncCursor;
+		},
+		set syncCursor(value: string | null) {
+			syncCursor = value;
+			saveSyncCursor();
 		},
 		get topicSummaries() {
 			return computeTopicSummaries(notifications, unreadIds);

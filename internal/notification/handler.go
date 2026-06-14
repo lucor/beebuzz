@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"path"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"go.beebuzz.app/beebuzz/internal/core"
@@ -31,6 +32,7 @@ type Handler struct {
 	service     Sender
 	pushAuth    PushAuthorizer
 	keyProvider KeyProvider
+	deviceAuth  DeviceAuthenticator
 	log         *slog.Logger
 }
 
@@ -42,6 +44,11 @@ func NewHandler(svc Sender, pushAuth PushAuthorizer, keyProvider KeyProvider, lo
 		keyProvider: keyProvider,
 		log:         logger,
 	}
+}
+
+// SetDeviceAuthenticator enables Hive device-token-authenticated endpoints.
+func (h *Handler) SetDeviceAuthenticator(auth DeviceAuthenticator) {
+	h.deviceAuth = auth
 }
 
 // Send handles POST /v1/push and POST /v1/push/{topic} requests.
@@ -191,6 +198,63 @@ func (h *Handler) Keys(w http.ResponseWriter, r *http.Request) {
 	}
 
 	core.WriteOK(w, KeysResponse{Data: deviceKeys})
+}
+
+// SyncDeviceNotifications handles GET /v1/devices/{deviceID}/notifications.
+func (h *Handler) SyncDeviceNotifications(w http.ResponseWriter, r *http.Request) {
+	if h.deviceAuth == nil {
+		h.log.Error("device authenticator not configured")
+		core.WriteInternalError(w, r, errors.New("device authenticator not configured"))
+		return
+	}
+
+	deviceID := core.GetURLParam(r, "deviceID")
+	if deviceID == "" {
+		core.WriteBadRequest(w, "missing_param", "deviceID is required")
+		return
+	}
+
+	deviceToken, ok := middleware.BearerTokenFromContext(r.Context())
+	if !ok || deviceToken == "" {
+		core.WriteUnauthorized(w, "missing_device_token", "Device token is required")
+		return
+	}
+
+	limit := defaultNotificationSyncLimit
+	if rawLimit := r.URL.Query().Get("limit"); rawLimit != "" {
+		parsedLimit, err := strconv.Atoi(rawLimit)
+		if err != nil || parsedLimit <= 0 {
+			core.WriteBadRequest(w, "invalid_limit", "limit must be a positive integer")
+			return
+		}
+		if parsedLimit > maxNotificationSyncLimit {
+			parsedLimit = maxNotificationSyncLimit
+		}
+		limit = parsedLimit
+	}
+
+	if err := h.deviceAuth.AuthenticateDevice(r.Context(), deviceID, deviceToken); err != nil {
+		if errors.Is(err, ErrInvalidDeviceToken) {
+			core.WriteUnauthorized(w, "invalid_device_token", "Invalid device token")
+			return
+		}
+		h.log.Error("failed to authenticate device", "error", err, "device_id", deviceID)
+		core.WriteInternalError(w, r, err)
+		return
+	}
+
+	resp, err := h.service.SyncDeviceNotifications(r.Context(), deviceID, r.URL.Query().Get("after"), limit)
+	if err != nil {
+		if errors.Is(err, ErrInvalidCursor) {
+			core.WriteBadRequest(w, "invalid_cursor", "after must be a UUIDv7 notification id")
+			return
+		}
+		h.log.Error("failed to sync device notifications", "error", err, "device_id", deviceID)
+		core.WriteInternalError(w, r, err)
+		return
+	}
+
+	core.WriteOK(w, resp)
 }
 
 // parseSendOctetStream reads a raw octet-stream body into a SendInput.

@@ -13,6 +13,7 @@
 	import { deviceKeysRepository } from '$lib/services/device-keys-repository';
 	import { notificationsRepository } from '$lib/services/notifications-repository';
 	import { bootstrapAppShell } from '$lib/services/app-bootstrap';
+	import { syncRecentNotifications } from '$lib/services/notification-sync';
 	import { cleanupStalePairingState } from '$lib/services/startup-recovery';
 	import { formatStartupError } from '$lib/services/startup-error';
 	import {
@@ -78,6 +79,7 @@
 				event.data.priority,
 				event.data.id
 			);
+			void syncNotificationsFromBackend();
 		} else if (event.data?.type === 'NOTIFICATION_CLICKED') {
 			const clickedNotification = event.data.notification;
 			// User tapped a system notification — always reload from IndexedDB
@@ -140,6 +142,7 @@
 	const handleVisibilityChange = () => {
 		if (document.visibilityState === 'visible' && ready) {
 			void notificationsStore.loadFromIndexedDB();
+			void syncNotificationsFromBackend();
 			startPolling();
 			void checkForServiceWorkerUpdate();
 		} else {
@@ -151,6 +154,16 @@
 		updateAvailable = Boolean(registration?.waiting);
 		if (!updateAvailable) {
 			activatingUpdate = false;
+		}
+	};
+
+	const syncNotificationsFromBackend = async () => {
+		try {
+			const credentials = await deviceKeysRepository.getDeviceCredentials();
+			if (!credentials) return;
+			await syncRecentNotifications(credentials.deviceId, credentials.deviceToken);
+		} catch (error) {
+			logger.warn('Notification HTTPS sync failed', { error: String(error) });
 		}
 	};
 
@@ -310,6 +323,7 @@
 			}
 
 			ready = true;
+			void syncNotificationsFromBackend();
 			startPolling();
 		} catch (error: unknown) {
 			startupError = formatStartupError(error);

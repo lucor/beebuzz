@@ -171,7 +171,9 @@ func buildServices(db *sqlx.DB, cfg *config.Config, log *slog.Logger, m mailer.M
 	notifDeviceAdapter := &notificationDeviceAdapter{deviceSvc: deviceSvc}
 	notifAttachmentAdapter := &notificationAttachmentAdapter{attachmentSvc: attachmentSvc}
 	notifEventTracker := &notificationEventTrackerAdapter{eventSvc: eventSvc}
+	notifOutboxRepo := notification.NewOutboxRepository(db)
 	notifSvc := notification.NewService(notifDeviceAdapter, notifAttachmentAdapter, notifEventTracker, vapidKeys, cfg.VAPIDSubject, log)
+	notifSvc.SetOutbox(notifOutboxRepo)
 
 	var pushStubBroker *notification.PushStubBroker
 	if cfg.PushStub && cfg.Env != config.EnvProduction {
@@ -233,7 +235,9 @@ func buildHTTPHandler(services *appServices, cfg *config.Config, log *slog.Logge
 	eventHandler := event.NewHandler(services.eventSvc, log)
 	pushAuth := &pushAuthorizerAdapter{tokenSvc: services.tokenSvc}
 	keyProvider := &keyProviderAdapter{deviceSvc: services.deviceSvc}
+	deviceAuthenticator := &deviceAuthenticatorAdapter{deviceSvc: services.deviceSvc}
 	notificationHandler := notification.NewHandler(services.notifSvc, pushAuth, keyProvider, log)
+	notificationHandler.SetDeviceAuthenticator(deviceAuthenticator)
 	deviceHandler := device.NewHandler(services.deviceSvc, cfg.HiveURL, log)
 	webhookHandler := webhook.NewHandler(services.webhookSvc, cfg.HookURL, log)
 	attachmentHandler := attachment.NewHandler(services.attachmentSvc, log)
@@ -300,6 +304,7 @@ func newHTTPServer(port string, handler http.Handler) *http.Server {
 func startBackgroundWorkers(ctx context.Context, services *appServices, log *slog.Logger) {
 	go runHousekeeping(ctx, services.attachmentSvc, services.authSvc, log)
 	go runEventCompaction(ctx, services.eventSvc, log)
+	go runNotificationOutboxCleanup(ctx, services.notifSvc, log)
 }
 
 // runHousekeeping periodically removes stale low-priority data until shutdown.
@@ -332,6 +337,23 @@ func runEventCompaction(ctx context.Context, eventSvc *event.Service, log *slog.
 		case <-ticker.C:
 			if _, err := eventSvc.CompactOldEvents(ctx); err != nil {
 				log.Error("event compaction failed", "error", err)
+			}
+		case <-ctx.Done():
+			return
+		}
+	}
+}
+
+// runNotificationOutboxCleanup periodically removes expired Hive recovery rows until shutdown.
+func runNotificationOutboxCleanup(ctx context.Context, notifSvc *notification.Service, log *slog.Logger) {
+	ticker := time.NewTicker(housekeepingInterval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			if err := notifSvc.CleanupOutboxExpired(ctx); err != nil {
+				log.Error("notification outbox cleanup failed", "error", err)
 			}
 		case <-ctx.Done():
 			return

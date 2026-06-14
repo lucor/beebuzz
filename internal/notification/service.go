@@ -44,6 +44,7 @@ type Service struct {
 	device     DeviceProvider
 	attachment AttachmentStorer
 	tracker    EventTracker // optional; nil disables analytics tracking
+	outbox     *OutboxRepository
 	vapidKeys  *VAPIDKeys
 	subject    string // VAPID subject per RFC 8292 (https://... or mailto:...)
 	log        *slog.Logger
@@ -55,6 +56,11 @@ type Service struct {
 	// Stored via atomic.Pointer so SetPushStubBroker can be called from a
 	// goroutine other than the one running sendRawPush without races.
 	pushStubBroker atomic.Pointer[PushStubBroker]
+}
+
+// SetOutbox enables short-lived notification recovery storage.
+func (s *Service) SetOutbox(outbox *OutboxRepository) {
+	s.outbox = outbox
 }
 
 // SetPushStubBroker enables push-stub capture. Pass nil to disable.
@@ -201,6 +207,10 @@ func (s *Service) Send(ctx context.Context, userID, topicID string, input SendIn
 			s.tracker.DeviceFailed(ctx, userID, result)
 		}
 	}
+
+	// Best-effort: store for Hive HTTPS recovery after delivery. A failure here
+	// must not affect the primary push, which has already happened.
+	s.storeOutbox(ctx, userID, topicID, input.TopicName, DeliveryModeServerTrusted, payload.ID, payloadBytes, subscriptions, log)
 
 	return report, nil
 }
@@ -416,6 +426,10 @@ func (s *Service) sendE2E(ctx context.Context, userID, topicID string, input Sen
 		}
 	}
 
+	// Best-effort: store for Hive HTTPS recovery after delivery. A failure here
+	// must not affect the primary push, which has already happened.
+	s.storeOutbox(ctx, userID, topicID, input.TopicName, DeliveryModeE2E, notificationID, envelope, subs, log)
+
 	return report, nil
 }
 
@@ -482,6 +496,68 @@ func (s *Service) VAPIDPublicKey() string {
 	return s.vapidKeys.PublicKey
 }
 
+// SyncDeviceNotifications returns unexpired notifications for a Hive device.
+func (s *Service) SyncDeviceNotifications(ctx context.Context, deviceID, afterID string, limit int) (*DeviceNotificationSyncResponse, error) {
+	if s.outbox == nil {
+		return &DeviceNotificationSyncResponse{Notifications: []DeviceNotificationSyncItem{}}, nil
+	}
+
+	now := time.Now().UTC()
+	gap := false
+	if afterID != "" {
+		afterMs, err := uuidV7UnixMilli(afterID)
+		if err != nil {
+			return nil, ErrInvalidCursor
+		}
+		// The cursor predates the TTL window, so some notifications may have
+		// expired from the outbox before recovery: signal a gap to Hive.
+		if afterMs < now.Add(-time.Duration(pushTTL)*time.Second).UnixMilli() {
+			gap = true
+		}
+	}
+
+	records, err := s.outbox.ListForDevice(ctx, deviceID, afterID, now.UnixMilli(), limit)
+	if err != nil {
+		return nil, err
+	}
+
+	items := make([]DeviceNotificationSyncItem, 0, len(records))
+	var nextCursor *string
+	for _, record := range records {
+		sentAtMs, err := uuidV7UnixMilli(record.ID)
+		if err != nil {
+			return nil, fmt.Errorf("decode outbox id timestamp: %w", err)
+		}
+		items = append(items, DeviceNotificationSyncItem{
+			ID:           record.ID,
+			DeliveryMode: record.DeliveryMode,
+			Payload:      json.RawMessage(record.PayloadJSON),
+			SentAt:       time.UnixMilli(sentAtMs).UTC().Format(time.RFC3339),
+			ExpiresAt:    time.UnixMilli(record.ExpiresAt).UTC().Format(time.RFC3339),
+		})
+		cursor := record.ID
+		nextCursor = &cursor
+	}
+
+	if len(records) == 0 && afterID != "" {
+		nextCursor = &afterID
+	}
+
+	return &DeviceNotificationSyncResponse{
+		Notifications: items,
+		NextCursor:    nextCursor,
+		Gap:           gap,
+	}, nil
+}
+
+// CleanupOutboxExpired removes expired recovery rows.
+func (s *Service) CleanupOutboxExpired(ctx context.Context) error {
+	if s.outbox == nil {
+		return nil
+	}
+	return s.outbox.DeleteExpired(ctx)
+}
+
 // pushEndpointHost returns the host portion of a push endpoint for safe diagnostics.
 func pushEndpointHost(endpoint string) string {
 	parsed, err := url.Parse(endpoint)
@@ -490,4 +566,38 @@ func pushEndpointHost(endpoint string) string {
 	}
 
 	return parsed.Host
+}
+
+// storeOutbox persists a notification for Hive HTTPS recovery. It is best-effort:
+// errors are logged but never returned, so a storage failure cannot break the
+// primary push delivery that has already happened.
+func (s *Service) storeOutbox(ctx context.Context, userID, topicID, topicName, deliveryMode, notificationID string, payload []byte, subs []PushSub, log *slog.Logger) {
+	if s.outbox == nil || len(subs) == 0 {
+		return
+	}
+
+	// Expiry is derived from the UUIDv7 timestamp; it matches the push TTL window.
+	sentAtMs, err := uuidV7UnixMilli(notificationID)
+	if err != nil {
+		log.Error("notification outbox: invalid notification id, skipping recovery store", "error", err, "notification_id", notificationID)
+		return
+	}
+
+	deviceIDs := make([]string, 0, len(subs))
+	for _, sub := range subs {
+		deviceIDs = append(deviceIDs, sub.DeviceID)
+	}
+
+	record := OutboxRecord{
+		ID:           notificationID,
+		UserID:       userID,
+		TopicID:      topicID,
+		Topic:        topicName,
+		DeliveryMode: deliveryMode,
+		PayloadJSON:  string(payload),
+		ExpiresAt:    sentAtMs + int64(pushTTL)*1000,
+	}
+	if err := s.outbox.Store(ctx, record, deviceIDs); err != nil {
+		log.Error("notification outbox: failed to store for recovery", "error", err, "notification_id", notificationID)
+	}
 }

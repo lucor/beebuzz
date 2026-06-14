@@ -332,3 +332,16 @@ func (s *Service) GetPairingStatus(ctx context.Context, deviceID, deviceToken st
 		PairingStatus: device.PairingStatus,
 	}, nil
 }
+
+// AuthenticateDevice validates a backend device ID against its device token.
+func (s *Service) AuthenticateDevice(ctx context.Context, deviceID, deviceToken string) (*Device, error) {
+	tokenHash := secure.Hash(deviceToken)
+	device, err := s.repo.GetDeviceByIDAndTokenHash(ctx, deviceID, tokenHash)
+	if err != nil {
+		return nil, err
+	}
+	if device == nil {
+		return nil, ErrInvalidDeviceToken
+	}
+	return device, nil
+}

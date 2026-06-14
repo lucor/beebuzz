@@ -255,6 +255,24 @@ func mapNotificationFailReason(r notification.DeviceResult) string {
 // Ensure notificationEventTrackerAdapter satisfies notification.EventTracker at compile time.
 var _ notification.EventTracker = (*notificationEventTrackerAdapter)(nil)
 
+// deviceAuthenticatorAdapter adapts device.Service to notification.DeviceAuthenticator.
+type deviceAuthenticatorAdapter struct {
+	deviceSvc *device.Service
+}
+
+// AuthenticateDevice validates Hive device-token credentials.
+func (a *deviceAuthenticatorAdapter) AuthenticateDevice(ctx context.Context, deviceID, deviceToken string) error {
+	if _, err := a.deviceSvc.AuthenticateDevice(ctx, deviceID, deviceToken); err != nil {
+		if errors.Is(err, device.ErrInvalidDeviceToken) {
+			return notification.ErrInvalidDeviceToken
+		}
+		return err
+	}
+	return nil
+}
+
+var _ notification.DeviceAuthenticator = (*deviceAuthenticatorAdapter)(nil)
+
 // systemNotificationDeliveryAdapter adapts notification.Service to system notification delivery.
 type systemNotificationDeliveryAdapter struct {
 	notifSvc *notification.Service

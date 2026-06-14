@@ -46,6 +46,7 @@ var (
 
 	// Per-token limits on token-authenticated endpoints.
 	rateLimitPushToken       = rateLimit(30, time.Minute, middleware.RateKeyByBearerToken)
+	rateLimitDeviceToken     = rateLimit(60, time.Minute, middleware.RateKeyByBearerToken)
 	rateLimitWebhookToken    = rateLimit(10, time.Minute, middleware.RateKeyByURLParam("token"))
 	rateLimitAttachmentToken = rateLimit(30, time.Minute, middleware.RateKeyByURLParam("token"))
 )
@@ -91,6 +92,7 @@ func NewRouter(
 		v1.With(middleware.ExtractBearerToken, rateLimitPushToken).Get("/push/keys", notificationHandler.Keys)
 		v1.With(middleware.ExtractBearerToken, rateLimitPushToken).Post("/push", notificationHandler.Send)
 		v1.With(middleware.ExtractBearerToken, rateLimitPushToken).Post("/push/{topic}", notificationHandler.Send)
+		v1.With(middleware.ExtractBearerToken, rateLimitDeviceToken).Get("/devices/{deviceID}/notifications", notificationHandler.SyncDeviceNotifications)
 
 		// Attachments (public, token-based access)
 		v1.With(rateLimitAttachmentToken).Get("/attachments/{token}", attachmentHandler.Get)

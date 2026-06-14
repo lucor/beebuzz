@@ -1,6 +1,7 @@
 // Push notifications and VAPID key API endpoints.
 import type { PairingStatus } from './account';
 import { api, request } from './client';
+import { API_URL } from '../config';
 
 /**
  * Push notifications API namespace.
@@ -8,6 +9,20 @@ import { api, request } from './client';
 export interface PairDeviceResponse {
 	deviceId: string;
 	deviceToken: string;
+}
+
+export interface DeviceNotificationSyncItem {
+	id: string;
+	delivery_mode: 'server_trusted' | 'e2e';
+	payload: unknown;
+	sent_at: string;
+	expires_at: string;
+}
+
+export interface DeviceNotificationSyncResponse {
+	notifications: DeviceNotificationSyncItem[];
+	next_cursor: string | null;
+	gap: boolean;
 }
 
 export const pushApi = {
@@ -55,5 +70,41 @@ export const pushApi = {
 			}
 		);
 		return { deviceId: response.device_id, pairingStatus: response.pairing_status };
+	},
+
+	/**
+	 * Recover recently missed notifications for a paired Hive device.
+	 */
+	syncDeviceNotifications: async (
+		deviceId: string,
+		deviceToken: string,
+		after?: string,
+		limit = 50
+	): Promise<DeviceNotificationSyncResponse> => {
+		const params = new URLSearchParams({ limit: String(limit) });
+		if (after) {
+			params.set('after', after);
+		}
+
+		let response: Response;
+		try {
+			response = await fetch(
+				`${API_URL}/v1/devices/${encodeURIComponent(deviceId)}/notifications?${params}`,
+				{
+					method: 'GET',
+					headers: {
+						Authorization: `Bearer ${deviceToken}`
+					}
+				}
+			);
+		} catch {
+			throw new Error('Network error');
+		}
+
+		if (!response.ok) {
+			throw new Error(`Notification sync failed: ${response.status}`);
+		}
+
+		return response.json() as Promise<DeviceNotificationSyncResponse>;
 	}
 };
