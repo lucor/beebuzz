@@ -4,8 +4,7 @@ import type { PushDebugSnapshot } from '$lib/types/encryption';
 export async function loadPushDebugSnapshot(): Promise<PushDebugSnapshot> {
 	const registration = await navigator.serviceWorker.getRegistration();
 	const subscription = registration ? await registration.pushManager.getSubscription() : null;
-	const subscriptionJson = subscription?.toJSON();
-	const endpointHost = subscription ? new URL(subscription.endpoint).host : null;
+	const subscriptionKeys = subscription?.options?.applicationServerKey;
 
 	return {
 		userAgent: navigator.userAgent,
@@ -15,9 +14,8 @@ export async function loadPushDebugSnapshot(): Promise<PushDebugSnapshot> {
 		registrationInstallingState: registration?.installing?.state ?? null,
 		registrationWaitingState: registration?.waiting?.state ?? null,
 		registrationActiveState: registration?.active?.state ?? null,
-		subscriptionEndpointHost: endpointHost,
-		subscriptionP256dhLength: subscriptionJson?.keys?.p256dh?.length ?? 0,
-		subscriptionAuthLength: subscriptionJson?.keys?.auth?.length ?? 0
+		subscriptionPresent: subscription !== null,
+		subscriptionKeysPresent: subscriptionKeys !== null && subscriptionKeys !== undefined
 	};
 }
 

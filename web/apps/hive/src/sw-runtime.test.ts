@@ -55,6 +55,7 @@ function createDeps(overrides: Partial<ServiceWorkerRuntimeDeps> = {}): ServiceW
 		getDeviceCredentials: vi.fn(() => Promise.resolve({ deviceId: 'dev-a' })),
 		decryptPayload: vi.fn(() => Promise.resolve('')),
 		fetch: vi.fn(() => Promise.resolve(new Response('{}', { status: 200 }))),
+		recordDiagnostic: vi.fn(),
 		...overrides
 	};
 }
@@ -288,7 +289,6 @@ describe('service worker runtime', () => {
 		const deps = createDeps({
 			saveNotification: vi.fn(() => Promise.reject(new Error('IDB write failed')))
 		});
-		const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
 		await handlePushEvent(
 			deps,
@@ -304,11 +304,12 @@ describe('service worker runtime', () => {
 			'Sensor',
 			expect.objectContaining({ body: 'Temperature alert' })
 		);
-		expect(consoleSpy).toHaveBeenCalledWith(
-			'[PUSH] Failed to persist notification',
-			expect.objectContaining({ error: 'IDB write failed' })
+		expect(deps.recordDiagnostic).toHaveBeenCalledWith(
+			'developer',
+			'notification',
+			'notification.persist_failed',
+			'IDB write failed'
 		);
-		consoleSpy.mockRestore();
 	});
 
 	it('shows the OS notification without importable UI history when credentials are missing', async () => {
@@ -347,7 +348,6 @@ describe('service worker runtime', () => {
 			getDeviceCredentials: vi.fn(() => Promise.reject(new Error('IDB open blocked'))),
 			matchWindowClients: vi.fn(() => Promise.resolve([client]))
 		});
-		const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
 		await handlePushEvent(
 			deps,
@@ -373,11 +373,12 @@ describe('service worker runtime', () => {
 		expect(deps.saveNotification).not.toHaveBeenCalled();
 		expect(deps.matchWindowClients).not.toHaveBeenCalled();
 		expect(client.postMessage).not.toHaveBeenCalled();
-		expect(consoleSpy).toHaveBeenCalledWith(
-			'[PUSH] Failed to read device credentials',
-			expect.objectContaining({ error: 'IDB open blocked' })
+		expect(deps.recordDiagnostic).toHaveBeenCalledWith(
+			'developer',
+			'storage',
+			'storage.credentials_failed',
+			'Failed to read device credentials'
 		);
-		consoleSpy.mockRestore();
 	});
 
 	it('shows a decryption-specific fallback for encrypted payload failures', async () => {

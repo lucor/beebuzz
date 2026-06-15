@@ -41,7 +41,6 @@ export interface PushDebugSnapshot {
 	registrationInstallingState: string | null;
 	registrationWaitingState: string | null;
 	registrationActiveState: string | null;
-	subscriptionEndpointHost: string | null;
-	subscriptionP256dhLength: number;
-	subscriptionAuthLength: number;
+	subscriptionPresent: boolean;
+	subscriptionKeysPresent: boolean;
 }

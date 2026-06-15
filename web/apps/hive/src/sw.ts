@@ -2,6 +2,7 @@ import { Decrypter } from 'age-encryption';
 import { getDeviceIdentity, MissingDeviceIdentityError } from './lib/services/encryption';
 import { deviceKeysRepository } from './lib/services/device-keys-repository';
 import { notificationsRepository } from './lib/services/notifications-repository';
+import type { HiveDiagnosticEvent, HiveDiagnosticKind, HiveLogScope } from './lib/devmode/types';
 import {
 	handleActivateEvent,
 	handleMessageEvent,
@@ -14,36 +15,19 @@ import {
 
 declare const self: ServiceWorkerGlobalScope;
 
-const DEBUG = import.meta.env.VITE_BEEBUZZ_DEBUG === true;
 const BEEBUZZ_DOMAIN = import.meta.env.VITE_BEEBUZZ_DOMAIN as string | undefined;
 
 async function decryptPayload(data: ArrayBuffer): Promise<string> {
-	if (DEBUG) {
-		console.log(`[AGE] Loading identity from IndexedDB...`);
-	}
 	const identity = await getDeviceIdentity();
 	if (!identity) {
 		throw new MissingDeviceIdentityError(
 			'No encryption key found in IndexedDB - device may not be paired correctly'
 		);
 	}
-	if (DEBUG) {
-		console.log(`[AGE] ✅ Identity loaded, starting decryption...`);
-	}
-
-	const ciphertextBytes = new Uint8Array(data).length;
-	const startDecrypt = performance.now();
 
 	const d = new Decrypter();
 	d.addIdentity(identity);
 	const decrypted = await d.decrypt(new Uint8Array(data), 'text');
-
-	const duration = performance.now() - startDecrypt;
-	if (DEBUG) {
-		console.log(
-			`[AGE] ✅ DECRYPTION SUCCESS: duration=${duration.toFixed(2)}ms, ciphertext=${ciphertextBytes}B, plaintext=${decrypted.length}B`
-		);
-	}
 
 	return decrypted;
 }
@@ -59,23 +43,39 @@ function saveNotificationToStorage(input: {
 	attachment?: NotificationAttachmentEnvelope;
 	priority?: string;
 }): Promise<void> {
-	return notificationsRepository.save(input).then(
-		() => {
-			if (DEBUG) {
-				console.log('Notification saved to IndexedDB');
+	return notificationsRepository.save(input);
+}
+
+function recordDiagnostic(
+	_kind: HiveDiagnosticKind,
+	_scope: HiveLogScope,
+	_event: HiveDiagnosticEvent,
+	_message: string
+): void {
+	// Diagnostics are recorded by the app shell. The service worker
+	// forwards events through postMessage instead of writing directly
+	// to IndexedDB to avoid lock contention. The app shell's message
+	// handler is responsible for recording these events if Developer
+	// Mode is enabled.
+	try {
+		void self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
+			for (const client of clients) {
+				client.postMessage({
+					type: 'DIAGNOSTIC_EVENT',
+					kind: _kind,
+					scope: _scope,
+					event: _event,
+					message: _message
+				});
 			}
-		},
-		(error) => {
-			if (DEBUG) {
-				console.error('Failed to add notification to IndexedDB:', error);
-			}
-			throw error;
-		}
-	);
+		});
+	} catch {
+		// silently fail
+	}
 }
 
 const runtimeDeps: ServiceWorkerRuntimeDeps = {
-	debug: DEBUG,
+	debug: false,
 	locationOrigin: self.location.origin,
 	beebuzzDomain: BEEBUZZ_DOMAIN,
 	now: () => Date.now(),
@@ -93,7 +93,8 @@ const runtimeDeps: ServiceWorkerRuntimeDeps = {
 	getPushSubscription: () => self.registration.pushManager.getSubscription(),
 	getDeviceCredentials: () => deviceKeysRepository.getDeviceCredentials(),
 	decryptPayload,
-	fetch: (input, init) => self.fetch(input, init)
+	fetch: (input, init) => self.fetch(input, init),
+	recordDiagnostic
 };
 
 self.addEventListener('push', (event: PushEvent) => {
@@ -105,9 +106,7 @@ self.addEventListener('notificationclick', (event: NotificationEvent) => {
 });
 
 self.addEventListener('install', () => {
-	if (DEBUG) {
-		console.log('Service Worker installing...');
-	}
+	// Service worker installing — no action required.
 });
 
 self.addEventListener('activate', (event: ExtendableEvent) => {

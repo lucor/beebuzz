@@ -462,6 +462,26 @@ func (r *Repository) DeletePushSubscription(ctx context.Context, deviceID string
 	return err
 }
 
+// GetDeviceByTokenHash returns an active device by token hash alone, or nil if not found.
+func (r *Repository) GetDeviceByTokenHash(ctx context.Context, tokenHash string) (*Device, error) {
+	var d Device
+	err := r.db.GetContext(ctx, &d,
+		`SELECT d.id, d.user_id, d.name, d.description, d.is_active, d.pairing_status, d.device_token_hash, d.created_at, d.updated_at,
+		        ps.created_at AS sub_created_at, ps.age_recipient AS sub_age_recipient
+		 FROM devices d
+		 LEFT JOIN push_subscriptions ps ON ps.device_id = d.id
+		 WHERE d.device_token_hash = ? AND d.is_active = 1`,
+		tokenHash,
+	)
+	if err != nil {
+		if isNotFound(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &d, nil
+}
+
 // GetDeviceByIDAndTokenHash returns an active device by ID and token hash, or nil if not found.
 func (r *Repository) GetDeviceByIDAndTokenHash(ctx context.Context, deviceID, tokenHash string) (*Device, error) {
 	var d Device

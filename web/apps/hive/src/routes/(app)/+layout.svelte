@@ -5,6 +5,11 @@
 	import { page } from '$app/state';
 	import { BeeBuzzLogo } from '@beebuzz/shared/components';
 	import { logger } from '@beebuzz/shared/logger';
+	import { safeLogger } from '$lib/devmode/safe-logger';
+	import { captureHiveError } from '$lib/devmode/error-capture';
+	import { isHiveDiagnosticEvent, isHiveDiagnosticKind, isHiveLogScope } from '$lib/devmode/types';
+	import { developerSettings } from '$lib/devmode/settings';
+	import { loadDeveloperSettings } from '$lib/devmode/storage';
 	import { health } from '@beebuzz/shared/stores/health.svelte';
 	import { toast } from '@beebuzz/shared/stores';
 	import { paired } from '$lib/stores/paired.svelte';
@@ -28,7 +33,7 @@
 		X,
 		Activity,
 		Hexagon,
-		FlaskConical,
+		Bug,
 		TriangleAlert,
 		ExternalLink,
 		Loader,
@@ -36,7 +41,6 @@
 	} from '@lucide/svelte';
 	import type { PushMessage } from '@beebuzz/shared/types';
 
-	const DEBUG = import.meta.env.VITE_BEEBUZZ_DEBUG === true;
 	const GITHUB_RELEASES_URL = 'https://codeberg.org/beebuzz/cli/releases';
 	const STARTUP_TIMEOUT_MS = 10000;
 
@@ -62,11 +66,28 @@
 	const navItems: NavItem[] = [
 		{ label: 'Hive', href: resolve('/'), icon: Hexagon },
 		{ label: 'My Device', href: resolve('/device'), icon: Activity },
-		...(DEBUG ? [{ label: 'Debug', href: resolve('/debug'), icon: FlaskConical }] : [])
+		{ label: 'Developer Mode', href: resolve('/developer'), icon: Bug }
 	];
 
 	/** Handles messages from the service worker. */
 	const handleServiceWorkerMessage = (event: MessageEvent<PushMessage>) => {
+		const eventData = event.data as Record<string, unknown>;
+		if (eventData?.type === 'DIAGNOSTIC_EVENT') {
+			const msg = eventData;
+			if (
+				typeof msg.kind === 'string' &&
+				typeof msg.scope === 'string' &&
+				typeof msg.event === 'string' &&
+				typeof msg.message === 'string' &&
+				isHiveDiagnosticKind(msg.kind) &&
+				isHiveLogScope(msg.scope) &&
+				isHiveDiagnosticEvent(msg.event)
+			) {
+				safeLogger[msg.kind](msg.scope, msg.event, msg.message);
+			}
+			return;
+		}
+
 		if (event.data?.type === 'PUSH_RECEIVED') {
 			if (event.data.deviceId !== notificationsStore.activeDeviceId) return;
 			notificationsStore.add(
@@ -239,6 +260,11 @@
 			handleServiceWorkerControllerChange
 		);
 
+		const devSettings = await loadDeveloperSettings();
+		developerSettings.set(devSettings);
+
+		safeLogger.main('app', 'app.started', 'Hive app bootstrapping');
+
 		try {
 			// The bootstrap order matters: paired state and credentials determine the
 			// notification history scope, so no local notification cache is loaded until
@@ -287,6 +313,11 @@
 						await withTimeout(health.check(), STARTUP_TIMEOUT_MS, 'Health check');
 					}
 					watchServiceWorkerRegistration(registration);
+					safeLogger.main(
+						'service_worker',
+						'service_worker.registered',
+						'Service worker registered and active'
+					);
 					await withTimeout(registration.update(), STARTUP_TIMEOUT_MS, 'Service worker update');
 					syncWaitingWorker(registration);
 				}
@@ -294,6 +325,11 @@
 
 			if (!isPaired) {
 				await cleanupStalePairingState();
+				safeLogger.main(
+					'pairing',
+					'pairing.reconnect_required',
+					'Device not paired, redirecting to pairing'
+				);
 				await goto('/pair');
 				return;
 			}
@@ -323,11 +359,20 @@
 			}
 
 			ready = true;
+			safeLogger.main('app', 'app.started', 'Hive app ready');
 			void syncNotificationsFromBackend();
 			startPolling();
 		} catch (error: unknown) {
 			startupError = formatStartupError(error);
 			logger.error('Hive app bootstrap failed', { error: String(error) });
+			safeLogger.main('app', 'app.bootstrap_failed', startupError);
+			void captureHiveError({
+				scope: 'app',
+				event: 'app.bootstrap_failed',
+				message: 'Hive app bootstrap failed',
+				error,
+				severity: 'error'
+			});
 		}
 	};
 

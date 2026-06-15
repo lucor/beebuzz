@@ -1,4 +1,5 @@
 import type { PushMessage } from '@beebuzz/shared/types';
+import type { HiveDiagnosticEvent, HiveDiagnosticKind, HiveLogScope } from './lib/devmode/types';
 import {
 	DeviceIdentityIntegrityError,
 	MissingDeviceIdentityError
@@ -85,6 +86,12 @@ export type ServiceWorkerRuntimeDeps = {
 	getDeviceCredentials: () => Promise<{ deviceId: string } | null>;
 	decryptPayload: (data: ArrayBuffer) => Promise<string>;
 	fetch: typeof fetch;
+	recordDiagnostic: (
+		kind: HiveDiagnosticKind,
+		scope: HiveLogScope,
+		event: HiveDiagnosticEvent,
+		message: string
+	) => void;
 };
 
 export type PushEventLike = {
@@ -286,15 +293,21 @@ async function resolvePushPayload(
 ): Promise<NotificationPayload> {
 	const payloadBytes = new Uint8Array(payloadArray);
 
-	if (deps.debug) {
-		console.log(`[PUSH] Payload size: ${payloadArray.byteLength} bytes`);
-	}
+	deps.recordDiagnostic(
+		'developer',
+		'push',
+		'payload.resolve',
+		`Payload size: ${payloadArray.byteLength} bytes`
+	);
 
 	let parsed: unknown;
 	if (startsWith(payloadBytes, AGE_HEADER)) {
-		if (deps.debug) {
-			console.log('[PUSH] Detected age-encrypted payload, decrypting...');
-		}
+		deps.recordDiagnostic(
+			'developer',
+			'payload',
+			'payload.detected_encrypted',
+			'Age-encrypted payload detected, decrypting'
+		);
 		try {
 			const decrypted = await deps.decryptPayload(payloadArray);
 			parsed = JSON.parse(decrypted) as unknown;
@@ -306,9 +319,12 @@ async function resolvePushPayload(
 			);
 		}
 	} else {
-		if (deps.debug) {
-			console.log('[PUSH] Plain JSON payload detected');
-		}
+		deps.recordDiagnostic(
+			'developer',
+			'payload',
+			'payload.detected_plain',
+			'Plain JSON payload detected'
+		);
 		try {
 			parsed = parseJsonBytes(payloadBytes);
 		} catch (error) {
@@ -369,26 +385,10 @@ export async function handlePushEvent(
 	event: PushEventLike
 ): Promise<void> {
 	const pushStartTime = performance.now();
-	if (deps.debug) {
-		console.log('Push event received');
-	}
+	deps.recordDiagnostic('main', 'push', 'push.received', 'Push event received');
 
 	if (!event.data) {
-		console.warn('❌ Push received but event.data is null - notification sent without payload');
-		try {
-			const sub = await deps.getPushSubscription();
-			if (sub) {
-				const subJson = sub.toJSON();
-				const p256dh = subJson.keys?.p256dh ?? '';
-				const auth = subJson.keys?.auth ?? '';
-				console.warn(`[PUSH NULL] Subscription endpoint: ${sub.endpoint.slice(0, 80)}...`);
-				console.warn(`[PUSH NULL] Key lengths: p256dh=${p256dh.length}, auth=${auth.length}`);
-			} else {
-				console.warn('[PUSH NULL] No active push subscription found');
-			}
-		} catch (err) {
-			console.warn('[PUSH NULL] Failed to get subscription info:', err);
-		}
+		deps.recordDiagnostic('main', 'push', 'push.empty_payload', 'Push received with no data');
 		await deps.showNotification('BeeBuzz', {
 			body: 'Received notification without data',
 			icon: NOTIFICATION_ICON
@@ -402,14 +402,15 @@ export async function handlePushEvent(
 		data = await resolvePushPayload(deps, payloadArray);
 	} catch (error) {
 		const message = error instanceof Error ? error.message : 'unknown payload error';
-		console.error('[PUSH] Failed to parse notification payload', { error: message });
 		if (error instanceof PushPayloadError && error.kind === 'encrypted') {
+			deps.recordDiagnostic('main', 'payload', 'payload.decrypt_failed', message);
 			await deps.showNotification('BeeBuzz Notification', {
 				body: getEncryptedPayloadFailureMessage(error.cause),
 				icon: NOTIFICATION_ICON
 			});
 			return;
 		}
+		deps.recordDiagnostic('main', 'payload', 'payload.invalid', message);
 		await deps.showNotification('BeeBuzz Notification', {
 			body: 'Received a notification that could not be parsed',
 			icon: NOTIFICATION_ICON
@@ -417,20 +418,32 @@ export async function handlePushEvent(
 		return;
 	}
 
-	const totalDuration = performance.now() - pushStartTime;
-	if (deps.debug) {
-		console.log(`[PUSH TOTAL] duration=${totalDuration.toFixed(2)}ms`);
-	}
+	deps.recordDiagnostic(
+		'developer',
+		'push',
+		'push.resolved',
+		`Payload resolved in ${(performance.now() - pushStartTime).toFixed(0)}ms`
+	);
 
 	let deviceId: string | undefined;
 	try {
 		deviceId = (await deps.getDeviceCredentials())?.deviceId;
-	} catch (error) {
-		const message = error instanceof Error ? error.message : 'unknown credentials error';
-		console.error('[PUSH] Failed to read device credentials', { error: message });
+	} catch {
+		deps.recordDiagnostic(
+			'developer',
+			'storage',
+			'storage.credentials_failed',
+			'Failed to read device credentials'
+		);
 	}
 
 	if (deviceId) {
+		deps.recordDiagnostic(
+			'developer',
+			'notification',
+			'notification.persist_started',
+			'Saving notification to storage'
+		);
 		try {
 			await deps.saveNotification({
 				id: data.id,
@@ -445,17 +458,26 @@ export async function handlePushEvent(
 			});
 		} catch (error) {
 			const message = error instanceof Error ? error.message : 'unknown storage error';
-			console.error('[PUSH] Failed to persist notification', { error: message });
+			deps.recordDiagnostic('developer', 'notification', 'notification.persist_failed', message);
 		}
 	}
 
 	await deps.showNotification(data.title, buildNotificationOptions(deps, data, deviceId));
+	deps.recordDiagnostic('main', 'notification', 'notification.displayed', 'Notification shown');
 
 	if (!deviceId) {
 		return;
 	}
 
 	const windowClients = await deps.matchWindowClients(true);
+	if (windowClients.length === 0) {
+		deps.recordDiagnostic(
+			'developer',
+			'service_worker',
+			'clients.match_failed',
+			'No window clients found'
+		);
+	}
 	for (const client of windowClients) {
 		try {
 			client.postMessage({
@@ -527,7 +549,7 @@ async function persistClickedNotificationBestEffort(
 		});
 	} catch (error) {
 		const message = error instanceof Error ? error.message : 'unknown storage error';
-		console.error('[CLICK] Failed to persist clicked notification', { error: message });
+		deps.recordDiagnostic('developer', 'notification', 'notification.persist_failed', message);
 	}
 }
 
@@ -539,12 +561,15 @@ function isSameOriginClient(deps: ServiceWorkerRuntimeDeps, client: WorkerClient
 	}
 }
 
-async function focusClientBestEffort(client: WorkerClient): Promise<WorkerClient | undefined> {
+async function focusClientBestEffort(
+	deps: ServiceWorkerRuntimeDeps,
+	client: WorkerClient
+): Promise<WorkerClient | undefined> {
 	try {
 		return client.focus ? await client.focus() : client;
 	} catch (error) {
 		const message = error instanceof Error ? error.message : 'unknown focus error';
-		console.error('[CLICK] Failed to focus window client', { error: message });
+		deps.recordDiagnostic('developer', 'service_worker', 'clients.focus_failed', message);
 		return undefined;
 	}
 }
@@ -556,12 +581,13 @@ async function openHiveWindowBestEffort(
 		return (await deps.openWindow(deps.locationOrigin || '/')) ?? undefined;
 	} catch (error) {
 		const message = error instanceof Error ? error.message : 'unknown openWindow error';
-		console.error('[CLICK] Failed to open Hive window', { error: message });
+		deps.recordDiagnostic('developer', 'service_worker', 'clients.open_window_failed', message);
 		return undefined;
 	}
 }
 
 function postClickMessageBestEffort(
+	deps: ServiceWorkerRuntimeDeps,
 	client: WorkerClient,
 	notificationData?: Record<string, unknown>
 ): void {
@@ -569,7 +595,7 @@ function postClickMessageBestEffort(
 		client.postMessage(buildNotificationClickedMessage(notificationData));
 	} catch (error) {
 		const message = error instanceof Error ? error.message : 'unknown postMessage error';
-		console.error('[CLICK] Failed to post notification click message', { error: message });
+		deps.recordDiagnostic('developer', 'service_worker', 'clients.post_message_failed', message);
 	}
 }
 
@@ -585,12 +611,12 @@ export async function handleNotificationClickEvent(
 		const windows = await deps.matchWindowClients(false);
 		for (const windowClient of windows) {
 			if (!isSameOriginClient(deps, windowClient)) continue;
-			focused = await focusClientBestEffort(windowClient);
+			focused = await focusClientBestEffort(deps, windowClient);
 			if (focused) break;
 		}
 	} catch (error) {
 		const message = error instanceof Error ? error.message : 'unknown matchAll error';
-		console.error('[CLICK] Failed to match window clients', { error: message });
+		deps.recordDiagnostic('developer', 'service_worker', 'clients.match_failed', message);
 	}
 
 	if (!focused) {
@@ -605,19 +631,22 @@ export async function handleNotificationClickEvent(
 		await persistClickedNotificationBestEffort(deps, event.notification.data);
 	} catch (error) {
 		const message = error instanceof Error ? error.message : 'unknown persistence error';
-		console.error('[CLICK] Failed after opening Hive window', { error: message });
+		deps.recordDiagnostic('developer', 'notification', 'notification.persist_failed', message);
 	}
 
 	if (focused) {
-		postClickMessageBestEffort(focused, event.notification.data);
+		postClickMessageBestEffort(deps, focused, event.notification.data);
 	}
 }
 
 /** Claims clients when the worker activates. */
 export async function handleActivateEvent(deps: ServiceWorkerRuntimeDeps): Promise<void> {
-	if (deps.debug) {
-		console.log('Service Worker activating...');
-	}
+	deps.recordDiagnostic(
+		'main',
+		'service_worker',
+		'service_worker.activated',
+		'Service Worker activated'
+	);
 	await deps.claimClients();
 }
 
@@ -625,9 +654,12 @@ export async function handleActivateEvent(deps: ServiceWorkerRuntimeDeps): Promi
 export async function handlePushSubscriptionChangeEvent(
 	deps: ServiceWorkerRuntimeDeps
 ): Promise<void> {
-	if (deps.debug) {
-		console.log('Push subscription changed');
-	}
+	deps.recordDiagnostic(
+		'developer',
+		'push',
+		'push.subscription_changed',
+		'Push subscription changed'
+	);
 
 	const clients = await deps.matchWindowClients(true);
 	for (const client of clients) {
@@ -644,9 +676,11 @@ export async function handleMessageEvent(
 		return;
 	}
 
-	if (deps.debug) {
-		console.log('Service Worker received SKIP_WAITING message');
-	}
-
+	deps.recordDiagnostic(
+		'developer',
+		'service_worker',
+		'service_worker.skip_waiting',
+		'SKIP_WAITING received'
+	);
 	await deps.skipWaiting();
 }

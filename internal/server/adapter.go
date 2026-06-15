@@ -10,6 +10,7 @@ import (
 	"go.beebuzz.app/beebuzz/internal/attachment"
 	"go.beebuzz.app/beebuzz/internal/auth"
 	"go.beebuzz.app/beebuzz/internal/core"
+	"go.beebuzz.app/beebuzz/internal/debugreport"
 	"go.beebuzz.app/beebuzz/internal/device"
 	"go.beebuzz.app/beebuzz/internal/event"
 	"go.beebuzz.app/beebuzz/internal/middleware"
@@ -346,3 +347,18 @@ func (a *adminSessionRevokerAdapter) RevokeAllSessions(ctx context.Context, user
 
 // Ensure adminSessionRevokerAdapter satisfies admin.SessionRevoker at compile time.
 var _ admin.SessionRevoker = (*adminSessionRevokerAdapter)(nil)
+
+// debugReportDeviceAuthAdapter adapts device.Service to debugreport.DeviceAuthenticator.
+type debugReportDeviceAuthAdapter struct {
+	deviceSvc *device.Service
+}
+
+func (a *debugReportDeviceAuthAdapter) AuthenticateDeviceByToken(ctx context.Context, deviceToken string) (string, error) {
+	d, err := a.deviceSvc.AuthenticateDeviceByToken(ctx, deviceToken)
+	if err != nil {
+		return "", err
+	}
+	return d.ID, nil
+}
+
+var _ debugreport.DeviceAuthenticator = (*debugReportDeviceAuthAdapter)(nil)

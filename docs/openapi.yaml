@@ -1170,6 +1170,43 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
         "500":
           $ref: "#/components/responses/InternalError"
+  /v1/hive/debug-reports:
+    post:
+      tags: [Devices]
+      operationId: submitDebugReport
+      summary: Submit a manual error report from Hive PWA
+      x-audience: [hive]
+      x-stability: beta
+      description: |
+        Submit a manual error report from the Hive PWA Developer Mode.
+        Reports use a fixed diagnostic schema. Unknown fields are rejected.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DebugReportRequest"
+      responses:
+        "201":
+          description: Report accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DebugReportResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "500":
+          $ref: "#/components/responses/InternalError"
   /v1/attachments/{token}:
     get:
       tags: [Attachments]
@@ -2446,3 +2483,217 @@ components:
         data:
           type: string
           description: The JS-visible payload (post-transport-decryption).
+    DebugReportRequest:
+      type: object
+      additionalProperties: false
+      required: [schema_version, source, report_type, created_at, snapshot]
+      properties:
+        schema_version:
+          type: integer
+          enum: [1]
+          description: Must be 1.
+        source:
+          type: string
+          enum: [hive]
+          description: Must be "hive".
+        report_type:
+          type: string
+          enum: [manual_error_report]
+          description: Must be "manual_error_report".
+        created_at:
+          type: string
+          format: date-time
+          description: ISO 8601 timestamp of when the report was created.
+        snapshot:
+          $ref: "#/components/schemas/DebugSnapshot"
+    DebugReportResponse:
+      type: object
+      additionalProperties: false
+      required: [report_id, created_at]
+      properties:
+        report_id:
+          type: string
+          description: The server-assigned report identifier.
+        created_at:
+          type: string
+          format: date-time
+          description: ISO 8601 timestamp of when the report was stored.
+
+    DebugSnapshot:
+      type: object
+      additionalProperties: false
+      required: [id, ts, scope, event, severity, message, context, related_logs]
+      properties:
+        id:
+          type: string
+          maxLength: 64
+          description: Snapshot unique identifier.
+        ts:
+          type: string
+          format: date-time
+          description: ISO 8601 timestamp of when the snapshot was captured.
+        scope:
+          type: string
+          enum: [app, push, payload, notification, service_worker, storage, pairing, network, encryption]
+        event:
+          type: string
+          enum: [app.started, app.bootstrap_failed, service_worker.registered, service_worker.activated, service_worker.skip_waiting, pairing.reconnect_required, push.received, push.empty_payload, push.resolved, push.subscription_changed, payload.resolve, payload.detected_encrypted, payload.detected_plain, payload.decrypt_failed, payload.invalid, storage.credentials_failed, notification.persist_started, notification.persist_failed, notification.displayed, clients.match_failed, clients.focus_failed, clients.open_window_failed, clients.post_message_failed, debug_report.missing_device_token, debug_report.submit_failed]
+        severity:
+          type: string
+          enum: [warn, error]
+        message:
+          type: string
+          maxLength: 240
+          description: Human-readable error message.
+        error:
+          $ref: "#/components/schemas/DebugError"
+        context:
+          $ref: "#/components/schemas/DebugContext"
+        related_logs:
+          type: array
+          maxItems: 20
+          items:
+            $ref: "#/components/schemas/DebugLog"
+
+    DebugError:
+      type: object
+      additionalProperties: false
+      properties:
+        name:
+          type: string
+          maxLength: 80
+          description: Error class name.
+        code:
+          type: string
+          nullable: true
+          maxLength: 64
+          pattern: "^[A-Za-z0-9_:\\-]{1,64}$"
+          description: Optional error code matching ^[A-Za-z0-9_:\\-]{1,64}$.
+        stack:
+          type: array
+          maxItems: 8
+          items:
+            type: string
+            maxLength: 180
+            description: Single stack frame string.
+
+    DebugContext:
+      type: object
+      additionalProperties: false
+      required:
+        - app_version
+        - build_id
+        - browser_family
+        - browser_version_major
+        - os
+        - display_mode
+        - notification_permission
+        - service_worker_supported
+        - service_worker_state
+        - push_supported
+        - push_present
+        - webcrypto_supported
+        - x25519_supported
+        - indexeddb_available
+        - network_online
+        - last_push_received_at
+        - last_notification_displayed_at
+      properties:
+        app_version:
+          type: string
+          maxLength: 40
+        build_id:
+          type: string
+          maxLength: 80
+        browser_family:
+          type: string
+          enum: [unknown, Chrome, Safari, Firefox, Edge]
+        browser_version_major:
+          type: string
+          maxLength: 8
+        os:
+          type: string
+          enum: [unknown, Windows, macOS, Linux, Android, iOS]
+        display_mode:
+          type: string
+          enum: [browser, standalone, minimal-ui, fullscreen]
+        notification_permission:
+          type: string
+          enum: [not-supported, default, denied, granted]
+        service_worker_supported:
+          type: boolean
+        service_worker_state:
+          type: string
+          enum: [not-supported, active, waiting, installing, no-registration, error]
+        push_supported:
+          type: boolean
+        push_present:
+          type: boolean
+        webcrypto_supported:
+          type: boolean
+        x25519_supported:
+          type: boolean
+        indexeddb_available:
+          type: boolean
+        network_online:
+          type: boolean
+        last_push_received_at:
+          type: string
+          format: date-time
+          nullable: true
+        last_notification_displayed_at:
+          type: string
+          format: date-time
+          nullable: true
+
+    DebugLog:
+      type: object
+      additionalProperties: false
+      required: [id, ts, kind, scope, event, message]
+      properties:
+        id:
+          type: string
+          maxLength: 64
+        ts:
+          type: string
+          format: date-time
+        kind:
+          type: string
+          enum: [main, developer]
+        scope:
+          type: string
+          enum: [app, push, payload, notification, service_worker, storage, pairing, network, encryption]
+        event:
+          type: string
+          enum: [app.started, app.bootstrap_failed, service_worker.registered, service_worker.activated, service_worker.skip_waiting, pairing.reconnect_required, push.received, push.empty_payload, push.resolved, push.subscription_changed, payload.resolve, payload.detected_encrypted, payload.detected_plain, payload.decrypt_failed, payload.invalid, storage.credentials_failed, notification.persist_started, notification.persist_failed, notification.displayed, clients.match_failed, clients.focus_failed, clients.open_window_failed, clients.post_message_failed, debug_report.missing_device_token, debug_report.submit_failed]
+        message:
+          type: string
+          maxLength: 240
+        data:
+          $ref: "#/components/schemas/DebugLogData"
+
+    DebugLogData:
+      type: object
+      additionalProperties: false
+      properties:
+        status:
+          type: integer
+          minimum: 100
+          maximum: 599
+        duration_ms:
+          type: integer
+          minimum: 0
+          maximum: 600000
+        route:
+          type: string
+          maxLength: 120
+          pattern: "^/[^?#]*$"
+        method:
+          type: string
+          enum: [GET, POST, PUT, PATCH, DELETE]
+        error_code:
+          type: string
+          maxLength: 64
+          pattern: "^[A-Za-z0-9_:\\-]{1,64}$"
+        ok:
+          type: boolean

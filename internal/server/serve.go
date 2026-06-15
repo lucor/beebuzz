@@ -19,6 +19,7 @@ import (
 	"go.beebuzz.app/beebuzz/internal/auth"
 	"go.beebuzz.app/beebuzz/internal/config"
 	"go.beebuzz.app/beebuzz/internal/database"
+	"go.beebuzz.app/beebuzz/internal/debugreport"
 	"go.beebuzz.app/beebuzz/internal/device"
 	"go.beebuzz.app/beebuzz/internal/event"
 	"go.beebuzz.app/beebuzz/internal/health"
@@ -56,6 +57,7 @@ type appServices struct {
 	adminSvc       *admin.Service
 	attachmentSvc  *attachment.Service
 	authSvc        *auth.Service
+	debugReportSvc *debugreport.Service
 	deviceSvc      *device.Service
 	eventSvc       *event.Service
 	notifSvc       *notification.Service
@@ -194,11 +196,15 @@ func buildServices(db *sqlx.DB, cfg *config.Config, log *slog.Logger, m mailer.M
 	webhookTopicValidator := &webhookTopicValidatorAdapter{topicSvc: topicSvc}
 	webhookSvc := webhook.NewService(webhookRepo, webhookInspectStore, webhookDispatcher, webhookTopicValidator, log)
 
+	debugReportRepo := debugreport.NewRepository(db)
+	debugReportSvc := debugreport.NewService(debugReportRepo, log)
+
 	return &appServices{
 		db:             db,
 		adminSvc:       adminSvc,
 		attachmentSvc:  attachmentSvc,
 		authSvc:        authSvc,
+		debugReportSvc: debugReportSvc,
 		deviceSvc:      deviceSvc,
 		eventSvc:       eventSvc,
 		notifSvc:       notifSvc,
@@ -238,6 +244,9 @@ func buildHTTPHandler(services *appServices, cfg *config.Config, log *slog.Logge
 	deviceAuthenticator := &deviceAuthenticatorAdapter{deviceSvc: services.deviceSvc}
 	notificationHandler := notification.NewHandler(services.notifSvc, pushAuth, keyProvider, log)
 	notificationHandler.SetDeviceAuthenticator(deviceAuthenticator)
+	debugReportDeviceAuth := &debugReportDeviceAuthAdapter{deviceSvc: services.deviceSvc}
+	debugReportHandler := debugreport.NewHandler(services.debugReportSvc, log)
+	debugReportHandler.SetDeviceAuthenticator(debugReportDeviceAuth)
 	deviceHandler := device.NewHandler(services.deviceSvc, cfg.HiveURL, log)
 	webhookHandler := webhook.NewHandler(services.webhookSvc, cfg.HookURL, log)
 	attachmentHandler := attachment.NewHandler(services.attachmentSvc, log)
@@ -266,6 +275,7 @@ func buildHTTPHandler(services *appServices, cfg *config.Config, log *slog.Logge
 		webhookHandler,
 		attachmentHandler,
 		tokenHandler,
+		debugReportHandler,
 		pushStubHandler,
 		cfg,
 		log,

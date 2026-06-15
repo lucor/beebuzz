@@ -333,6 +333,21 @@ func (s *Service) GetPairingStatus(ctx context.Context, deviceID, deviceToken st
 	}, nil
 }
 
+// AuthenticateDeviceByToken finds and validates a device by device token alone.
+// Returns the authenticated device or ErrInvalidDeviceToken.
+func (s *Service) AuthenticateDeviceByToken(ctx context.Context, deviceToken string) (*Device, error) {
+	tokenHash := secure.Hash(deviceToken)
+	device, err := s.repo.GetDeviceByTokenHash(ctx, tokenHash)
+	if err != nil {
+		s.log.Error("failed to authenticate device by token", "error", err)
+		return nil, err
+	}
+	if device == nil {
+		return nil, ErrInvalidDeviceToken
+	}
+	return device, nil
+}
+
 // AuthenticateDevice validates a backend device ID against its device token.
 func (s *Service) AuthenticateDevice(ctx context.Context, deviceID, deviceToken string) (*Device, error) {
 	tokenHash := secure.Hash(deviceToken)

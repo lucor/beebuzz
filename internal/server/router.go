@@ -14,6 +14,7 @@ import (
 	"go.beebuzz.app/beebuzz/internal/auth"
 	"go.beebuzz.app/beebuzz/internal/config"
 	"go.beebuzz.app/beebuzz/internal/core"
+	"go.beebuzz.app/beebuzz/internal/debugreport"
 	"go.beebuzz.app/beebuzz/internal/device"
 	"go.beebuzz.app/beebuzz/internal/event"
 	"go.beebuzz.app/beebuzz/internal/health"
@@ -66,6 +67,7 @@ func NewRouter(
 	webhookHandler *webhook.Handler,
 	attachmentHandler *attachment.Handler,
 	tokenHandler *token.Handler,
+	debugReportHandler *debugreport.Handler,
 	pushStubHandler http.HandlerFunc,
 	cfg *config.Config,
 	log *slog.Logger,
@@ -93,6 +95,9 @@ func NewRouter(
 		v1.With(middleware.ExtractBearerToken, rateLimitPushToken).Post("/push", notificationHandler.Send)
 		v1.With(middleware.ExtractBearerToken, rateLimitPushToken).Post("/push/{topic}", notificationHandler.Send)
 		v1.With(middleware.ExtractBearerToken, rateLimitDeviceToken).Get("/devices/{deviceID}/notifications", notificationHandler.SyncDeviceNotifications)
+
+		// Hive debug reports (device bearer auth)
+		v1.With(middleware.ExtractBearerToken, rateLimitDeviceToken).Post("/hive/debug-reports", debugReportHandler.Submit)
 
 		// Attachments (public, token-based access)
 		v1.With(rateLimitAttachmentToken).Get("/attachments/{token}", attachmentHandler.Get)

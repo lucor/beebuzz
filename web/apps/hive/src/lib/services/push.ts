@@ -109,7 +109,7 @@ export const subscribeToPush = async (
 		applicationServerKey: urlBase64ToUint8Array(vapidKey) as BufferSource
 	});
 
-	logger.debug('New push subscription created', { endpoint: subscription.endpoint });
+	logger.debug('New push subscription created');
 	return subscription;
 };
 
