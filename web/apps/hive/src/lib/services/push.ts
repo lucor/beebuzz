@@ -4,6 +4,7 @@ import { base } from '$app/paths';
 import { pushApi } from '@beebuzz/shared/api';
 import { logger } from '@beebuzz/shared/logger';
 import { ApiError } from '@beebuzz/shared/errors';
+import { subscriptionUsesVapidKey, urlBase64ToUint8Array } from '$lib/services/push-vapid';
 
 export interface PushSupport {
 	notifications: boolean;
@@ -88,14 +89,7 @@ export const subscribeToPush = async (
 ): Promise<PushSubscription> => {
 	const existing = await reg.pushManager.getSubscription();
 	if (existing) {
-		const existingKey = existing.options?.applicationServerKey;
-		const newKey = urlBase64ToUint8Array(vapidKey);
-		const keysMatch =
-			existingKey &&
-			new Uint8Array(existingKey).length === newKey.length &&
-			new Uint8Array(existingKey).every((b, i) => b === newKey[i]);
-
-		if (keysMatch) {
+		if (subscriptionUsesVapidKey(existing, vapidKey)) {
 			logger.debug('Existing push subscription reused (VAPID keys match)');
 			return existing;
 		}
@@ -153,17 +147,4 @@ export const pairDevice = async (
 		}
 		throw error;
 	}
-};
-
-/** Converts a URL-safe base64 string to a Uint8Array. */
-const urlBase64ToUint8Array = (base64String: string): Uint8Array => {
-	const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
-	const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
-	const rawData = window.atob(base64);
-	const outputArray = new Uint8Array(rawData.length);
-
-	for (let i = 0; i < rawData.length; ++i) {
-		outputArray[i] = rawData.charCodeAt(i);
-	}
-	return outputArray;
 };

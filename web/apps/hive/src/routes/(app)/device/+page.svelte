@@ -313,7 +313,6 @@
 		reconnecting = true;
 		try {
 			await cleanupStalePairingState();
-			notificationsStore.clearAll();
 			paired.clear();
 			toast.info('Please enter a new pairing code to reconnect.');
 			await goto('/pair');

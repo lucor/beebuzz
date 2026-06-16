@@ -24,6 +24,7 @@ import {
 	pairDevice,
 	registerServiceWorker
 } from '$lib/services/push';
+import { subscriptionUsesVapidKey } from '$lib/services/push-vapid';
 import {
 	checkPairingStatus,
 	PAIRING_STATUS_CHECK_REASON,
@@ -127,6 +128,15 @@ export const reconcilePushState = async (): Promise<PushStateResult> => {
 		return {
 			status: PUSH_STATE_STATUS.LOCAL_REPAIR_REQUIRED,
 			reason: LOCAL_REPAIR_REQUIRED_REASON.SUBSCRIPTION_LOST
+		};
+	}
+
+	const vapidKey = await getVapidKey();
+	if (!subscriptionUsesVapidKey(subscription, vapidKey)) {
+		logger.warn('VAPID key mismatch detected for paired device');
+		return {
+			status: PUSH_STATE_STATUS.RECONNECT_REQUIRED,
+			reason: RECONNECT_REQUIRED_REASON.SUBSCRIPTION_GONE
 		};
 	}
 

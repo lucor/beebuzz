@@ -5,6 +5,7 @@ import {
 	PAIRING_STATUS_CHECK_STATUS,
 	RECONNECT_REQUIRED_REASON
 } from './pairing-check';
+import { subscriptionUsesVapidKey } from './push-vapid';
 
 vi.mock('@beebuzz/shared/config', () => ({
 	API_URL: 'https://api.example.test'
@@ -67,5 +68,38 @@ describe('checkPairingStatus', () => {
 			status: PAIRING_STATUS_CHECK_STATUS.TRANSIENT_BACKEND_ERROR,
 			reason: PAIRING_STATUS_CHECK_REASON.BACKEND_UNREACHABLE
 		});
+	});
+});
+
+describe('subscriptionUsesVapidKey', () => {
+	const matchingVapidKey = 'AQIDBA';
+	const matchingApplicationServerKey = new Uint8Array([1, 2, 3, 4]);
+
+	it('returns true when the subscription was created with the current VAPID key', () => {
+		const subscription = {
+			options: {
+				applicationServerKey: matchingApplicationServerKey
+			}
+		} as unknown as PushSubscription;
+
+		expect(subscriptionUsesVapidKey(subscription, matchingVapidKey)).toBe(true);
+	});
+
+	it('returns false when the subscription VAPID key differs', () => {
+		const subscription = {
+			options: {
+				applicationServerKey: new Uint8Array([1, 2, 3, 5])
+			}
+		} as unknown as PushSubscription;
+
+		expect(subscriptionUsesVapidKey(subscription, matchingVapidKey)).toBe(false);
+	});
+
+	it('returns false when the browser does not expose the subscription key', () => {
+		const subscription = {
+			options: {}
+		} as PushSubscription;
+
+		expect(subscriptionUsesVapidKey(subscription, matchingVapidKey)).toBe(false);
 	});
 });
