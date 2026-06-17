@@ -5,6 +5,7 @@ const ERROR_MESSAGES: Record<string, string> = {
 	// Auth
 	invalid_session: 'Your session has expired. Please log in again.',
 	invalid_otp: 'Invalid or expired code. Please try again.',
+	invalid_pairing_code: 'Invalid or expired pairing code. Please try again.',
 	too_many_requests_otp: 'Too many attempts. Please request a new code.',
 
 	// API keys & tokens

@@ -10,8 +10,35 @@ const STATUS_UNAUTHORIZED = 401;
 const STATUS_FORBIDDEN = 403;
 const STATUS_NO_CONTENT = 204;
 
+export type DashboardNavigation =
+	| { kind: 'external'; href: string }
+	| { kind: 'internal'; href: string };
+
+export const resolveDashboardNavigation = (
+	path: '/auth' | '/account',
+	currentOrigin: string | null = typeof window === 'undefined' ? null : window.location.origin
+): DashboardNavigation => {
+	const target = new URL(path, DASHBOARD_URL);
+	if (currentOrigin && target.origin !== currentOrigin) {
+		return { kind: 'external', href: target.toString() };
+	}
+
+	return { kind: 'internal', href: `${target.pathname}${target.search}${target.hash}` };
+};
+
+const redirectToDashboard = async (path: '/auth' | '/account') => {
+	const target = resolveDashboardNavigation(path);
+	if (target.kind === 'external') {
+		window.location.assign(target.href);
+		return;
+	}
+
+	await goto(target.href, { replaceState: true });
+};
+
 export interface RequestOptions extends RequestInit {
 	credentials?: RequestCredentials;
+	redirectOnAuthError?: boolean;
 }
 
 /**
@@ -19,7 +46,7 @@ export interface RequestOptions extends RequestInit {
  * Throws ApiError for both backend errors and network failures.
  */
 export async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
-	const { credentials = 'include', ...fetch_options } = options;
+	const { credentials = 'include', redirectOnAuthError = true, ...fetch_options } = options;
 
 	let response: Response;
 	try {
@@ -36,12 +63,12 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
 	}
 
 	if (!response.ok) {
-		if (response.status === STATUS_UNAUTHORIZED) {
+		if (redirectOnAuthError && response.status === STATUS_UNAUTHORIZED) {
 			auth.clear();
-			await goto(new URL('/auth', DASHBOARD_URL).toString(), { replaceState: true });
+			await redirectToDashboard('/auth');
 		}
-		if (response.status === STATUS_FORBIDDEN) {
-			await goto(new URL('/account', DASHBOARD_URL).toString(), { replaceState: true });
+		if (redirectOnAuthError && response.status === STATUS_FORBIDDEN) {
+			await redirectToDashboard('/account');
 		}
 
 		const body = (await response.json().catch(() => null)) as {

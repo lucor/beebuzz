@@ -43,12 +43,16 @@ export const pushApi = {
 		ageRecipient: string
 	): Promise<PairDeviceResponse> => {
 		const subscriptionJson = subscription.toJSON();
-		const response = await api.post<{ device_id: string; device_token: string }>('/pairing', {
-			pairing_code: pairingCode,
-			endpoint: subscriptionJson.endpoint,
-			p256dh: subscriptionJson.keys?.p256dh,
-			auth: subscriptionJson.keys?.auth,
-			age_recipient: ageRecipient
+		const response = await request<{ device_id: string; device_token: string }>('/pairing', {
+			method: 'POST',
+			redirectOnAuthError: false,
+			body: JSON.stringify({
+				pairing_code: pairingCode,
+				endpoint: subscriptionJson.endpoint,
+				p256dh: subscriptionJson.keys?.p256dh,
+				auth: subscriptionJson.keys?.auth,
+				age_recipient: ageRecipient
+			})
 		});
 		return { deviceId: response.device_id, deviceToken: response.device_token };
 	},
