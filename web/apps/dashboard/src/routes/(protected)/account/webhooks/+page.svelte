@@ -4,7 +4,12 @@
 	import type { Webhook, Topic, InspectSession, InspectSessionStatus } from '@beebuzz/shared/api';
 	import { accountApi, topicsApi } from '@beebuzz/shared/api';
 	import { ApiError } from '@beebuzz/shared/errors';
-	import { SettingsModal, JsonTreeViewer, TopicChip } from '@beebuzz/shared/components';
+	import {
+		CharCounter,
+		SettingsModal,
+		JsonTreeViewer,
+		TopicChip
+	} from '@beebuzz/shared/components';
 	import {
 		Settings,
 		FileText,
@@ -19,11 +24,7 @@
 		Trash2,
 		ChevronsUp
 	} from '@lucide/svelte';
-	import {
-		MAX_DISPLAY_NAME_LEN,
-		MAX_DISPLAY_NAME_SOFT_LEN,
-		MAX_DESCRIPTION_LEN
-	} from '@beebuzz/shared';
+	import { MAX_DISPLAY_NAME_LEN, MAX_DESCRIPTION_LEN } from '@beebuzz/shared';
 
 	let webhooks = $state<Webhook[]>([]);
 	let topics = $state<Topic[]>([]);
@@ -613,15 +614,7 @@
 					<label for="create-name" class="text-sm font-semibold text-base-content">
 						Webhook Name
 					</label>
-					<p
-						class="text-xs tabular-nums whitespace-nowrap"
-						class:text-base-content-70={newWebhookName.length <= MAX_DISPLAY_NAME_SOFT_LEN}
-						class:text-warning={newWebhookName.length > MAX_DISPLAY_NAME_SOFT_LEN &&
-							newWebhookName.length <= MAX_DISPLAY_NAME_LEN}
-						class:text-error={newWebhookName.length > MAX_DISPLAY_NAME_LEN}
-					>
-						({newWebhookName.length}/{MAX_DISPLAY_NAME_LEN})
-					</p>
+					<CharCounter value={newWebhookName.length} />
 				</div>
 				<input
 					type="text"
@@ -1077,15 +1070,7 @@
 									>
 										Webhook Name
 									</label>
-									<p
-										class="text-xs tabular-nums whitespace-nowrap"
-										class:text-base-content-70={editWebhookName.length <= MAX_DISPLAY_NAME_SOFT_LEN}
-										class:text-warning={editWebhookName.length > MAX_DISPLAY_NAME_SOFT_LEN &&
-											editWebhookName.length <= MAX_DISPLAY_NAME_LEN}
-										class:text-error={editWebhookName.length > MAX_DISPLAY_NAME_LEN}
-									>
-										({editWebhookName.length}/{MAX_DISPLAY_NAME_LEN})
-									</p>
+									<CharCounter value={editWebhookName.length} />
 								</div>
 								<input
 									type="text"

@@ -559,7 +559,6 @@
 
 		{#if activeTab === 'overview'}
 			<div class="space-y-4">
-
 				<div class="card bg-base-100 shadow-md">
 					<div class="card-body gap-6">
 						<h2 class="card-title text-lg">Device Internals</h2>
@@ -818,24 +817,32 @@
 							{:else}
 								{#each filteredLogs as log (log.id)}
 									<button
-										class="log-entry {selectedLog?.id === log.id ? 'log-entry--selected' : ''}"
+										class="flex flex-col gap-1 w-full p-2 px-3 border-b border-base-300/50 border-l-4 text-left transition-colors duration-100 cursor-pointer hover:bg-base-300/30 {selectedLog?.id ===
+										log.id
+											? 'bg-base-300/50'
+											: ''}"
 										style={log.data?.push_trace_id
-											? `--trace-border-color: ${traceColor(log.data.push_trace_id)}`
-											: ''}
+											? `--trace-border-color: ${traceColor(log.data.push_trace_id)}; border-left-color: ${traceColor(log.data.push_trace_id)}`
+											: 'border-left-color: transparent'}
 										onclick={() => (selectedLog = selectedLog?.id === log.id ? null : log)}
 									>
-										<div class="log-entry__line1">
+										<div class="flex flex-wrap items-center gap-1.5 min-w-0">
 											<time class="font-mono text-xs text-base-content/40"
 												>{formatLogTime(log.ts)}</time
 											>
-											<span class="scope-badge scope-badge--{log.scope}">{log.scope}</span>
+											<span
+												class="inline-flex items-center rounded-full px-1.5 py-px text-[0.625rem] font-semibold tracking-wide uppercase whitespace-nowrap"
+												data-scope={log.scope}>{log.scope}</span
+											>
 											{#if log.data?.boundary}
 												<span
-													class="flow-pill {boundaryLabel(log.data) === 'IN'
-														? 'flow-pill--in'
+													class="inline-flex items-center gap-0.5 text-[0.625rem] font-semibold whitespace-nowrap {boundaryLabel(
+														log.data
+													) === 'IN'
+														? 'text-[hsl(160_70%_35%)]'
 														: boundaryLabel(log.data) === 'OUT'
-															? 'flow-pill--out'
-															: 'flow-pill--int'}"
+															? 'text-[hsl(200_70%_40%)]'
+															: 'text-[hsl(38_85%_40%)]'}"
 												>
 													{#if log.data.boundary === HIVE_BOUNDARY.INBOUND}
 														<ArrowDownToLine class="size-3" />
@@ -847,10 +854,14 @@
 													{boundaryLabel(log.data)}
 												</span>
 											{/if}
-											<span class="log-entry__title">{eventLabel(log.event)}</span>
+											<span class="text-sm font-medium truncate min-w-0"
+												>{eventLabel(log.event)}</span
+											>
 										</div>
 										{#if compactDetail(log)}
-											<div class="log-entry__detail">{compactDetail(log)}</div>
+											<div class="font-mono text-xs text-base-content/60 [overflow-wrap:anywhere]">
+												{compactDetail(log)}
+											</div>
 										{/if}
 									</button>
 								{/each}
@@ -1289,13 +1300,8 @@
 </div>
 
 {#if showUnregisterConfirm}
-	<div
-		class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
-		role="dialog"
-		aria-modal="true"
-		aria-labelledby="unregister-title"
-	>
-		<div class="mx-4 max-w-md rounded-2xl bg-base-100 p-6 shadow-xl">
+	<div class="modal modal-open" role="dialog" aria-modal="true" aria-labelledby="unregister-title">
+		<div class="modal-box">
 			<h2 id="unregister-title" class="text-lg font-semibold text-base-content">
 				Unregister service worker?
 			</h2>
@@ -1310,128 +1316,57 @@
 				<button class="btn btn-error" onclick={() => void handleUnregister()}> Unregister </button>
 			</div>
 		</div>
+		<button
+			class="modal-backdrop"
+			aria-label="Close modal"
+			onclick={() => (showUnregisterConfirm = false)}
+		></button>
 	</div>
 {/if}
 
 <style>
-	.log-entry {
-		display: flex;
-		flex-direction: column;
-		gap: 0.25rem;
-		width: 100%;
-		padding: 0.5rem 0.75rem;
-		border-bottom: 1px solid hsl(var(--b3) / 0.5);
-		border-left-width: 4px;
-		border-left-style: solid;
-		border-left-color: var(--trace-border-color, transparent);
-		text-align: left;
-		transition: background-color 0.12s;
-		cursor: pointer;
-	}
-	.log-entry:hover {
-		background-color: hsl(var(--b3) / 0.3);
-	}
-	.log-entry--selected {
-		background-color: hsl(var(--b3) / 0.5);
-	}
-
-	.log-entry__line1 {
-		display: flex;
-		flex-wrap: wrap;
-		align-items: center;
-		gap: 0.375rem;
-		min-width: 0;
-	}
-
-	.log-entry__title {
-		font-size: 0.875rem;
-		font-weight: 500;
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-		min-width: 0;
-	}
-
-	.log-entry__detail {
-		font-family: var(--font-mono, ui-monospace, monospace);
-		font-size: 0.75rem;
-		color: hsl(var(--bc) / 0.6);
-		overflow-wrap: anywhere;
-	}
-
-	.scope-badge {
-		display: inline-flex;
-		align-items: center;
-		padding: 0.0625rem 0.4375rem;
-		border-radius: 9999px;
-		font-size: 0.625rem;
-		font-weight: 600;
-		line-height: 1.4;
-		letter-spacing: 0.02em;
-		text-transform: uppercase;
-		white-space: nowrap;
-	}
-
-	.scope-badge--app {
+	[data-scope='app'] {
 		background: hsl(220 14% 70% / 0.2);
 		color: hsl(220 14% 45%);
 	}
-	.scope-badge--push {
+	[data-scope='push'] {
 		background: hsl(170 70% 40% / 0.15);
 		color: hsl(170 70% 30%);
 	}
-	.scope-badge--payload {
+	[data-scope='payload'] {
 		background: hsl(240 60% 55% / 0.15);
 		color: hsl(240 60% 40%);
 	}
-	.scope-badge--notification {
+	[data-scope='notification'] {
 		background: hsl(38 85% 50% / 0.15);
 		color: hsl(38 85% 35%);
 	}
-	.scope-badge--outbox {
+	[data-scope='outbox'] {
 		background: hsl(210 85% 50% / 0.15);
 		color: hsl(210 85% 35%);
 	}
-	.scope-badge--service_worker {
+	[data-scope='service_worker'] {
 		background: hsl(260 40% 60% / 0.15);
 		color: hsl(260 40% 40%);
 	}
-	.scope-badge--storage {
+	[data-scope='storage'] {
 		background: hsl(200 30% 55% / 0.15);
 		color: hsl(200 30% 40%);
 	}
-	.scope-badge--pairing {
+	[data-scope='pairing'] {
 		background: hsl(330 60% 50% / 0.15);
 		color: hsl(330 60% 35%);
 	}
-	.scope-badge--network {
+	[data-scope='network'] {
 		background: hsl(160 50% 45% / 0.15);
 		color: hsl(160 50% 30%);
 	}
-	.scope-badge--encryption {
+	[data-scope='encryption'] {
 		background: hsl(270 50% 55% / 0.15);
 		color: hsl(270 50% 40%);
 	}
-	.scope-badge--default {
+	[data-scope='default'] {
 		background: hsl(0 0% 60% / 0.15);
 		color: hsl(0 0% 45%);
-	}
-
-	.flow-pill {
-		display: inline-flex;
-		align-items: center;
-		gap: 0.125rem;
-		font-size: 0.625rem;
-		font-weight: 600;
-		white-space: nowrap;
-	}
-	.flow-pill--in {
-		color: hsl(160 70% 35%);
-	}
-	.flow-pill--out {
-		color: hsl(200 70% 40%);
-	}
-	.flow-pill--int {
-		color: hsl(38 85% 40%);
 	}
 </style>

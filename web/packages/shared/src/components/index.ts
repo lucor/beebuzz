@@ -5,4 +5,5 @@ export { default as Toast } from './Toast.svelte';
 export { default as SettingsModal } from './SettingsModal.svelte';
 export { default as HealthStatus } from './HealthStatus.svelte';
 export { default as JsonTreeViewer } from './JsonTreeViewer.svelte';
+export { default as CharCounter } from './CharCounter.svelte';
 export { default as TopicChip } from './TopicChip.svelte';

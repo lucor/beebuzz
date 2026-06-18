@@ -13,7 +13,7 @@
 </script>
 
 <div class="min-h-dvh flex flex-col">
-	<main class="flex-1 bb-page-wrapper">
+	<main class="flex-1 p-8 px-6">
 		<AuthEntry redirectAfterSubmit="/auth/verify" />
 	</main>
 </div>

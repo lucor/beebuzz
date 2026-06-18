@@ -33,8 +33,10 @@
 			<li>
 				<button
 					type="button"
-					class:selected-topic={selectedTopic === null}
-					class="flex items-center justify-between rounded-box px-3 py-2 text-sm"
+					class="flex items-center justify-between rounded-box px-3 py-2 text-sm {selectedTopic ===
+					null
+						? 'bg-base-200/80 font-semibold'
+						: ''}"
 					{disabled}
 					onclick={() => handleSelect(null)}
 				>
@@ -47,8 +49,10 @@
 			<li>
 				<button
 					type="button"
-					class:selected-topic={selectedTopic === topic.name}
-					class="flex items-center justify-between rounded-box px-3 py-2 text-sm"
+					class="flex items-center justify-between rounded-box px-3 py-2 text-sm {selectedTopic ===
+					topic.name
+						? 'bg-base-200/80 font-semibold'
+						: ''}"
 					{disabled}
 					onclick={() => handleSelect(topic.name)}
 				>
@@ -64,10 +68,3 @@
 		{/each}
 	</ul>
 </div>
-
-<style>
-	.selected-topic {
-		background: color-mix(in srgb, var(--color-base-200) 86%, transparent);
-		font-weight: 600;
-	}
-</style>

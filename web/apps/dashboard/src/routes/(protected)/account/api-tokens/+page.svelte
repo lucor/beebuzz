@@ -4,13 +4,9 @@
 	import type { ApiToken, CreatedApiToken, Topic, AccountUsage } from '@beebuzz/shared/api';
 	import { accountApi, topicsApi } from '@beebuzz/shared/api';
 	import { ApiError } from '@beebuzz/shared/errors';
-	import { CodeBlock, SettingsModal, TopicChip } from '@beebuzz/shared/components';
+	import { CharCounter, CodeBlock, SettingsModal, TopicChip } from '@beebuzz/shared/components';
 	import { Dot, Plus, ExternalLink, EllipsisVertical, Pencil, Trash2, Send } from '@lucide/svelte';
-	import {
-		MAX_DISPLAY_NAME_LEN,
-		MAX_DISPLAY_NAME_SOFT_LEN,
-		MAX_DESCRIPTION_LEN
-	} from '@beebuzz/shared';
+	import { MAX_DISPLAY_NAME_LEN, MAX_DESCRIPTION_LEN } from '@beebuzz/shared';
 	import { API_URL, PUSH_URL } from '@beebuzz/shared/config';
 
 	const DOCS_QUICKSTART_URL = 'https://docs.beebuzz.app/quickstart/';
@@ -599,15 +595,7 @@
 			<div>
 				<div class="mb-2 flex items-center justify-between gap-3">
 					<label for="name" class="text-sm font-semibold text-base-content">Token Name</label>
-					<p
-						class="text-xs tabular-nums whitespace-nowrap"
-						class:text-base-content-70={newTokenName.length <= MAX_DISPLAY_NAME_SOFT_LEN}
-						class:text-warning={newTokenName.length > MAX_DISPLAY_NAME_SOFT_LEN &&
-							newTokenName.length <= MAX_DISPLAY_NAME_LEN}
-						class:text-error={newTokenName.length > MAX_DISPLAY_NAME_LEN}
-					>
-						({newTokenName.length}/{MAX_DISPLAY_NAME_LEN})
-					</p>
+					<CharCounter value={newTokenName.length} />
 				</div>
 				<input
 					type="text"
@@ -761,15 +749,7 @@
 									<label for="name-{token.id}" class="text-sm font-semibold text-base-content">
 										Token Name
 									</label>
-									<p
-										class="text-xs tabular-nums whitespace-nowrap"
-										class:text-base-content-70={editTokenName.length <= MAX_DISPLAY_NAME_SOFT_LEN}
-										class:text-warning={editTokenName.length > MAX_DISPLAY_NAME_SOFT_LEN &&
-											editTokenName.length <= MAX_DISPLAY_NAME_LEN}
-										class:text-error={editTokenName.length > MAX_DISPLAY_NAME_LEN}
-									>
-										({editTokenName.length}/{MAX_DISPLAY_NAME_LEN})
-									</p>
+									<CharCounter value={editTokenName.length} />
 								</div>
 								<input
 									type="text"

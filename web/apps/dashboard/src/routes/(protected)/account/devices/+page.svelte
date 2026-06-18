@@ -14,7 +14,7 @@
 		type ApiToken
 	} from '@beebuzz/shared/api';
 	import { ApiError } from '@beebuzz/shared/errors';
-	import { SettingsModal, TopicChip } from '@beebuzz/shared/components';
+	import { CharCounter, SettingsModal, TopicChip } from '@beebuzz/shared/components';
 	import {
 		Copy,
 		Check,
@@ -26,11 +26,7 @@
 		Trash2,
 		Key
 	} from '@lucide/svelte';
-	import {
-		MAX_DISPLAY_NAME_LEN,
-		MAX_DISPLAY_NAME_SOFT_LEN,
-		MAX_DESCRIPTION_LEN
-	} from '@beebuzz/shared';
+	import { MAX_DISPLAY_NAME_LEN, MAX_DESCRIPTION_LEN } from '@beebuzz/shared';
 
 	const DOCS_QUICKSTART_URL = 'https://docs.beebuzz.app/quickstart/';
 
@@ -584,15 +580,7 @@
 					<label for="device-name" class="text-sm font-semibold text-base-content">
 						Device Name
 					</label>
-					<p
-						class="text-xs tabular-nums whitespace-nowrap"
-						class:text-base-content-70={newDeviceName.length <= MAX_DISPLAY_NAME_SOFT_LEN}
-						class:text-warning={newDeviceName.length > MAX_DISPLAY_NAME_SOFT_LEN &&
-							newDeviceName.length <= MAX_DISPLAY_NAME_LEN}
-						class:text-error={newDeviceName.length > MAX_DISPLAY_NAME_LEN}
-					>
-						({newDeviceName.length}/{MAX_DISPLAY_NAME_LEN})
-					</p>
+					<CharCounter value={newDeviceName.length} />
 				</div>
 				<input
 					type="text"
@@ -755,15 +743,7 @@
 									>
 										Device Name
 									</label>
-									<p
-										class="text-xs tabular-nums whitespace-nowrap"
-										class:text-base-content-70={editDeviceName.length <= MAX_DISPLAY_NAME_SOFT_LEN}
-										class:text-warning={editDeviceName.length > MAX_DISPLAY_NAME_SOFT_LEN &&
-											editDeviceName.length <= MAX_DISPLAY_NAME_LEN}
-										class:text-error={editDeviceName.length > MAX_DISPLAY_NAME_LEN}
-									>
-										({editDeviceName.length}/{MAX_DISPLAY_NAME_LEN})
-									</p>
+									<CharCounter value={editDeviceName.length} />
 								</div>
 								<input
 									type="text"

@@ -130,13 +130,8 @@
 </div>
 
 {#if showEnableConfirm}
-	<div
-		class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
-		role="dialog"
-		aria-modal="true"
-		aria-labelledby="enable-title"
-	>
-		<div class="mx-4 max-w-md rounded-2xl bg-base-100 p-6 shadow-xl">
+	<div class="modal modal-open" role="dialog" aria-modal="true" aria-labelledby="enable-title">
+		<div class="modal-box">
 			<h2 id="enable-title" class="text-lg font-semibold text-base-content">
 				Enable Developer Mode?
 			</h2>
@@ -151,17 +146,17 @@
 				<button class="btn btn-primary" onclick={() => void doEnable()}>Enable</button>
 			</div>
 		</div>
+		<button
+			class="modal-backdrop"
+			aria-label="Close modal"
+			onclick={() => (showEnableConfirm = false)}
+		></button>
 	</div>
 {/if}
 
 {#if showDisableConfirm}
-	<div
-		class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
-		role="dialog"
-		aria-modal="true"
-		aria-labelledby="disable-title"
-	>
-		<div class="mx-4 max-w-md rounded-2xl bg-base-100 p-6 shadow-xl">
+	<div class="modal modal-open" role="dialog" aria-modal="true" aria-labelledby="disable-title">
+		<div class="modal-box">
 			<h2 id="disable-title" class="text-lg font-semibold text-base-content">
 				Disable Developer Mode?
 			</h2>
@@ -187,5 +182,13 @@
 				</div>
 			{/if}
 		</div>
+		<button
+			class="modal-backdrop"
+			aria-label="Close modal"
+			onclick={() => {
+				disableError = null;
+				showDisableConfirm = false;
+			}}
+		></button>
 	</div>
 {/if}

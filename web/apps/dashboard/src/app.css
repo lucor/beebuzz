@@ -10,8 +10,4 @@
 	html {
 		font-family: var(--font-family);
 	}
-
-	.bb-page-wrapper {
-		padding: 2rem 1.5rem;
-	}
 }

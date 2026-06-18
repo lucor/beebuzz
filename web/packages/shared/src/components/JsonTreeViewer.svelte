@@ -40,7 +40,7 @@
 
 	function getSelectedClass(isSelected: boolean): string {
 		return isSelected
-			? 'bg-primary-focus/20 rounded px-1'
+			? 'bg-primary/10 text-primary rounded px-1'
 			: 'hover:bg-base-300 rounded px-1 cursor-pointer';
 	}
 </script>
@@ -52,7 +52,7 @@
 		{@const isSelected = selectedPath === path}
 		<div class="py-0.5">
 			{#if isSelected}
-				<span class="bg-primary-focus/20 text-primary rounded px-1 mr-1">▶</span>
+				<span class="bg-primary/10 text-primary rounded px-1 mr-1">▶</span>
 			{/if}
 			{#if isScalar(value)}
 				<button
