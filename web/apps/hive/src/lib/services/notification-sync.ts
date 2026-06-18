@@ -3,6 +3,9 @@ import { pushApi, type DeviceNotificationSyncItem } from '@beebuzz/shared/api';
 import { logger } from '@beebuzz/shared/logger';
 import { decryptBinary } from '$lib/services/encryption';
 import { notificationsStore } from '$lib/stores/notifications.svelte';
+import { safeLogger } from '$lib/devmode/safe-logger';
+import { recordNotificationReceived } from '$lib/services/runtime-metadata-repository';
+import { HIVE_TRANSPORT, HIVE_DIAGNOSTIC } from '$lib/devmode/types';
 import type { Attachment, NotificationPriority } from '@beebuzz/shared/types';
 
 type TrustedNotificationPayload = {
@@ -36,6 +39,11 @@ type NormalizedNotification = {
 };
 
 const SYNC_LIMIT = 50;
+const OUTBOX_SYNC_ENDPOINT = '/v1/devices/{device_id}/notifications';
+
+function newOutboxTraceId(notificationId: string): string {
+	return `outbox-${notificationId.slice(0, 12)}`;
+}
 
 function asAttachment(value: unknown): Attachment | undefined {
 	if (!value || typeof value !== 'object' || Array.isArray(value)) {
@@ -131,53 +139,143 @@ export async function syncRecentNotifications(
 	deviceId: string,
 	deviceToken: string
 ): Promise<void> {
+	const syncStart = performance.now();
 	let after = notificationsStore.syncCursor ?? undefined;
-	let gap = false;
+	let pageCount = 0;
+	let importedCount = 0;
 
-	while (true) {
-		const response = await pushApi.syncDeviceNotifications(
-			deviceId,
-			deviceToken,
-			after,
-			SYNC_LIMIT
-		);
-		if (response.gap) {
-			gap = true;
-		}
+	safeLogger.log(HIVE_DIAGNOSTIC.OUTBOX_SYNC_STARTED, 'Notification outbox sync started', {
+		endpoint: OUTBOX_SYNC_ENDPOINT,
+		method: 'GET',
+		sync_cursor: after
+	});
 
-		for (const item of response.notifications) {
-			try {
-				const notification = await normalizeSyncItem(item);
-				notificationsStore.add(
-					notification.title,
-					notification.body,
-					notification.topic,
-					notification.topicId,
-					notification.sentAt,
-					notification.attachment,
-					notification.priority,
-					notification.id
-				);
-			} catch (error) {
-				logger.warn('Skipped synced notification', {
-					id: item.id,
-					error: error instanceof Error ? error.message : String(error)
+	try {
+		while (true) {
+			pageCount += 1;
+			const requestStart = performance.now();
+			safeLogger.log(HIVE_DIAGNOSTIC.OUTBOX_REQUEST_STARTED, 'Requesting outbox notifications', {
+				endpoint: OUTBOX_SYNC_ENDPOINT,
+				method: 'GET',
+				sync_cursor: after,
+				page_count: pageCount
+			});
+
+			const response = await pushApi.syncDeviceNotifications(
+				deviceId,
+				deviceToken,
+				after,
+				SYNC_LIMIT
+			);
+			safeLogger.log(HIVE_DIAGNOSTIC.OUTBOX_RESPONSE_RECEIVED, 'Outbox response received', {
+				endpoint: OUTBOX_SYNC_ENDPOINT,
+				method: 'GET',
+				duration_ms: Math.round(performance.now() - requestStart),
+				item_count: response.notifications.length,
+				page_count: pageCount,
+				ok: true
+			});
+			if (response.gap) {
+				safeLogger.log(HIVE_DIAGNOSTIC.OUTBOX_GAP_DETECTED, 'Outbox sync gap detected', {
+					endpoint: OUTBOX_SYNC_ENDPOINT,
+					method: 'GET',
+					sync_cursor: after
 				});
 			}
+
+			for (const item of response.notifications) {
+				const pushTraceId = newOutboxTraceId(item.id);
+				try {
+					safeLogger.log(
+						HIVE_DIAGNOSTIC.OUTBOX_NOTIFICATION_RESOLVE_STARTED,
+						'Resolving synced notification',
+						{
+							notification_id: item.id,
+							push_trace_id: pushTraceId,
+							transport:
+								item.delivery_mode === 'e2e'
+									? HIVE_TRANSPORT.CRYPTO
+									: HIVE_TRANSPORT.SERVICE_WORKER,
+							delivery_mode: item.delivery_mode
+						}
+					);
+					const notification = await normalizeSyncItem(item);
+					const isNew = notificationsStore.add(
+						notification.title,
+						notification.body,
+						notification.topic,
+						notification.topicId,
+						notification.sentAt,
+						notification.attachment,
+						notification.priority,
+						notification.id
+					);
+					if (!isNew) continue;
+
+					importedCount += 1;
+					safeLogger.log(
+						HIVE_DIAGNOSTIC.OUTBOX_NOTIFICATION_IMPORTED,
+						'Synced notification imported',
+						{
+							notification_id: notification.id,
+							push_trace_id: pushTraceId,
+							delivery_mode: item.delivery_mode
+						}
+					);
+				} catch (error) {
+					const message = error instanceof Error ? error.message : String(error);
+					logger.warn('Skipped synced notification', {
+						id: item.id,
+						error: message
+					});
+					safeLogger.log(HIVE_DIAGNOSTIC.OUTBOX_NOTIFICATION_IMPORT_FAILED, message, {
+						notification_id: item.id,
+						push_trace_id: pushTraceId,
+						transport:
+							item.delivery_mode === 'e2e' ? HIVE_TRANSPORT.CRYPTO : HIVE_TRANSPORT.SERVICE_WORKER,
+						delivery_mode: item.delivery_mode
+					});
+				}
+			}
+
+			if (response.notifications.length === 0) break;
+			if (!response.next_cursor) break;
+			after = response.next_cursor;
 		}
 
-		if (response.notifications.length === 0) break;
-		if (!response.next_cursor) break;
-		after = response.next_cursor;
-	}
+		// Outbox imports are received over HTTPS rather than Web Push, but they
+		// still represent the latest notification received by this Hive.
+		if (importedCount > 0) {
+			await recordNotificationReceived({ via: 'outbox' });
+		}
 
-	// Persist the last synced id as the cursor for next sync.
-	const lastId = notificationsStore.latestNotificationId;
-	if (lastId) {
-		notificationsStore.syncCursor = lastId;
-	}
+		// Persist the last synced id as the cursor for next sync.
+		const lastId = notificationsStore.latestNotificationId;
+		if (lastId) {
+			notificationsStore.syncCursor = lastId;
+			safeLogger.log(HIVE_DIAGNOSTIC.OUTBOX_CURSOR_UPDATED, 'Outbox sync cursor updated', {
+				sync_cursor: lastId
+			});
+		}
 
-	if (gap) {
-		logger.warn('Notification sync gap detected', { deviceId });
+		safeLogger.log(HIVE_DIAGNOSTIC.OUTBOX_SYNC_COMPLETED, 'Notification outbox sync completed', {
+			endpoint: OUTBOX_SYNC_ENDPOINT,
+			method: 'GET',
+			duration_ms: Math.round(performance.now() - syncStart),
+			page_count: pageCount,
+			imported_count: importedCount,
+			ok: true
+		});
+	} catch (error) {
+		const message = error instanceof Error ? error.message : String(error);
+		safeLogger.log(HIVE_DIAGNOSTIC.OUTBOX_SYNC_FAILED, message, {
+			endpoint: OUTBOX_SYNC_ENDPOINT,
+			method: 'GET',
+			duration_ms: Math.round(performance.now() - syncStart),
+			page_count: pageCount,
+			imported_count: importedCount,
+			ok: false
+		});
+		throw error;
 	}
 }

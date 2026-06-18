@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { HIVE_DIAGNOSTIC } from './lib/devmode/types';
 import {
 	handleActivateEvent,
 	handleMessageEvent,
@@ -11,6 +12,14 @@ import {
 	type ServiceWorkerRuntimeDeps
 } from './sw-runtime';
 import { MissingDeviceIdentityError } from './lib/services/encryption';
+import { recordNotificationReceived } from './lib/services/runtime-metadata-repository';
+import type { PushMessage } from '@beebuzz/shared/types';
+
+vi.mock('./lib/services/runtime-metadata-repository', () => ({
+	recordNotificationReceived: vi.fn(() => Promise.resolve()),
+	recordNotificationRuntimeTimestamp: vi.fn(() => Promise.resolve()),
+	recordNotificationReceivedVia: vi.fn(() => Promise.resolve())
+}));
 
 type NotificationOptionsWithData = NotificationOptions & {
 	data?: Record<string, unknown>;
@@ -77,10 +86,16 @@ function createDeferred<T = void>(): {
 describe('service worker runtime', () => {
 	beforeEach(() => {
 		vi.restoreAllMocks();
+		vi.mocked(recordNotificationReceived).mockReset();
+		vi.mocked(recordNotificationReceived).mockResolvedValue(undefined);
 	});
 
 	it('persists the push notification before showing it to the OS', async () => {
 		const order: string[] = [];
+		vi.mocked(recordNotificationReceived).mockImplementation(() => {
+			order.push('record-runtime');
+			return Promise.resolve();
+		});
 		const deps = createDeps({
 			saveNotification: vi.fn(() => {
 				order.push('save');
@@ -105,7 +120,8 @@ describe('service worker runtime', () => {
 			})
 		);
 
-		expect(order).toEqual(['save', 'show']);
+		expect(order).toEqual(['record-runtime', 'save', 'show']);
+		expect(recordNotificationReceived).toHaveBeenCalledWith({ via: 'push' });
 		expect(deps.saveNotification).toHaveBeenCalledWith({
 			id: 'n-1',
 			deviceId: 'dev-a',
@@ -156,7 +172,10 @@ describe('service worker runtime', () => {
 		).resolves.toBeUndefined();
 
 		expect(deps.matchWindowClients).toHaveBeenCalledWith(true);
-		expect(healthyClient.postMessage).toHaveBeenCalledWith({
+		const postMessageArg = vi.mocked(healthyClient.postMessage).mock.calls[0]?.[0] as
+			| (PushMessage & { type: 'PUSH_RECEIVED' })
+			| undefined;
+		expect(postMessageArg).toMatchObject({
 			type: 'PUSH_RECEIVED',
 			id: 'n-2',
 			deviceId: 'dev-a',
@@ -168,6 +187,7 @@ describe('service worker runtime', () => {
 			sentAt: '2026-04-20T10:00:00.000Z',
 			priority: undefined
 		});
+		expect(typeof postMessageArg?.pushTraceId).toBe('string');
 		expect(failingClient.postMessage).toHaveBeenCalledTimes(1);
 	});
 
@@ -305,10 +325,9 @@ describe('service worker runtime', () => {
 			expect.objectContaining({ body: 'Temperature alert' })
 		);
 		expect(deps.recordDiagnostic).toHaveBeenCalledWith(
-			'developer',
-			'notification',
-			'notification.persist_failed',
-			'IDB write failed'
+			HIVE_DIAGNOSTIC.NOTIFICATION_PERSIST_FAILED,
+			'IDB write failed',
+			expect.objectContaining({ notification_id: 'n-storage-fail' })
 		);
 	});
 
@@ -373,11 +392,16 @@ describe('service worker runtime', () => {
 		expect(deps.saveNotification).not.toHaveBeenCalled();
 		expect(deps.matchWindowClients).not.toHaveBeenCalled();
 		expect(client.postMessage).not.toHaveBeenCalled();
-		expect(deps.recordDiagnostic).toHaveBeenCalledWith(
-			'developer',
-			'storage',
-			'storage.credentials_failed',
-			'Failed to read device credentials'
+		const credentialsFailureCall = vi.mocked(deps.recordDiagnostic).mock.calls.find((call) => {
+			const args = call as [diagnostic: unknown, message: unknown, data: unknown];
+			return (
+				args[0] === HIVE_DIAGNOSTIC.STORAGE_CREDENTIALS_FAILED &&
+				args[1] === 'Failed to read device credentials'
+			);
+		});
+		expect(credentialsFailureCall).toBeDefined();
+		expect(typeof (credentialsFailureCall?.[2] as Record<string, unknown>)?.push_trace_id).toBe(
+			'string'
 		);
 	});
 

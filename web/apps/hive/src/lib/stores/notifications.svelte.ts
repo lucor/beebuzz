@@ -271,16 +271,16 @@ function createNotificationsStore() {
 		attachment?: unknown,
 		priority?: string,
 		id?: string
-	) {
-		if (!activeDeviceId) return;
-		if (!id) return;
-		if (notifications.some((n) => n.id === id)) return;
+	): boolean {
+		if (!activeDeviceId) return false;
+		if (!id) return false;
+		if (notifications.some((n) => n.id === id)) return false;
 
 		const DEFAULT_PRIORITY: NotificationPriority = 'normal';
 		const parsedSentAt = new Date(sentAt);
 		if (Number.isNaN(parsedSentAt.getTime())) {
 			console.error('[NotificationsStore] Rejected notification with invalid sentAt');
-			return;
+			return false;
 		}
 
 		const notification: Notification = {
@@ -296,6 +296,7 @@ function createNotificationsStore() {
 		notifications = [notification, ...notifications];
 		unreadIds.add(notification.id);
 		save();
+		return true;
 	}
 
 	function latestNotificationId(): string | undefined {

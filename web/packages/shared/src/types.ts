@@ -38,6 +38,7 @@ export type PushMessage =
 			attachment?: Attachment;
 			sentAt: string;
 			priority?: string;
+			pushTraceId?: string;
 	  }
 	| {
 			type: 'SUBSCRIPTION_CHANGED';
@@ -54,6 +55,7 @@ export type PushMessage =
 				sentAt?: string;
 				priority?: string;
 				attachment?: Attachment;
+				pushTraceId?: string;
 			};
 	  };
 

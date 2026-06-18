@@ -79,35 +79,97 @@ describe('notificationsStore', () => {
 	it('persists new notifications only under the active device key', async () => {
 		const { notificationsStore } = await loadStore();
 
-		notificationsStore.add(
-			'Ignored',
-			'No device',
-			null,
-			null,
-			'2026-04-20T08:00:00.000Z',
-			undefined,
-			'normal',
-			'n-ignored'
-		);
+		expect(
+			notificationsStore.add(
+				'Ignored',
+				'No device',
+				null,
+				null,
+				'2026-04-20T08:00:00.000Z',
+				undefined,
+				'normal',
+				'n-ignored'
+			)
+		).toBe(false);
 		expect(localStorage.getItem('notifications')).toBeNull();
 
 		notificationsStore.activateDevice('dev-a');
-		notificationsStore.add(
-			'Door',
-			'Opened',
-			null,
-			null,
-			'2026-04-20T09:00:00.000Z',
-			undefined,
-			'high',
-			'n-a'
-		);
+		expect(
+			notificationsStore.add(
+				'Door',
+				'Opened',
+				null,
+				null,
+				'2026-04-20T09:00:00.000Z',
+				undefined,
+				'high',
+				'n-a'
+			)
+		).toBe(true);
 
 		expect(localStorage.getItem('notifications')).toBeNull();
 		expect(localStorage.getItem('notifications:dev-b')).toBeNull();
 		expect(JSON.parse(localStorage.getItem('notifications:dev-a') ?? '[]')).toEqual([
 			expect.objectContaining({ id: 'n-a', title: 'Door' })
 		]);
+	});
+
+	it('reports whether add inserted a new notification', async () => {
+		const { notificationsStore } = await loadStore();
+
+		expect(
+			notificationsStore.add(
+				'Ignored',
+				'No device',
+				null,
+				null,
+				'2026-04-20T08:00:00.000Z',
+				undefined,
+				'normal',
+				'n-ignored'
+			)
+		).toBe(false);
+
+		notificationsStore.activateDevice('dev-a');
+		expect(
+			notificationsStore.add(
+				'Door',
+				'Opened',
+				null,
+				null,
+				'2026-04-20T09:00:00.000Z',
+				undefined,
+				'normal',
+				'n-a'
+			)
+		).toBe(true);
+		expect(
+			notificationsStore.add(
+				'Door',
+				'Opened again',
+				null,
+				null,
+				'2026-04-20T09:01:00.000Z',
+				undefined,
+				'normal',
+				'n-a'
+			)
+		).toBe(false);
+		const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+		expect(
+			notificationsStore.add(
+				'Broken',
+				'Invalid date',
+				null,
+				null,
+				'not-a-date',
+				undefined,
+				'normal',
+				'n-broken'
+			)
+		).toBe(false);
+		consoleSpy.mockRestore();
+		expect(notificationsStore.list.map((notification) => notification.id)).toEqual(['n-a']);
 	});
 
 	it('clears in-memory state on deactivate without touching localStorage', async () => {

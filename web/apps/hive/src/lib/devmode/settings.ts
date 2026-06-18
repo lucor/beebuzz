@@ -13,9 +13,7 @@ function createSettingsStore() {
 
 	return {
 		subscribe: store.subscribe,
-		set: store.set,
-		update: store.update,
-		reset: () => store.set(DEFAULT_SETTINGS)
+		set: store.set
 	};
 }
 

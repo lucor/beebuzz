@@ -787,7 +787,7 @@ paths:
           schema:
             type: string
             maxLength: 32
-            pattern: '^[a-z][a-z0-9_]{0,31}$'
+            pattern: "^[a-z][a-z0-9_]{0,31}$"
         - $ref: "#/components/parameters/XPriority"
       requestBody:
         required: true
@@ -1622,7 +1622,7 @@ components:
         name:
           type: string
           maxLength: 32
-          pattern: '^[a-z][a-z0-9_]{0,31}$'
+          pattern: "^[a-z][a-z0-9_]{0,31}$"
         description:
           type:
             - string
@@ -1650,7 +1650,7 @@ components:
           type: string
           minLength: 1
           maxLength: 32
-          pattern: '^[a-z][a-z0-9_]{0,31}$'
+          pattern: "^[a-z][a-z0-9_]{0,31}$"
         description:
           type: string
           maxLength: 128
@@ -1662,7 +1662,17 @@ components:
           maxLength: 128
     DeviceResponse:
       type: object
-      required: [id, name, description, is_active, pairing_status, topic_ids, created_at, updated_at]
+      required:
+        [
+          id,
+          name,
+          description,
+          is_active,
+          pairing_status,
+          topic_ids,
+          created_at,
+          updated_at,
+        ]
       properties:
         id:
           type: string
@@ -1707,7 +1717,14 @@ components:
             $ref: "#/components/schemas/DeviceResponse"
     DeviceKeyDescriptor:
       type: object
-      required: [device_id, device_name, paired_at, age_recipient, age_recipient_fingerprint]
+      required:
+        [
+          device_id,
+          device_name,
+          paired_at,
+          age_recipient,
+          age_recipient_fingerprint,
+        ]
       properties:
         device_id:
           type: string
@@ -2275,7 +2292,22 @@ components:
     AccountUsageDayResponse:
       type: object
       required:
-        [date, notifications_created, delivery_attempts, deliveries_succeeded, deliveries_failed, devices_lost, notifications_with_attachment, attachment_bytes_total, notifications_server_trusted, notifications_e2e, sources_cli, sources_webhook, sources_api, sources_internal]
+        [
+          date,
+          notifications_created,
+          delivery_attempts,
+          deliveries_succeeded,
+          deliveries_failed,
+          devices_lost,
+          notifications_with_attachment,
+          attachment_bytes_total,
+          notifications_server_trusted,
+          notifications_e2e,
+          sources_cli,
+          sources_webhook,
+          sources_api,
+          sources_internal,
+        ]
       properties:
         date:
           type: string
@@ -2317,7 +2349,23 @@ components:
     DailyUsageSummaryResponse:
       type: object
       required:
-        [date, notifications_created, delivery_attempts, deliveries_succeeded, deliveries_failed, notifications_with_attachment, attachment_bytes_total, notifications_server_trusted, notifications_e2e, sources_cli, sources_webhook, sources_api, sources_internal, devices_lost, updated_at]
+        [
+          date,
+          notifications_created,
+          delivery_attempts,
+          deliveries_succeeded,
+          deliveries_failed,
+          notifications_with_attachment,
+          attachment_bytes_total,
+          notifications_server_trusted,
+          notifications_e2e,
+          sources_cli,
+          sources_webhook,
+          sources_api,
+          sources_internal,
+          devices_lost,
+          updated_at,
+        ]
       properties:
         date:
           type: string
@@ -2354,7 +2402,24 @@ components:
     PlatformDashboardResponse:
       type: object
       required:
-        [notifications_created, delivery_attempts, deliveries_succeeded, deliveries_failed, delivery_success_rate, active_users, notifications_server_trusted, notifications_e2e, notifications_with_attachment, attachment_bytes_total, sources_cli, sources_webhook, sources_api, sources_internal, devices_lost, daily_breakdown]
+        [
+          notifications_created,
+          delivery_attempts,
+          deliveries_succeeded,
+          deliveries_failed,
+          delivery_success_rate,
+          active_users,
+          notifications_server_trusted,
+          notifications_e2e,
+          notifications_with_attachment,
+          attachment_bytes_total,
+          sources_cli,
+          sources_webhook,
+          sources_api,
+          sources_internal,
+          devices_lost,
+          daily_breakdown,
+        ]
       properties:
         notifications_created:
           type: integer
@@ -2437,7 +2502,8 @@ components:
             $ref: "#/components/schemas/AdminUserResponse"
     SystemNotificationSettingsResponse:
       type: object
-      required: [enabled, signup_created_enabled, recipient_has_active_device_for_topic]
+      required:
+        [enabled, signup_created_enabled, recipient_has_active_device_for_topic]
       properties:
         enabled:
           type: boolean
@@ -2534,10 +2600,48 @@ components:
           description: ISO 8601 timestamp of when the snapshot was captured.
         scope:
           type: string
-          enum: [app, push, payload, notification, service_worker, storage, pairing, network, encryption]
+          enum:
+            [
+              app,
+              push,
+              payload,
+              notification,
+              service_worker,
+              storage,
+              pairing,
+              network,
+              encryption,
+            ]
         event:
           type: string
-          enum: [app.started, app.bootstrap_failed, service_worker.registered, service_worker.activated, service_worker.skip_waiting, pairing.reconnect_required, push.received, push.empty_payload, push.resolved, push.subscription_changed, payload.resolve, payload.detected_encrypted, payload.detected_plain, payload.decrypt_failed, payload.invalid, storage.credentials_failed, notification.persist_started, notification.persist_failed, notification.displayed, clients.match_failed, clients.focus_failed, clients.open_window_failed, clients.post_message_failed, debug_report.missing_device_token, debug_report.submit_failed]
+          enum:
+            [
+              app.started,
+              app.bootstrap_failed,
+              service_worker.registered,
+              service_worker.activated,
+              service_worker.skip_waiting,
+              pairing.reconnect_required,
+              push.received,
+              push.empty_payload,
+              push.resolved,
+              push.subscription_changed,
+              payload.resolve,
+              payload.detected_encrypted,
+              payload.detected_plain,
+              payload.decrypt_failed,
+              payload.invalid,
+              storage.credentials_failed,
+              notification.persist_started,
+              notification.persist_failed,
+              notification.displayed,
+              clients.match_failed,
+              clients.focus_failed,
+              clients.open_window_failed,
+              clients.post_message_failed,
+              debug_report.missing_device_token,
+              debug_report.submit_failed,
+            ]
         severity:
           type: string
           enum: [warn, error]
@@ -2596,8 +2700,8 @@ components:
         - x25519_supported
         - indexeddb_available
         - network_online
-        - last_push_received_at
-        - last_notification_displayed_at
+        - last_notification_received_at
+        - last_notification_received_via
       properties:
         app_version:
           type: string
@@ -2624,7 +2728,8 @@ components:
           type: boolean
         service_worker_state:
           type: string
-          enum: [not-supported, active, waiting, installing, no-registration, error]
+          enum:
+            [not-supported, active, waiting, installing, no-registration, error]
         push_supported:
           type: boolean
         push_present:
@@ -2637,14 +2742,18 @@ components:
           type: boolean
         network_online:
           type: boolean
-        last_push_received_at:
+        last_notification_received_at:
           type: string
           format: date-time
           nullable: true
-        last_notification_displayed_at:
+          description: >
+            Timestamp of the last notification received on this device, whether
+            via Web Push or outbox HTTPS sync, if available.
+        last_notification_received_via:
           type: string
-          format: date-time
           nullable: true
+          enum: [push, outbox]
+          description: Delivery method of the last received notification.
 
     DebugLog:
       type: object
@@ -2662,10 +2771,48 @@ components:
           enum: [main, developer]
         scope:
           type: string
-          enum: [app, push, payload, notification, service_worker, storage, pairing, network, encryption]
+          enum:
+            [
+              app,
+              push,
+              payload,
+              notification,
+              service_worker,
+              storage,
+              pairing,
+              network,
+              encryption,
+            ]
         event:
           type: string
-          enum: [app.started, app.bootstrap_failed, service_worker.registered, service_worker.activated, service_worker.skip_waiting, pairing.reconnect_required, push.received, push.empty_payload, push.resolved, push.subscription_changed, payload.resolve, payload.detected_encrypted, payload.detected_plain, payload.decrypt_failed, payload.invalid, storage.credentials_failed, notification.persist_started, notification.persist_failed, notification.displayed, clients.match_failed, clients.focus_failed, clients.open_window_failed, clients.post_message_failed, debug_report.missing_device_token, debug_report.submit_failed]
+          enum:
+            [
+              app.started,
+              app.bootstrap_failed,
+              service_worker.registered,
+              service_worker.activated,
+              service_worker.skip_waiting,
+              pairing.reconnect_required,
+              push.received,
+              push.empty_payload,
+              push.resolved,
+              push.subscription_changed,
+              payload.resolve,
+              payload.detected_encrypted,
+              payload.detected_plain,
+              payload.decrypt_failed,
+              payload.invalid,
+              storage.credentials_failed,
+              notification.persist_started,
+              notification.persist_failed,
+              notification.displayed,
+              clients.match_failed,
+              clients.focus_failed,
+              clients.open_window_failed,
+              clients.post_message_failed,
+              debug_report.missing_device_token,
+              debug_report.submit_failed,
+            ]
         message:
           type: string
           maxLength: 240

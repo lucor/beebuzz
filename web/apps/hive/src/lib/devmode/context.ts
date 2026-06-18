@@ -1,15 +1,5 @@
 import type { HiveSafeContext } from './types';
-
-let lastPushReceived: string | null = null;
-let lastNotificationDisplayed: string | null = null;
-
-export function recordPushReceived(): void {
-	lastPushReceived = new Date().toISOString();
-}
-
-export function recordNotificationDisplayed(): void {
-	lastNotificationDisplayed = new Date().toISOString();
-}
+import { getNotificationRuntimeMetadata } from '$lib/services/runtime-metadata-repository';
 
 export async function collectHiveSafeContext(): Promise<HiveSafeContext> {
 	const nav = navigator;
@@ -105,6 +95,8 @@ export async function collectHiveSafeContext(): Promise<HiveSafeContext> {
 		}
 	})();
 
+	const runtimeMetadata = await getNotificationRuntimeMetadata();
+
 	return {
 		app_version: String(import.meta.env.VITE_BEEBUZZ_VERSION || '0.0.0'),
 		build_id: String(import.meta.env.VITE_BEEBUZZ_BUILD_ID || ''),
@@ -121,7 +113,7 @@ export async function collectHiveSafeContext(): Promise<HiveSafeContext> {
 		x25519_supported: x25519Supported,
 		indexeddb_available: idbAvailable,
 		network_online: navigator.onLine,
-		last_push_received_at: lastPushReceived,
-		last_notification_displayed_at: lastNotificationDisplayed
+		last_notification_received_at: runtimeMetadata.lastNotificationReceivedAt,
+		last_notification_received_via: runtimeMetadata.lastNotificationReceivedVia
 	};
 }

@@ -1,10 +1,5 @@
-import type {
-	HiveDiagnosticKind,
-	HiveLogScope,
-	HiveDiagnosticEvent,
-	HiveLogData,
-	HiveLogEntry
-} from './types';
+import type { HiveLogScope, HiveDiagnosticEvent, HiveLogData, HiveLogEntry } from './types';
+import type { HiveDiagnosticDescriptor } from './types';
 
 function shortId(): string {
 	return crypto.randomUUID().slice(0, 12);
@@ -22,6 +17,16 @@ const SAFE_DATA_SCHEMA = {
 	route: 'string',
 	method: 'string',
 	error_code: 'string',
+	notification_id: 'string',
+	push_trace_id: 'string',
+	boundary: 'string',
+	transport: 'string',
+	endpoint: 'string',
+	delivery_mode: 'string',
+	sync_cursor: 'string',
+	item_count: 'number',
+	page_count: 'number',
+	imported_count: 'number',
 	ok: 'boolean'
 } satisfies Record<keyof HiveLogData, 'string' | 'number' | 'boolean'>;
 
@@ -54,8 +59,19 @@ function validateData(data?: HiveLogData): HiveLogData | undefined {
 	return Object.keys(result).length > 0 ? result : undefined;
 }
 
+function mergeDiagnosticData(
+	descriptor: HiveDiagnosticDescriptor,
+	data?: HiveLogData
+): HiveLogData | undefined {
+	const merged: HiveLogData = {
+		boundary: descriptor.boundary,
+		transport: descriptor.transport,
+		...data
+	};
+	return validateData(merged);
+}
+
 function createLogEntry(
-	kind: HiveDiagnosticKind,
 	scope: HiveLogScope,
 	event: HiveDiagnosticEvent,
 	message: string,
@@ -65,7 +81,6 @@ function createLogEntry(
 	return {
 		id: shortId(),
 		ts: new Date().toISOString(),
-		kind,
 		scope,
 		event,
 		message,
@@ -87,24 +102,16 @@ async function persist(entry: HiveLogEntry): Promise<void> {
 }
 
 export const safeLogger = {
-	main(scope: HiveLogScope, event: HiveDiagnosticEvent, message: string, data?: HiveLogData): void {
+	log(diagnostic: HiveDiagnosticDescriptor, message: string, data?: HiveLogData): void {
 		const settings = get(developerSettings);
 		if (!settings.enabled) return;
 
-		const entry = createLogEntry('main', scope, event, message, data);
-		void persist(entry);
-	},
-
-	developer(
-		scope: HiveLogScope,
-		event: HiveDiagnosticEvent,
-		message: string,
-		data?: HiveLogData
-	): void {
-		const settings = get(developerSettings);
-		if (!settings.enabled) return;
-
-		const entry = createLogEntry('developer', scope, event, message, data);
+		const entry = createLogEntry(
+			diagnostic.scope,
+			diagnostic.event,
+			message,
+			mergeDiagnosticData(diagnostic, data)
+		);
 		void persist(entry);
 	}
 };

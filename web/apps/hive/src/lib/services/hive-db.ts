@@ -1,10 +1,11 @@
 export const HIVE_DB_NAME = 'BeeBuzz';
-export const HIVE_DB_VERSION = 2;
+export const HIVE_DB_VERSION = 3;
 export const NOTIFICATIONS_STORE = 'notifications';
 export const NOTIFICATIONS_BY_DEVICE_INDEX = 'by-device';
 export const ENCRYPTION_METADATA_STORE = 'encryption_keys';
 export const WRAPPING_KEY_STORE = 'wrapping_keys';
 export const ENCRYPTED_KEY_STORE = 'encrypted_private_keys';
+export const RUNTIME_METADATA_STORE = 'runtime_metadata';
 
 function attachVersionChangeClose(db: IDBDatabase): IDBDatabase {
 	// If another context (page or service worker) needs to upgrade, close
@@ -49,6 +50,12 @@ export function openHiveDB(): Promise<IDBDatabase> {
 			}
 			if (!db.objectStoreNames.contains(ENCRYPTED_KEY_STORE)) {
 				db.createObjectStore(ENCRYPTED_KEY_STORE, { keyPath: 'id' });
+			}
+
+			// v3: keyed store for technical runtime metadata (e.g. last push
+			// receive / notification display timestamps used by debug reports).
+			if (!db.objectStoreNames.contains(RUNTIME_METADATA_STORE)) {
+				db.createObjectStore(RUNTIME_METADATA_STORE, { keyPath: 'key' });
 			}
 		};
 		request.onerror = () => reject(new Error(request.error?.message ?? 'IndexedDB open failed'));

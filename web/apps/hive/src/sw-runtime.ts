@@ -1,9 +1,11 @@
 import type { PushMessage } from '@beebuzz/shared/types';
-import type { HiveDiagnosticEvent, HiveDiagnosticKind, HiveLogScope } from './lib/devmode/types';
+import { HIVE_BOUNDARY, HIVE_TRANSPORT, HIVE_DIAGNOSTIC } from './lib/devmode/types';
+import type { HiveDiagnosticDescriptor, HiveLogData } from './lib/devmode/types';
 import {
 	DeviceIdentityIntegrityError,
 	MissingDeviceIdentityError
 } from './lib/services/encryption';
+import { recordNotificationReceived } from './lib/services/runtime-metadata-repository';
 
 export type NotificationAttachmentEnvelope = {
 	data?: string;
@@ -86,11 +88,11 @@ export type ServiceWorkerRuntimeDeps = {
 	getDeviceCredentials: () => Promise<{ deviceId: string } | null>;
 	decryptPayload: (data: ArrayBuffer) => Promise<string>;
 	fetch: typeof fetch;
+	warmupHiveDB?: () => Promise<void>;
 	recordDiagnostic: (
-		kind: HiveDiagnosticKind,
-		scope: HiveLogScope,
-		event: HiveDiagnosticEvent,
-		message: string
+		diagnostic: HiveDiagnosticDescriptor,
+		message: string,
+		data?: HiveLogData
 	) => void;
 };
 
@@ -121,6 +123,10 @@ export type ExtendableMessageEventLike = {
 
 const AGE_HEADER = new TextEncoder().encode('age-encryption.org/v1\n');
 const NOTIFICATION_ICON = '/assets/manifest-icon-192.maskable.png';
+
+function newPushTraceId(): string {
+	return crypto.randomUUID().slice(0, 12);
+}
 
 /** Returns true if bytes starts with the given prefix. */
 function startsWith(bytes: Uint8Array, prefix: Uint8Array): boolean {
@@ -234,6 +240,7 @@ async function loadE2EPayload(
 function buildNotificationOptions(
 	deps: ServiceWorkerRuntimeDeps,
 	data: NotificationPayload,
+	pushTraceId: string,
 	deviceId?: string
 ): NotificationOptions {
 	return {
@@ -250,7 +257,8 @@ function buildNotificationOptions(
 			deviceId,
 			sentAt: data.sent_at,
 			priority: data.priority,
-			attachment: data.attachment
+			attachment: data.attachment,
+			pushTraceId
 		}
 	};
 }
@@ -282,31 +290,32 @@ function buildNotificationClickedMessage(notificationData?: Record<string, unkno
 			sentAt: typeof notificationData?.sentAt === 'string' ? notificationData.sentAt : undefined,
 			priority:
 				typeof notificationData?.priority === 'string' ? notificationData.priority : undefined,
-			attachment
+			attachment,
+			pushTraceId:
+				typeof notificationData?.pushTraceId === 'string' ? notificationData.pushTraceId : undefined
 		}
 	};
 }
 
 async function resolvePushPayload(
 	deps: ServiceWorkerRuntimeDeps,
-	payloadArray: ArrayBuffer
+	payloadArray: ArrayBuffer,
+	pushTraceId: string
 ): Promise<NotificationPayload> {
 	const payloadBytes = new Uint8Array(payloadArray);
 
 	deps.recordDiagnostic(
-		'developer',
-		'push',
-		'payload.resolve',
-		`Payload size: ${payloadArray.byteLength} bytes`
+		HIVE_DIAGNOSTIC.PAYLOAD_RESOLVE,
+		`Payload size: ${payloadArray.byteLength} bytes`,
+		{ push_trace_id: pushTraceId }
 	);
 
 	let parsed: unknown;
 	if (startsWith(payloadBytes, AGE_HEADER)) {
 		deps.recordDiagnostic(
-			'developer',
-			'payload',
-			'payload.detected_encrypted',
-			'Age-encrypted payload detected, decrypting'
+			HIVE_DIAGNOSTIC.PAYLOAD_DETECTED_ENCRYPTED,
+			'Age-encrypted payload detected, decrypting',
+			{ push_trace_id: pushTraceId }
 		);
 		try {
 			const decrypted = await deps.decryptPayload(payloadArray);
@@ -319,12 +328,9 @@ async function resolvePushPayload(
 			);
 		}
 	} else {
-		deps.recordDiagnostic(
-			'developer',
-			'payload',
-			'payload.detected_plain',
-			'Plain JSON payload detected'
-		);
+		deps.recordDiagnostic(HIVE_DIAGNOSTIC.PAYLOAD_DETECTED_PLAIN, 'Plain JSON payload detected', {
+			push_trace_id: pushTraceId
+		});
 		try {
 			parsed = parseJsonBytes(payloadBytes);
 		} catch (error) {
@@ -384,11 +390,20 @@ export async function handlePushEvent(
 	deps: ServiceWorkerRuntimeDeps,
 	event: PushEventLike
 ): Promise<void> {
+	const pushTraceId = newPushTraceId();
 	const pushStartTime = performance.now();
-	deps.recordDiagnostic('main', 'push', 'push.received', 'Push event received');
+	deps.recordDiagnostic(HIVE_DIAGNOSTIC.PUSH_RECEIVED, 'Push event received', {
+		push_trace_id: pushTraceId,
+		boundary: HIVE_BOUNDARY.INBOUND,
+		transport: HIVE_TRANSPORT.WEB_PUSH
+	});
 
 	if (!event.data) {
-		deps.recordDiagnostic('main', 'push', 'push.empty_payload', 'Push received with no data');
+		deps.recordDiagnostic(HIVE_DIAGNOSTIC.PUSH_EMPTY_PAYLOAD, 'Push received with no data', {
+			push_trace_id: pushTraceId,
+			boundary: HIVE_BOUNDARY.INBOUND,
+			transport: HIVE_TRANSPORT.WEB_PUSH
+		});
 		await deps.showNotification('BeeBuzz', {
 			body: 'Received notification without data',
 			icon: NOTIFICATION_ICON
@@ -399,18 +414,22 @@ export async function handlePushEvent(
 	let data: NotificationPayload;
 	try {
 		const payloadArray = event.data.arrayBuffer();
-		data = await resolvePushPayload(deps, payloadArray);
+		data = await resolvePushPayload(deps, payloadArray, pushTraceId);
 	} catch (error) {
 		const message = error instanceof Error ? error.message : 'unknown payload error';
 		if (error instanceof PushPayloadError && error.kind === 'encrypted') {
-			deps.recordDiagnostic('main', 'payload', 'payload.decrypt_failed', message);
+			deps.recordDiagnostic(HIVE_DIAGNOSTIC.PAYLOAD_DECRYPT_FAILED, message, {
+				push_trace_id: pushTraceId
+			});
 			await deps.showNotification('BeeBuzz Notification', {
 				body: getEncryptedPayloadFailureMessage(error.cause),
 				icon: NOTIFICATION_ICON
 			});
 			return;
 		}
-		deps.recordDiagnostic('main', 'payload', 'payload.invalid', message);
+		deps.recordDiagnostic(HIVE_DIAGNOSTIC.PAYLOAD_INVALID, message, {
+			push_trace_id: pushTraceId
+		});
 		await deps.showNotification('BeeBuzz Notification', {
 			body: 'Received a notification that could not be parsed',
 			icon: NOTIFICATION_ICON
@@ -419,30 +438,33 @@ export async function handlePushEvent(
 	}
 
 	deps.recordDiagnostic(
-		'developer',
-		'push',
-		'push.resolved',
-		`Payload resolved in ${(performance.now() - pushStartTime).toFixed(0)}ms`
+		HIVE_DIAGNOSTIC.PUSH_RESOLVED,
+		`Payload resolved in ${(performance.now() - pushStartTime).toFixed(0)}ms`,
+		{ notification_id: data.id, push_trace_id: pushTraceId }
 	);
+
+	// Record metadata before any client communication so the developer
+	// page refresh sees the updated data.
+	await recordNotificationReceived({ via: 'push' });
 
 	let deviceId: string | undefined;
 	try {
 		deviceId = (await deps.getDeviceCredentials())?.deviceId;
 	} catch {
 		deps.recordDiagnostic(
-			'developer',
-			'storage',
-			'storage.credentials_failed',
-			'Failed to read device credentials'
+			HIVE_DIAGNOSTIC.STORAGE_CREDENTIALS_FAILED,
+			'Failed to read device credentials',
+			{
+				push_trace_id: pushTraceId
+			}
 		);
 	}
 
 	if (deviceId) {
 		deps.recordDiagnostic(
-			'developer',
-			'notification',
-			'notification.persist_started',
-			'Saving notification to storage'
+			HIVE_DIAGNOSTIC.NOTIFICATION_PERSIST_STARTED,
+			'Saving notification to storage',
+			{ notification_id: data.id, push_trace_id: pushTraceId }
 		);
 		try {
 			await deps.saveNotification({
@@ -456,14 +478,35 @@ export async function handlePushEvent(
 				attachment: data.attachment,
 				priority: data.priority
 			});
+			deps.recordDiagnostic(
+				HIVE_DIAGNOSTIC.NOTIFICATION_PERSISTED,
+				'Notification saved to IndexedDB',
+				{
+					notification_id: data.id,
+					push_trace_id: pushTraceId,
+					boundary: HIVE_BOUNDARY.INTERNAL,
+					transport: HIVE_TRANSPORT.INDEXEDDB
+				}
+			);
 		} catch (error) {
 			const message = error instanceof Error ? error.message : 'unknown storage error';
-			deps.recordDiagnostic('developer', 'notification', 'notification.persist_failed', message);
+			deps.recordDiagnostic(HIVE_DIAGNOSTIC.NOTIFICATION_PERSIST_FAILED, message, {
+				notification_id: data.id,
+				push_trace_id: pushTraceId
+			});
 		}
 	}
 
-	await deps.showNotification(data.title, buildNotificationOptions(deps, data, deviceId));
-	deps.recordDiagnostic('main', 'notification', 'notification.displayed', 'Notification shown');
+	await deps.showNotification(
+		data.title,
+		buildNotificationOptions(deps, data, pushTraceId, deviceId)
+	);
+	deps.recordDiagnostic(HIVE_DIAGNOSTIC.NOTIFICATION_DISPLAYED, 'Notification shown', {
+		notification_id: data.id,
+		push_trace_id: pushTraceId,
+		boundary: HIVE_BOUNDARY.OUTBOUND,
+		transport: HIVE_TRANSPORT.NOTIFICATION_CENTER
+	});
 
 	if (!deviceId) {
 		return;
@@ -471,12 +514,9 @@ export async function handlePushEvent(
 
 	const windowClients = await deps.matchWindowClients(true);
 	if (windowClients.length === 0) {
-		deps.recordDiagnostic(
-			'developer',
-			'service_worker',
-			'clients.match_failed',
-			'No window clients found'
-		);
+		deps.recordDiagnostic(HIVE_DIAGNOSTIC.CLIENTS_MATCH_FAILED, 'No window clients found', {
+			push_trace_id: pushTraceId
+		});
 	}
 	for (const client of windowClients) {
 		try {
@@ -490,10 +530,23 @@ export async function handlePushEvent(
 				topic: data.topic ?? null,
 				attachment: data.attachment,
 				sentAt: data.sent_at,
-				priority: data.priority
+				priority: data.priority,
+				pushTraceId
 			});
-		} catch {
-			// Client is frozen or terminated — safe to ignore, persistence already succeeded.
+			deps.recordDiagnostic(HIVE_DIAGNOSTIC.CLIENTS_NOTIFIED, 'Window client notified', {
+				notification_id: data.id,
+				push_trace_id: pushTraceId,
+				boundary: HIVE_BOUNDARY.INTERNAL,
+				transport: HIVE_TRANSPORT.POST_MESSAGE
+			});
+		} catch (error) {
+			const message = error instanceof Error ? error.message : 'unknown postMessage error';
+			deps.recordDiagnostic(HIVE_DIAGNOSTIC.CLIENTS_POST_MESSAGE_FAILED, message, {
+				notification_id: data.id,
+				push_trace_id: pushTraceId,
+				boundary: HIVE_BOUNDARY.INTERNAL,
+				transport: HIVE_TRANSPORT.POST_MESSAGE
+			});
 		}
 	}
 }
@@ -515,6 +568,10 @@ async function persistClickedNotificationBestEffort(
 	const body = typeof notificationData.body === 'string' ? notificationData.body : '';
 	const sentAt = typeof notificationData.sentAt === 'string' ? notificationData.sentAt : undefined;
 	if (!id || !title || !sentAt) return;
+	const pushTraceId =
+		typeof notificationData.pushTraceId === 'string'
+			? notificationData.pushTraceId
+			: newPushTraceId();
 
 	let deviceId =
 		typeof notificationData.deviceId === 'string' ? notificationData.deviceId : undefined;
@@ -547,9 +604,22 @@ async function persistClickedNotificationBestEffort(
 			priority:
 				typeof notificationData.priority === 'string' ? notificationData.priority : undefined
 		});
+		deps.recordDiagnostic(
+			HIVE_DIAGNOSTIC.NOTIFICATION_PERSISTED,
+			'Clicked notification saved to IndexedDB',
+			{
+				notification_id: id,
+				push_trace_id: pushTraceId,
+				boundary: HIVE_BOUNDARY.INTERNAL,
+				transport: HIVE_TRANSPORT.INDEXEDDB
+			}
+		);
 	} catch (error) {
 		const message = error instanceof Error ? error.message : 'unknown storage error';
-		deps.recordDiagnostic('developer', 'notification', 'notification.persist_failed', message);
+		deps.recordDiagnostic(HIVE_DIAGNOSTIC.NOTIFICATION_PERSIST_FAILED, message, {
+			notification_id: id,
+			push_trace_id: pushTraceId
+		});
 	}
 }
 
@@ -569,7 +639,7 @@ async function focusClientBestEffort(
 		return client.focus ? await client.focus() : client;
 	} catch (error) {
 		const message = error instanceof Error ? error.message : 'unknown focus error';
-		deps.recordDiagnostic('developer', 'service_worker', 'clients.focus_failed', message);
+		deps.recordDiagnostic(HIVE_DIAGNOSTIC.CLIENTS_FOCUS_FAILED, message);
 		return undefined;
 	}
 }
@@ -581,7 +651,7 @@ async function openHiveWindowBestEffort(
 		return (await deps.openWindow(deps.locationOrigin || '/')) ?? undefined;
 	} catch (error) {
 		const message = error instanceof Error ? error.message : 'unknown openWindow error';
-		deps.recordDiagnostic('developer', 'service_worker', 'clients.open_window_failed', message);
+		deps.recordDiagnostic(HIVE_DIAGNOSTIC.CLIENTS_OPEN_WINDOW_FAILED, message);
 		return undefined;
 	}
 }
@@ -595,7 +665,7 @@ function postClickMessageBestEffort(
 		client.postMessage(buildNotificationClickedMessage(notificationData));
 	} catch (error) {
 		const message = error instanceof Error ? error.message : 'unknown postMessage error';
-		deps.recordDiagnostic('developer', 'service_worker', 'clients.post_message_failed', message);
+		deps.recordDiagnostic(HIVE_DIAGNOSTIC.CLIENTS_POST_MESSAGE_FAILED, message);
 	}
 }
 
@@ -605,6 +675,18 @@ export async function handleNotificationClickEvent(
 	event: NotificationEventLike
 ): Promise<void> {
 	event.notification.close();
+	const notificationData = event.notification.data;
+	const notificationId = typeof notificationData?.id === 'string' ? notificationData.id : undefined;
+	const pushTraceId =
+		typeof notificationData?.pushTraceId === 'string'
+			? notificationData.pushTraceId
+			: newPushTraceId();
+	deps.recordDiagnostic(HIVE_DIAGNOSTIC.NOTIFICATION_CLICKED, 'Notification clicked', {
+		notification_id: notificationId,
+		push_trace_id: pushTraceId,
+		boundary: HIVE_BOUNDARY.INBOUND,
+		transport: HIVE_TRANSPORT.NOTIFICATION_CENTER
+	});
 
 	let focused: WorkerClient | undefined;
 	try {
@@ -616,7 +698,7 @@ export async function handleNotificationClickEvent(
 		}
 	} catch (error) {
 		const message = error instanceof Error ? error.message : 'unknown matchAll error';
-		deps.recordDiagnostic('developer', 'service_worker', 'clients.match_failed', message);
+		deps.recordDiagnostic(HIVE_DIAGNOSTIC.CLIENTS_MATCH_FAILED, message);
 	}
 
 	if (!focused) {
@@ -631,7 +713,7 @@ export async function handleNotificationClickEvent(
 		await persistClickedNotificationBestEffort(deps, event.notification.data);
 	} catch (error) {
 		const message = error instanceof Error ? error.message : 'unknown persistence error';
-		deps.recordDiagnostic('developer', 'notification', 'notification.persist_failed', message);
+		deps.recordDiagnostic(HIVE_DIAGNOSTIC.NOTIFICATION_PERSIST_FAILED, message);
 	}
 
 	if (focused) {
@@ -641,12 +723,12 @@ export async function handleNotificationClickEvent(
 
 /** Claims clients when the worker activates. */
 export async function handleActivateEvent(deps: ServiceWorkerRuntimeDeps): Promise<void> {
-	deps.recordDiagnostic(
-		'main',
-		'service_worker',
-		'service_worker.activated',
-		'Service Worker activated'
-	);
+	deps.recordDiagnostic(HIVE_DIAGNOSTIC.SERVICE_WORKER_ACTIVATED, 'Service Worker activated');
+	try {
+		await deps.warmupHiveDB?.();
+	} catch {
+		// Activation should not fail because optional diagnostics storage is unavailable.
+	}
 	await deps.claimClients();
 }
 
@@ -654,12 +736,7 @@ export async function handleActivateEvent(deps: ServiceWorkerRuntimeDeps): Promi
 export async function handlePushSubscriptionChangeEvent(
 	deps: ServiceWorkerRuntimeDeps
 ): Promise<void> {
-	deps.recordDiagnostic(
-		'developer',
-		'push',
-		'push.subscription_changed',
-		'Push subscription changed'
-	);
+	deps.recordDiagnostic(HIVE_DIAGNOSTIC.PUSH_SUBSCRIPTION_CHANGED, 'Push subscription changed');
 
 	const clients = await deps.matchWindowClients(true);
 	for (const client of clients) {
@@ -676,11 +753,6 @@ export async function handleMessageEvent(
 		return;
 	}
 
-	deps.recordDiagnostic(
-		'developer',
-		'service_worker',
-		'service_worker.skip_waiting',
-		'SKIP_WAITING received'
-	);
+	deps.recordDiagnostic(HIVE_DIAGNOSTIC.SERVICE_WORKER_SKIP_WAITING, 'SKIP_WAITING received');
 	await deps.skipWaiting();
 }

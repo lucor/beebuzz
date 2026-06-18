@@ -12,11 +12,9 @@
 		type ReconnectRequiredReason
 	} from '$lib/services/pairing-check';
 	import { PUSH_STATE_STATUS, reconcilePushState } from '$lib/onboarding.svelte';
-	import {
-		deleteAllKeys,
-		getStoredDeviceKey,
-		type StoredDeviceKey
-	} from '$lib/services/encryption';
+	import { deleteAllKeys } from '$lib/services/encryption';
+	import { clearNotificationRuntimeMetadata } from '$lib/services/runtime-metadata-repository';
+	import DeveloperModeToggle from '$lib/devmode/DeveloperModeToggle.svelte';
 	import { unsubscribeFromPush } from '$lib/services/push';
 	import { cleanupStalePairingState } from '$lib/services/startup-recovery';
 	import {
@@ -24,11 +22,6 @@
 		Link,
 		Globe,
 		Shield,
-		RefreshCw,
-		Server,
-		Copy,
-		Check,
-		ChevronDown,
 		Loader,
 		Unplug,
 		ExternalLink,
@@ -43,24 +36,21 @@
 	type ServiceWorkerState = 'active' | 'installing' | 'waiting' | 'missing';
 
 	interface DeviceSnapshot {
-		encryptionKey: StoredDeviceKey | null;
 		notificationPermission: NotificationPermission | 'unsupported';
 		hasPushSubscription: boolean;
 		serviceWorkerState: ServiceWorkerState;
 		updateAvailable: boolean;
 	}
 
+	let devModeEnabled = $state(false);
 	let loading = $state(true);
 	let reconnectRequiredReason = $state<ReconnectRequiredReason | null>(null);
 	let backendUnavailable = $state(false);
 	let reconnecting = $state(false);
-	let copyingPublicKey = $state(false);
 	let disconnecting = $state(false);
-	let techDetailsOpen = $state(false);
 	let disconnectDialog = $state<HTMLDialogElement | undefined>(undefined);
 
 	let snapshot = $state<DeviceSnapshot>({
-		encryptionKey: null,
 		notificationPermission: 'default',
 		hasPushSubscription: false,
 		serviceWorkerState: 'missing',
@@ -71,8 +61,6 @@
 	const loadDeviceSnapshot = async () => {
 		const registration = await navigator.serviceWorker.getRegistration();
 		const subscription = registration ? await registration.pushManager.getSubscription() : null;
-		const encryptionKey = await getStoredDeviceKey();
-
 		let serviceWorkerState: ServiceWorkerState = 'missing';
 		if (registration?.waiting) {
 			serviceWorkerState = 'waiting';
@@ -83,7 +71,6 @@
 		}
 
 		snapshot = {
-			encryptionKey,
 			notificationPermission:
 				typeof Notification === 'undefined' ? 'unsupported' : Notification.permission,
 			hasPushSubscription: subscription !== null,
@@ -239,56 +226,6 @@
 		};
 	});
 
-	/* --- Technical details derived state --- */
-
-	const secureDeliveryStatus = $derived(
-		snapshot.encryptionKey
-			? { label: 'Configured', tone: 'badge-success', icon: CircleCheck }
-			: { label: 'Not configured', tone: 'badge-error', icon: CircleX }
-	);
-
-	const serviceWorkerStatus = $derived.by(() => {
-		switch (snapshot.serviceWorkerState) {
-			case 'active':
-				return { label: 'Active', tone: 'badge-success', icon: CircleCheck };
-			case 'installing':
-				return { label: 'Installing', tone: 'badge-warning', icon: CircleAlert };
-			case 'waiting':
-				return { label: 'Update ready', tone: 'badge-warning', icon: CircleAlert };
-			default:
-				return { label: 'Missing', tone: 'badge-error', icon: CircleX };
-		}
-	});
-
-	const publicKeyCreatedAt = $derived.by(() => {
-		if (!snapshot.encryptionKey?.createdAt) {
-			return null;
-		}
-
-		return new Intl.DateTimeFormat(undefined, {
-			dateStyle: 'medium',
-			timeStyle: 'short'
-		}).format(new Date(snapshot.encryptionKey.createdAt));
-	});
-
-	/** Copies the public age recipient to the clipboard. */
-	const copyPublicKey = async () => {
-		if (!snapshot.encryptionKey?.recipient) return;
-
-		try {
-			copyingPublicKey = true;
-			await navigator.clipboard.writeText(snapshot.encryptionKey.recipient);
-			toast.success('Public key copied');
-		} catch (error: unknown) {
-			logger.error('Public key copy failed', { error: String(error) });
-			toast.error('Failed to copy public key');
-		} finally {
-			window.setTimeout(() => {
-				copyingPublicKey = false;
-			}, 1200);
-		}
-	};
-
 	/** Disconnects this device and sends the user back to the pairing flow. */
 	const handleDisconnect = async () => {
 		disconnecting = false;
@@ -298,6 +235,7 @@
 			await unsubscribeFromPush();
 			await deleteAllKeys();
 			notificationsStore.clearAll();
+			await clearNotificationRuntimeMetadata();
 			paired.clear();
 			toast.success('Device disconnected');
 			await goto('/pair');
@@ -407,10 +345,7 @@
 					>
 						<div class="flex items-center gap-3">
 							<Bell size={18} class="shrink-0 text-base-content/50" aria-hidden="true" />
-							<div>
-								<p class="font-medium text-base-content">Notifications</p>
-								<p class="text-sm text-base-content/65">Browser permission for this device.</p>
-							</div>
+							<p class="font-medium text-base-content">Notifications</p>
 						</div>
 						<span class={`badge ${notificationStatus.tone} gap-1`}>
 							<notificationStatus.icon size={12} aria-hidden="true" />
@@ -418,16 +353,13 @@
 						</span>
 					</div>
 
-					<!-- Device connection -->
+					<!-- Push subscription -->
 					<div
 						class="flex items-center justify-between gap-3 rounded-2xl border border-base-300 px-4 py-3"
 					>
 						<div class="flex items-center gap-3">
 							<Link size={18} class="shrink-0 text-base-content/50" aria-hidden="true" />
-							<div>
-								<p class="font-medium text-base-content">Device connection</p>
-								<p class="text-sm text-base-content/65">Push subscription for this device.</p>
-							</div>
+							<p class="font-medium text-base-content">Push subscription</p>
 						</div>
 						<span class={`badge ${connectionStatus.tone} gap-1`}>
 							<connectionStatus.icon size={12} aria-hidden="true" />
@@ -435,16 +367,13 @@
 						</span>
 					</div>
 
-					<!-- BeeBuzz connection -->
+					<!-- BeeBuzz server -->
 					<div
 						class="flex items-center justify-between gap-3 rounded-2xl border border-base-300 px-4 py-3"
 					>
 						<div class="flex items-center gap-3">
 							<Globe size={18} class="shrink-0 text-base-content/50" aria-hidden="true" />
-							<div>
-								<p class="font-medium text-base-content">Server connection</p>
-								<p class="text-sm text-base-content/65">Connection to the BeeBuzz server.</p>
-							</div>
+							<p class="font-medium text-base-content">BeeBuzz server</p>
 						</div>
 						{#if serverStatus.loading}
 							<span class="inline-flex items-center gap-2 text-sm text-base-content/70">
@@ -459,16 +388,13 @@
 						{/if}
 					</div>
 
-					<!-- Pairing verification -->
+					<!-- Account pairing -->
 					<div
 						class="flex items-center justify-between gap-3 rounded-2xl border border-base-300 px-4 py-3"
 					>
 						<div class="flex items-center gap-3">
 							<Shield size={18} class="shrink-0 text-base-content/50" aria-hidden="true" />
-							<div>
-								<p class="font-medium text-base-content">Pairing verification</p>
-								<p class="text-sm text-base-content/65">Remote pairing status for this device.</p>
-							</div>
+							<p class="font-medium text-base-content">Account pairing</p>
 						</div>
 						<span class={`badge ${pairingVerificationStatus.tone} gap-1`}>
 							<pairingVerificationStatus.icon size={12} aria-hidden="true" />
@@ -490,119 +416,11 @@
 			</div>
 		</section>
 
-		<!-- Technical details (collapsed) -->
+		<!-- Developer Mode -->
 		<section class="card border border-base-300 bg-base-100 shadow-sm">
-			<div class="card-body gap-0 p-0">
-				<button
-					type="button"
-					class="flex w-full items-center justify-between px-6 py-5"
-					onclick={() => (techDetailsOpen = !techDetailsOpen)}
-					aria-expanded={techDetailsOpen}
-				>
-					<h2 class="text-xl font-semibold text-base-content">Technical details</h2>
-					<ChevronDown
-						size={20}
-						class="shrink-0 text-base-content/50 transition-transform duration-200 {techDetailsOpen
-							? 'rotate-180'
-							: ''}"
-						aria-hidden="true"
-					/>
-				</button>
-
-				{#if techDetailsOpen}
-					<div class="space-y-4 px-6 pb-6">
-						<!-- Secure delivery -->
-						<div
-							class="flex items-center justify-between gap-3 rounded-2xl border border-base-300 px-4 py-3"
-						>
-							<div class="flex items-center gap-3">
-								<Shield size={18} class="shrink-0 text-base-content/50" aria-hidden="true" />
-								<p class="font-medium text-base-content">Secure delivery</p>
-							</div>
-							<span class={`badge ${secureDeliveryStatus.tone} gap-1`}>
-								<secureDeliveryStatus.icon size={12} aria-hidden="true" />
-								{secureDeliveryStatus.label}
-							</span>
-						</div>
-
-						<!-- App runtime -->
-						<div
-							class="flex items-center justify-between gap-3 rounded-2xl border border-base-300 px-4 py-3"
-						>
-							<div class="flex items-center gap-3">
-								<RefreshCw size={18} class="shrink-0 text-base-content/50" aria-hidden="true" />
-								<p class="font-medium text-base-content">Service worker</p>
-							</div>
-							<span class={`badge ${serviceWorkerStatus.tone} gap-1`}>
-								<serviceWorkerStatus.icon size={12} aria-hidden="true" />
-								{serviceWorkerStatus.label}
-							</span>
-						</div>
-
-						<!-- Backend version -->
-						<div
-							class="flex items-center justify-between gap-3 rounded-2xl border border-base-300 px-4 py-3"
-						>
-							<div class="flex items-center gap-3">
-								<Server size={18} class="shrink-0 text-base-content/50" aria-hidden="true" />
-								<p class="font-medium text-base-content">Backend version</p>
-							</div>
-							{#if health.version}
-								<span class="font-mono text-sm text-base-content/70">{health.version}</span>
-							{:else}
-								<span class="badge badge-error gap-1">
-									<CircleX size={12} aria-hidden="true" />
-									Unavailable
-								</span>
-							{/if}
-						</div>
-
-						<!-- Public key -->
-						{#if snapshot.encryptionKey}
-							<div class="space-y-3 rounded-2xl border border-base-300 px-4 py-4">
-								<div class="flex items-start justify-between gap-3">
-									<div>
-										<p class="font-medium text-base-content">Public key</p>
-										{#if publicKeyCreatedAt}
-											<p class="text-sm text-base-content/65">
-												Generated {publicKeyCreatedAt}
-											</p>
-										{/if}
-									</div>
-									<button
-										type="button"
-										class="btn btn-ghost btn-sm"
-										onclick={() => void copyPublicKey()}
-										aria-label="Copy public key"
-									>
-										{#if copyingPublicKey}
-											<Check size={16} aria-hidden="true" />
-										{:else}
-											<Copy size={16} aria-hidden="true" />
-										{/if}
-									</button>
-								</div>
-								<code
-									class="block overflow-x-auto rounded-xl bg-base-200 px-3 py-3 text-sm text-base-content"
-								>
-									{snapshot.encryptionKey.recipient}
-								</code>
-								<div
-									class="flex items-center justify-between gap-3 rounded-xl bg-base-200 px-3 py-3"
-								>
-									<div>
-										<p class="text-xs font-medium uppercase tracking-[0.16em] text-base-content/55">
-											Fingerprint
-										</p>
-										<p class="font-mono text-sm text-base-content">
-											{snapshot.encryptionKey.fingerprint}
-										</p>
-									</div>
-								</div>
-							</div>
-						{/if}
-					</div>
-				{/if}
+			<div class="card-body gap-5">
+				<h2 class="card-title text-xl">Developer Mode</h2>
+				<DeveloperModeToggle bind:enabled={devModeEnabled} showClear={true} />
 			</div>
 		</section>
 

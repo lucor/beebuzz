@@ -2,7 +2,8 @@ import { Decrypter } from 'age-encryption';
 import { getDeviceIdentity, MissingDeviceIdentityError } from './lib/services/encryption';
 import { deviceKeysRepository } from './lib/services/device-keys-repository';
 import { notificationsRepository } from './lib/services/notifications-repository';
-import type { HiveDiagnosticEvent, HiveDiagnosticKind, HiveLogScope } from './lib/devmode/types';
+import { openHiveDB } from './lib/services/hive-db';
+import type { HiveDiagnosticDescriptor, HiveLogData } from './lib/devmode/types';
 import {
 	handleActivateEvent,
 	handleMessageEvent,
@@ -47,10 +48,9 @@ function saveNotificationToStorage(input: {
 }
 
 function recordDiagnostic(
-	_kind: HiveDiagnosticKind,
-	_scope: HiveLogScope,
-	_event: HiveDiagnosticEvent,
-	_message: string
+	_diagnostic: HiveDiagnosticDescriptor,
+	_message: string,
+	_data?: HiveLogData
 ): void {
 	// Diagnostics are recorded by the app shell. The service worker
 	// forwards events through postMessage instead of writing directly
@@ -60,12 +60,17 @@ function recordDiagnostic(
 	try {
 		void self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
 			for (const client of clients) {
+				const data: HiveLogData = {
+					boundary: _diagnostic.boundary,
+					transport: _diagnostic.transport,
+					..._data
+				};
 				client.postMessage({
 					type: 'DIAGNOSTIC_EVENT',
-					kind: _kind,
-					scope: _scope,
-					event: _event,
-					message: _message
+					scope: _diagnostic.scope,
+					event: _diagnostic.event,
+					message: _message,
+					data
 				});
 			}
 		});
@@ -94,6 +99,10 @@ const runtimeDeps: ServiceWorkerRuntimeDeps = {
 	getDeviceCredentials: () => deviceKeysRepository.getDeviceCredentials(),
 	decryptPayload,
 	fetch: (input, init) => self.fetch(input, init),
+	warmupHiveDB: async () => {
+		const db = await openHiveDB();
+		db.close();
+	},
 	recordDiagnostic
 };
 

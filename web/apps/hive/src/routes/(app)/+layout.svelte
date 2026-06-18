@@ -7,8 +7,18 @@
 	import { logger } from '@beebuzz/shared/logger';
 	import { safeLogger } from '$lib/devmode/safe-logger';
 	import { captureHiveError } from '$lib/devmode/error-capture';
-	import { isHiveDiagnosticEvent, isHiveDiagnosticKind, isHiveLogScope } from '$lib/devmode/types';
+	import {
+		startConsoleDiagnosticsCapture,
+		stopConsoleDiagnosticsCapture
+	} from '$lib/devmode/console-diagnostics';
+	import {
+		isHiveDiagnosticEvent,
+		isHiveLogScope,
+		type HiveLogData,
+		type HiveDiagnosticDescriptor
+	} from '$lib/devmode/types';
 	import { developerSettings } from '$lib/devmode/settings';
+	import { HIVE_BOUNDARY, HIVE_TRANSPORT, HIVE_DIAGNOSTIC } from '$lib/devmode/types';
 	import { loadDeveloperSettings } from '$lib/devmode/storage';
 	import { health } from '@beebuzz/shared/stores/health.svelte';
 	import { toast } from '@beebuzz/shared/stores';
@@ -63,11 +73,25 @@
 
 	let currentPath = $derived(page.url.pathname);
 
-	const navItems: NavItem[] = [
-		{ label: 'Hive', href: resolve('/'), icon: Hexagon },
-		{ label: 'My Device', href: resolve('/device'), icon: Activity },
-		{ label: 'Developer Mode', href: resolve('/developer'), icon: Bug }
-	];
+	let devModeEnabled = $state(false);
+
+	$effect(() => {
+		const unsub = developerSettings.subscribe((s) => {
+			devModeEnabled = s.enabled;
+		});
+		return () => unsub();
+	});
+
+	const navItems = $derived.by(() => {
+		const items: NavItem[] = [
+			{ label: 'Hive', href: resolve('/'), icon: Hexagon },
+			{ label: 'My Device', href: resolve('/device'), icon: Activity }
+		];
+		if (devModeEnabled) {
+			items.push({ label: 'Developer Mode', href: resolve('/developer'), icon: Bug });
+		}
+		return items;
+	});
 
 	/** Handles messages from the service worker. */
 	const handleServiceWorkerMessage = (event: MessageEvent<PushMessage>) => {
@@ -75,15 +99,21 @@
 		if (eventData?.type === 'DIAGNOSTIC_EVENT') {
 			const msg = eventData;
 			if (
-				typeof msg.kind === 'string' &&
 				typeof msg.scope === 'string' &&
 				typeof msg.event === 'string' &&
 				typeof msg.message === 'string' &&
-				isHiveDiagnosticKind(msg.kind) &&
 				isHiveLogScope(msg.scope) &&
 				isHiveDiagnosticEvent(msg.event)
 			) {
-				safeLogger[msg.kind](msg.scope, msg.event, msg.message);
+				const data =
+					msg.data && typeof msg.data === 'object' && !Array.isArray(msg.data)
+						? (msg.data as HiveLogData)
+						: undefined;
+				const descriptor = {
+					scope: msg.scope,
+					event: msg.event
+				} satisfies HiveDiagnosticDescriptor;
+				safeLogger.log(descriptor, msg.message, data);
 			}
 			return;
 		}
@@ -100,6 +130,12 @@
 				event.data.priority,
 				event.data.id
 			);
+			safeLogger.log(HIVE_DIAGNOSTIC.NOTIFICATION_IMPORTED, 'Push imported into app state', {
+				notification_id: event.data.id,
+				push_trace_id: event.data.pushTraceId,
+				boundary: HIVE_BOUNDARY.INTERNAL,
+				transport: HIVE_TRANSPORT.POST_MESSAGE
+			});
 			void syncNotificationsFromBackend();
 		} else if (event.data?.type === 'NOTIFICATION_CLICKED') {
 			const clickedNotification = event.data.notification;
@@ -126,6 +162,16 @@
 					clickedNotification.attachment,
 					clickedNotification.priority,
 					clickedNotification.id
+				);
+				safeLogger.log(
+					HIVE_DIAGNOSTIC.NOTIFICATION_IMPORTED,
+					'Clicked notification imported into app state',
+					{
+						notification_id: clickedNotification.id,
+						push_trace_id: clickedNotification.pushTraceId,
+						boundary: HIVE_BOUNDARY.INTERNAL,
+						transport: HIVE_TRANSPORT.POST_MESSAGE
+					}
 				);
 			}
 		} else if (event.data?.type === 'SUBSCRIPTION_CHANGED') {
@@ -262,8 +308,9 @@
 
 		const devSettings = await loadDeveloperSettings();
 		developerSettings.set(devSettings);
+		startConsoleDiagnosticsCapture();
 
-		safeLogger.main('app', 'app.started', 'Hive app bootstrapping');
+		safeLogger.log(HIVE_DIAGNOSTIC.APP_STARTED, 'Hive app bootstrapping');
 
 		try {
 			// The bootstrap order matters: paired state and credentials determine the
@@ -313,9 +360,8 @@
 						await withTimeout(health.check(), STARTUP_TIMEOUT_MS, 'Health check');
 					}
 					watchServiceWorkerRegistration(registration);
-					safeLogger.main(
-						'service_worker',
-						'service_worker.registered',
+					safeLogger.log(
+						HIVE_DIAGNOSTIC.SERVICE_WORKER_REGISTERED,
 						'Service worker registered and active'
 					);
 					await withTimeout(registration.update(), STARTUP_TIMEOUT_MS, 'Service worker update');
@@ -325,9 +371,8 @@
 
 			if (!isPaired) {
 				await cleanupStalePairingState();
-				safeLogger.main(
-					'pairing',
-					'pairing.reconnect_required',
+				safeLogger.log(
+					HIVE_DIAGNOSTIC.PAIRING_RECONNECT_REQUIRED,
 					'Device not paired, redirecting to pairing'
 				);
 				await goto('/pair');
@@ -359,13 +404,13 @@
 			}
 
 			ready = true;
-			safeLogger.main('app', 'app.started', 'Hive app ready');
+			safeLogger.log(HIVE_DIAGNOSTIC.APP_STARTED, 'Hive app ready');
 			void syncNotificationsFromBackend();
 			startPolling();
 		} catch (error: unknown) {
 			startupError = formatStartupError(error);
 			logger.error('Hive app bootstrap failed', { error: String(error) });
-			safeLogger.main('app', 'app.bootstrap_failed', startupError);
+			safeLogger.log(HIVE_DIAGNOSTIC.APP_BOOTSTRAP_FAILED, startupError);
 			void captureHiveError({
 				scope: 'app',
 				event: 'app.bootstrap_failed',
@@ -392,6 +437,7 @@
 		);
 		document.removeEventListener('visibilitychange', handleVisibilityChange);
 		stopPolling();
+		stopConsoleDiagnosticsCapture();
 	});
 
 	// Reactive guard: if paired state is lost (e.g. from SW message), redirect
