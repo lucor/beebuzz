@@ -49,6 +49,7 @@ class PushPayloadError extends Error {
 
 type WorkerClient = {
 	url: string;
+	navigate?: (url: string) => Promise<WorkerClient | null | undefined>;
 	focus?: () => Promise<WorkerClient>;
 	postMessage: (message: PushMessage) => void;
 };
@@ -631,6 +632,25 @@ function isSameOriginClient(deps: ServiceWorkerRuntimeDeps, client: WorkerClient
 	}
 }
 
+function hiveInboxUrl(deps: ServiceWorkerRuntimeDeps): string {
+	return deps.locationOrigin || '/';
+}
+
+async function navigateClientToHiveInboxBestEffort(
+	deps: ServiceWorkerRuntimeDeps,
+	client: WorkerClient
+): Promise<WorkerClient | undefined> {
+	if (!client.navigate) return client;
+
+	try {
+		return (await client.navigate(hiveInboxUrl(deps))) ?? client;
+	} catch (error) {
+		const message = error instanceof Error ? error.message : 'unknown navigate error';
+		deps.recordDiagnostic(HIVE_DIAGNOSTIC.CLIENTS_OPEN_WINDOW_FAILED, message);
+		return undefined;
+	}
+}
+
 async function focusClientBestEffort(
 	deps: ServiceWorkerRuntimeDeps,
 	client: WorkerClient
@@ -648,7 +668,7 @@ async function openHiveWindowBestEffort(
 	deps: ServiceWorkerRuntimeDeps
 ): Promise<WorkerClient | undefined> {
 	try {
-		return (await deps.openWindow(deps.locationOrigin || '/')) ?? undefined;
+		return (await deps.openWindow(hiveInboxUrl(deps))) ?? undefined;
 	} catch (error) {
 		const message = error instanceof Error ? error.message : 'unknown openWindow error';
 		deps.recordDiagnostic(HIVE_DIAGNOSTIC.CLIENTS_OPEN_WINDOW_FAILED, message);
@@ -693,7 +713,9 @@ export async function handleNotificationClickEvent(
 		const windows = await deps.matchWindowClients(false);
 		for (const windowClient of windows) {
 			if (!isSameOriginClient(deps, windowClient)) continue;
-			focused = await focusClientBestEffort(deps, windowClient);
+			const inboxClient = await navigateClientToHiveInboxBestEffort(deps, windowClient);
+			if (!inboxClient) continue;
+			focused = await focusClientBestEffort(deps, inboxClient);
 			if (focused) break;
 		}
 	} catch (error) {

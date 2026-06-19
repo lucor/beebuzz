@@ -191,10 +191,14 @@ describe('service worker runtime', () => {
 		expect(failingClient.postMessage).toHaveBeenCalledTimes(1);
 	});
 
-	it('focuses an existing Hive window and sends the notification fallback payload on click', async () => {
+	it('navigates an existing Hive window to the inbox and sends the notification fallback payload on click', async () => {
 		const focusedClient = {
-			url: 'https://hive.beebuzz.test/',
+			url: 'https://hive.beebuzz.test/device',
 			postMessage: vi.fn(),
+			navigate: vi.fn(function (this: typeof focusedClient) {
+				this.url = 'https://hive.beebuzz.test/';
+				return Promise.resolve(this);
+			}),
 			focus: vi.fn(function (this: typeof focusedClient) {
 				return Promise.resolve(this);
 			})
@@ -217,6 +221,7 @@ describe('service worker runtime', () => {
 
 		expect(event.notification.close).toHaveBeenCalledTimes(1);
 		expect(deps.matchWindowClients).toHaveBeenCalledWith(false);
+		expect(focusedClient.navigate).toHaveBeenCalledWith('https://hive.beebuzz.test');
 		expect(focusedClient.focus).toHaveBeenCalledTimes(1);
 		expect(focusedClient.postMessage).toHaveBeenCalledWith({
 			type: 'NOTIFICATION_CLICKED',
@@ -232,6 +237,36 @@ describe('service worker runtime', () => {
 				attachment: undefined
 			}
 		});
+	});
+
+	it('keeps focusing existing Hive clients when client navigation is unavailable', async () => {
+		const focusedClient = {
+			url: 'https://hive.beebuzz.test/developer',
+			postMessage: vi.fn(),
+			focus: vi.fn(function (this: typeof focusedClient) {
+				return Promise.resolve(this);
+			})
+		};
+		const deps = createDeps({
+			matchWindowClients: vi.fn(() => Promise.resolve([focusedClient]))
+		});
+
+		await handleNotificationClickEvent(
+			deps,
+			createNotificationClickEvent({
+				id: 'n-no-navigate',
+				deviceId: 'dev-a',
+				title: 'Bell',
+				body: 'Someone rang the bell',
+				sentAt: '2026-04-20T11:00:00.000Z'
+			})
+		);
+
+		expect(focusedClient.focus).toHaveBeenCalledTimes(1);
+		expect(deps.openWindow).not.toHaveBeenCalled();
+		expect(focusedClient.postMessage).toHaveBeenCalledWith(
+			expect.objectContaining({ type: 'NOTIFICATION_CLICKED' })
+		);
 	});
 
 	it('opens a new Hive window when no client exists and sends the same fallback payload', async () => {
