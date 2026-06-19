@@ -14,7 +14,7 @@ go = "1.26.4"
 
 # Node toolchain (frontend workspace lives in web/)
 node = "24.14"
-pnpm = "10.34.1"
+pnpm = "11.8.0"
 
 # Local dev orchestration
 "github:caddyserver/caddy" = "latest"
