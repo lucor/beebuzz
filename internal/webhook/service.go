@@ -186,18 +186,31 @@ func (s *Service) extractPayload(wh *Webhook, body []byte) (title, bodyText stri
 		return p.Title, p.Body, nil
 
 	case PayloadTypeCustom:
-		if err := validator.JSONPath("title_path", wh.TitlePath); err != nil {
+		titlePath := strings.TrimSpace(wh.TitlePath)
+		if err := validator.JSONPath("title_path", titlePath); err != nil {
 			return "", "", fmt.Errorf("%w: invalid title_path", ErrPayloadExtraction)
 		}
-		if err := validator.JSONPath("body_path", wh.BodyPath); err != nil {
+		titleResult := gjson.GetBytes(body, titlePath)
+		if !titleResult.Exists() {
+			return "", "", fmt.Errorf("%w: title_path not found in payload", ErrPayloadExtraction)
+		}
+		title := titleResult.String()
+		if title == "" {
+			return "", "", fmt.Errorf("%w: title is required", ErrPayloadExtraction)
+		}
+
+		bodyPath := strings.TrimSpace(wh.BodyPath)
+		if bodyPath == "" {
+			return title, "", nil
+		}
+		if err := validator.JSONPath("body_path", bodyPath); err != nil {
 			return "", "", fmt.Errorf("%w: invalid body_path", ErrPayloadExtraction)
 		}
-		titleResult := gjson.GetBytes(body, wh.TitlePath)
-		bodyResult := gjson.GetBytes(body, wh.BodyPath)
-		if !titleResult.Exists() || !bodyResult.Exists() {
-			return "", "", fmt.Errorf("%w: path not found in payload", ErrPayloadExtraction)
+		bodyResult := gjson.GetBytes(body, bodyPath)
+		if !bodyResult.Exists() {
+			return "", "", fmt.Errorf("%w: body_path not found in payload", ErrPayloadExtraction)
 		}
-		return titleResult.String(), bodyResult.String(), nil
+		return title, bodyResult.String(), nil
 
 	default:
 		return "", "", fmt.Errorf("unsupported payload_type: %s", string(wh.PayloadType))
@@ -278,10 +291,24 @@ func (s *Service) FinalizeInspect(ctx context.Context, userID, titlePath, bodyPa
 		return "", "", ErrInspectNotCaptured
 	}
 
-	if !gjson.GetBytes(session.Payload, titlePath).Exists() {
+	titlePath = strings.TrimSpace(titlePath)
+	bodyPath = strings.TrimSpace(bodyPath)
+	if err := validator.JSONPath("title_path", titlePath); err != nil {
+		return "", "", fmt.Errorf("%w: invalid title_path", ErrPayloadExtraction)
+	}
+	if bodyPath != "" {
+		if err := validator.JSONPath("body_path", bodyPath); err != nil {
+			return "", "", fmt.Errorf("%w: invalid body_path", ErrPayloadExtraction)
+		}
+	}
+	titleResult := gjson.GetBytes(session.Payload, titlePath)
+	if !titleResult.Exists() {
 		return "", "", fmt.Errorf("%w: title_path not found in payload", ErrPayloadExtraction)
 	}
-	if !gjson.GetBytes(session.Payload, bodyPath).Exists() {
+	if titleResult.String() == "" {
+		return "", "", fmt.Errorf("%w: title is required", ErrPayloadExtraction)
+	}
+	if strings.TrimSpace(bodyPath) != "" && !gjson.GetBytes(session.Payload, bodyPath).Exists() {
 		return "", "", fmt.Errorf("%w: body_path not found in payload", ErrPayloadExtraction)
 	}
 

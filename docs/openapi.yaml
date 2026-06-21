@@ -1074,7 +1074,7 @@ paths:
       description: |
         Creates a temporary inspect session that captures the next webhook payload
         without dispatching notifications. Use this to discover the correct
-        title_path and body_path values for custom webhooks.
+        title_path and optional body_path values for custom webhooks.
       security:
         - cookieAuth: []
       requestBody:
@@ -1134,7 +1134,7 @@ paths:
       x-audience: [site]
       x-stability: stable
       description: |
-        Creates the actual webhook with the specified title_path and body_path.
+        Creates the actual webhook with the specified title_path and optional body_path.
         The payload is validated against these paths before creating the webhook.
         Returns the new webhook token (one-time reveal).
       security:
@@ -2036,7 +2036,7 @@ components:
             type: string
     CreateWebhookRequestCustom:
       type: object
-      required: [name, payload_type, title_path, body_path, topics]
+      required: [name, payload_type, title_path, topics]
       properties:
         name:
           type: string
@@ -2055,9 +2055,8 @@ components:
           description: Dot-separated JSON path with optional numeric array indexes.
         body_path:
           type: string
-          minLength: 1
-          pattern: '^[A-Za-z0-9_]+(?:\[[0-9]+\])*(?:\.[A-Za-z0-9_]+(?:\[[0-9]+\])*)*$'
-          description: Dot-separated JSON path with optional numeric array indexes.
+          pattern: '^(?:|[A-Za-z0-9_]+(?:\[[0-9]+\])*(?:\.[A-Za-z0-9_]+(?:\[[0-9]+\])*)*)$'
+          description: Optional dot-separated JSON path with optional numeric array indexes. When omitted or empty, webhook notifications use an empty body.
         priority:
           type: string
           enum: [normal, high]
@@ -2096,7 +2095,7 @@ components:
             type: string
     UpdateWebhookRequestCustom:
       type: object
-      required: [name, payload_type, title_path, body_path, topics]
+      required: [name, payload_type, title_path, topics]
       properties:
         name:
           type: string
@@ -2115,9 +2114,8 @@ components:
           description: Dot-separated JSON path with optional numeric array indexes.
         body_path:
           type: string
-          minLength: 1
-          pattern: '^[A-Za-z0-9_]+(?:\[[0-9]+\])*(?:\.[A-Za-z0-9_]+(?:\[[0-9]+\])*)*$'
-          description: Dot-separated JSON path with optional numeric array indexes.
+          pattern: '^(?:|[A-Za-z0-9_]+(?:\[[0-9]+\])*(?:\.[A-Za-z0-9_]+(?:\[[0-9]+\])*)*)$'
+          description: Optional dot-separated JSON path with optional numeric array indexes. When omitted or empty, webhook notifications use an empty body.
         priority:
           type: string
           enum: [normal, high]
@@ -2193,7 +2191,7 @@ components:
           format: date-time
     FinalizeInspectRequest:
       type: object
-      required: [title_path, body_path]
+      required: [title_path]
       properties:
         title_path:
           type: string
@@ -2202,9 +2200,8 @@ components:
           description: Dot-separated JSON path with optional numeric array indexes for extracting title from payload.
         body_path:
           type: string
-          minLength: 1
-          pattern: '^[A-Za-z0-9_]+(?:\[[0-9]+\])*(?:\.[A-Za-z0-9_]+(?:\[[0-9]+\])*)*$'
-          description: Dot-separated JSON path with optional numeric array indexes for extracting body from payload.
+          pattern: '^(?:|[A-Za-z0-9_]+(?:\[[0-9]+\])*(?:\.[A-Za-z0-9_]+(?:\[[0-9]+\])*)*)$'
+          description: Optional dot-separated JSON path with optional numeric array indexes for extracting body from payload. When omitted or empty, webhook notifications use an empty body.
     ReceiveResponse:
       type: object
       required: [status, sent_count, total_count, failed_count]

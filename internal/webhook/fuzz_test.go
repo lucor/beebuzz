@@ -76,13 +76,13 @@ func FuzzExtractPayloadCustom(f *testing.F) {
 func FuzzCreateWebhookRequestValidate(f *testing.F) {
 	f.Add("webhook", "desc", "beebuzz", "", "")
 	f.Add("webhook", "desc", "custom", "data.title", "data.body")
+	f.Add("webhook", "desc", "custom", "data.title", "")
 	f.Add("webhook", "desc", "custom", ".data.title", "data.body")
 	f.Add("", "", "", "", "")
 	f.Add("", "", "invalid_type", "", "")
 	f.Add(strings.Repeat("a", 65), strings.Repeat("b", 129), "beebuzz", "", "")
 	f.Add("\x00", "\xff", "custom", "\x00", "\xff")
 	f.Add("webhook", "desc", "custom", "", "data.body")                                                                          // custom missing title_path
-	f.Add("webhook", "desc", "custom", "data.title", "")                                                                         // custom missing body_path
 	f.Add(strings.Repeat("a", validator.MaxDisplayNameLen), strings.Repeat("b", validator.MaxDescriptionLen), "beebuzz", "", "") // exact boundaries
 	f.Add(strings.Repeat("é", validator.MaxDisplayNameLen+1), "desc", "beebuzz", "", "")                                         // multibyte name overflow
 	f.Add("webhook", strings.Repeat("é", validator.MaxDescriptionLen+1), "beebuzz", "", "")                                      // multibyte desc overflow
@@ -119,16 +119,16 @@ func FuzzCreateWebhookRequestValidate(f *testing.F) {
 				utf8.RuneCountInString(description), validator.MaxDescriptionLen)
 		}
 
-		// Custom type requires both paths.
-		if payloadType == "custom" && (titlePath == "" || bodyPath == "") && len(errs) == 0 {
-			t.Fatal("Validate accepted custom webhook without required paths")
+		// Custom type requires a title path. Body path is optional.
+		if payloadType == "custom" && titlePath == "" && len(errs) == 0 {
+			t.Fatal("Validate accepted custom webhook without required title_path")
 		}
 
 		if payloadType == "custom" && strings.HasPrefix(strings.TrimSpace(titlePath), ".") && len(errs) == 0 {
 			t.Fatal("Validate accepted custom webhook title_path with leading dot")
 		}
 
-		if payloadType == "custom" && strings.HasPrefix(strings.TrimSpace(bodyPath), ".") && len(errs) == 0 {
+		if payloadType == "custom" && strings.TrimSpace(bodyPath) != "" && strings.HasPrefix(strings.TrimSpace(bodyPath), ".") && len(errs) == 0 {
 			t.Fatal("Validate accepted custom webhook body_path with leading dot")
 		}
 
@@ -147,6 +147,7 @@ func FuzzCreateWebhookRequestValidate(f *testing.F) {
 func FuzzUpdateWebhookRequestValidate(f *testing.F) {
 	f.Add("webhook", "desc", "beebuzz", "", "")
 	f.Add("webhook", "desc", "custom", "data.title", "data.body")
+	f.Add("webhook", "desc", "custom", "data.title", "")
 	f.Add("webhook", "desc", "custom", "data.title", ".data.body")
 	f.Add("", "", "", "", "")
 	f.Add("", "", "invalid_type", "", "")
@@ -155,7 +156,6 @@ func FuzzUpdateWebhookRequestValidate(f *testing.F) {
 	f.Add("\x00", "\xff", "custom", "\x00", "\xff")
 	f.Add("wh", "", "custom", "", "")
 	f.Add("webhook", "desc", "custom", "", "data.body")                                      // custom missing title_path
-	f.Add("webhook", "desc", "custom", "data.title", "")                                     // custom missing body_path
 	f.Add(strings.Repeat("é", validator.MaxDisplayNameLen), "desc", "beebuzz", "", "")       // multibyte name exact
 	f.Add(strings.Repeat("é", validator.MaxDisplayNameLen+1), "desc", "beebuzz", "", "")     // multibyte name overflow
 	f.Add("webhook", strings.Repeat("é", validator.MaxDescriptionLen), "custom", "t", "m")   // multibyte desc exact
@@ -192,16 +192,16 @@ func FuzzUpdateWebhookRequestValidate(f *testing.F) {
 				utf8.RuneCountInString(description), validator.MaxDescriptionLen)
 		}
 
-		// Custom type requires both paths.
-		if payloadType == "custom" && (titlePath == "" || bodyPath == "") && len(errs) == 0 {
-			t.Fatal("Validate accepted custom webhook without required paths")
+		// Custom type requires a title path. Body path is optional.
+		if payloadType == "custom" && titlePath == "" && len(errs) == 0 {
+			t.Fatal("Validate accepted custom webhook without required title_path")
 		}
 
 		if payloadType == "custom" && strings.HasPrefix(strings.TrimSpace(titlePath), ".") && len(errs) == 0 {
 			t.Fatal("Validate accepted custom webhook title_path with leading dot")
 		}
 
-		if payloadType == "custom" && strings.HasPrefix(strings.TrimSpace(bodyPath), ".") && len(errs) == 0 {
+		if payloadType == "custom" && strings.TrimSpace(bodyPath) != "" && strings.HasPrefix(strings.TrimSpace(bodyPath), ".") && len(errs) == 0 {
 			t.Fatal("Validate accepted custom webhook body_path with leading dot")
 		}
 

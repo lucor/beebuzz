@@ -135,6 +135,22 @@ func TestExtractPayload_Custom(t *testing.T) {
 			wantMessage: "Something happened",
 		},
 		{
+			name:        "title only",
+			titlePath:   "title",
+			bodyPath:    "",
+			body:        `{"title":"Alert"}`,
+			wantTitle:   "Alert",
+			wantMessage: "",
+		},
+		{
+			name:        "configured empty body",
+			titlePath:   "title",
+			bodyPath:    "body",
+			body:        `{"title":"Alert","body":""}`,
+			wantTitle:   "Alert",
+			wantMessage: "",
+		},
+		{
 			name:      "leading dot path does not match",
 			titlePath: ".data.title",
 			bodyPath:  "data.message",
@@ -146,6 +162,13 @@ func TestExtractPayload_Custom(t *testing.T) {
 			titlePath: "data.title",
 			bodyPath:  "data.message",
 			body:      `{"data":{"message":"Something happened"}}`,
+			wantErr:   ErrPayloadExtraction,
+		},
+		{
+			name:      "empty title",
+			titlePath: "title",
+			bodyPath:  "",
+			body:      `{"title":""}`,
 			wantErr:   ErrPayloadExtraction,
 		},
 		{
@@ -271,6 +294,89 @@ func TestCreateInspectSessionReturnsRawTokenAndStoresOnlyHash(t *testing.T) {
 	}
 	if session.TokenHash != secure.Hash(response.Token) {
 		t.Fatalf("stored tokenHash = %q, want hash of response token", session.TokenHash)
+	}
+}
+
+func TestFinalizeInspectCreatesTitleOnlyWebhook(t *testing.T) {
+	db := testutil.NewDB(t)
+	ctx := context.Background()
+
+	authRepo := auth.NewRepository(db)
+	topicRepo := topic.NewRepository(db)
+	repo := NewRepository(db)
+	topicSvc := topic.NewService(topicRepo, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	inspectStore := NewInspectStore()
+	svc := NewService(repo, inspectStore, noopDispatcher{}, topicSvc, slog.New(slog.NewTextHandler(io.Discard, nil)))
+
+	user, _, err := authRepo.GetOrCreateUser(ctx, "inspect-title-only@example.com")
+	if err != nil {
+		t.Fatalf("GetOrCreateUser: %v", err)
+	}
+	tp, err := topicRepo.Create(ctx, user.ID, "alerts", "")
+	if err != nil {
+		t.Fatalf("topic.Create: %v", err)
+	}
+	rawInspectToken, _, err := inspectStore.Create(user.ID, "inspect", "desc", push.PriorityNormal, []string{tp.ID})
+	if err != nil {
+		t.Fatalf("inspectStore.Create: %v", err)
+	}
+	if captured, err := svc.CaptureInspectPayload(rawInspectToken, []byte(`{"title":"Alert"}`)); err != nil || !captured {
+		t.Fatalf("CaptureInspectPayload() captured = %v, error = %v, want true nil", captured, err)
+	}
+
+	_, webhookID, err := svc.FinalizeInspect(ctx, user.ID, "title", "")
+	if err != nil {
+		t.Fatalf("FinalizeInspect() error = %v, want nil", err)
+	}
+
+	wh, err := repo.GetByID(ctx, user.ID, webhookID)
+	if err != nil {
+		t.Fatalf("GetByID: %v", err)
+	}
+	if wh == nil {
+		t.Fatal("GetByID() = nil, want webhook")
+	}
+	if wh.PayloadType != PayloadTypeCustom {
+		t.Fatalf("payload_type = %q, want %q", wh.PayloadType, PayloadTypeCustom)
+	}
+	if wh.TitlePath != "title" {
+		t.Fatalf("title_path = %q, want title", wh.TitlePath)
+	}
+	if wh.BodyPath != "" {
+		t.Fatalf("body_path = %q, want empty", wh.BodyPath)
+	}
+}
+
+func TestFinalizeInspectRejectsEmptyTitle(t *testing.T) {
+	db := testutil.NewDB(t)
+	ctx := context.Background()
+
+	authRepo := auth.NewRepository(db)
+	topicRepo := topic.NewRepository(db)
+	repo := NewRepository(db)
+	topicSvc := topic.NewService(topicRepo, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	inspectStore := NewInspectStore()
+	svc := NewService(repo, inspectStore, noopDispatcher{}, topicSvc, slog.New(slog.NewTextHandler(io.Discard, nil)))
+
+	user, _, err := authRepo.GetOrCreateUser(ctx, "inspect-empty-title@example.com")
+	if err != nil {
+		t.Fatalf("GetOrCreateUser: %v", err)
+	}
+	tp, err := topicRepo.Create(ctx, user.ID, "alerts", "")
+	if err != nil {
+		t.Fatalf("topic.Create: %v", err)
+	}
+	rawInspectToken, _, err := inspectStore.Create(user.ID, "inspect", "desc", push.PriorityNormal, []string{tp.ID})
+	if err != nil {
+		t.Fatalf("inspectStore.Create: %v", err)
+	}
+	if captured, err := svc.CaptureInspectPayload(rawInspectToken, []byte(`{"title":""}`)); err != nil || !captured {
+		t.Fatalf("CaptureInspectPayload() captured = %v, error = %v, want true nil", captured, err)
+	}
+
+	_, _, err = svc.FinalizeInspect(ctx, user.ID, "title", "")
+	if !errors.Is(err, ErrPayloadExtraction) {
+		t.Fatalf("FinalizeInspect() error = %v, want %v", err, ErrPayloadExtraction)
 	}
 }
 
@@ -696,6 +802,87 @@ func TestCreateWebhookRequestValidateDefaultsPriority(t *testing.T) {
 	}
 	if req.Priority != push.PriorityNormal {
 		t.Fatalf("Validate() priority = %q, want %q", req.Priority, push.PriorityNormal)
+	}
+}
+
+func TestWebhookPathValidationAllowsOptionalCustomBodyPath(t *testing.T) {
+	tests := []struct {
+		name    string
+		req     interface{ Validate() []error }
+		wantErr bool
+	}{
+		{
+			name: "create accepts title only custom mapping",
+			req: &CreateWebhookRequest{
+				Name:        "hook",
+				PayloadType: PayloadTypeCustom,
+				TitlePath:   "data.title",
+				Topics:      []string{"topic-1"},
+			},
+		},
+		{
+			name: "create rejects missing title path",
+			req: &CreateWebhookRequest{
+				Name:        "hook",
+				PayloadType: PayloadTypeCustom,
+				BodyPath:    "data.body",
+				Topics:      []string{"topic-1"},
+			},
+			wantErr: true,
+		},
+		{
+			name: "create rejects invalid configured body path",
+			req: &CreateWebhookRequest{
+				Name:        "hook",
+				PayloadType: PayloadTypeCustom,
+				TitlePath:   "data.title",
+				BodyPath:    ".data.body",
+				Topics:      []string{"topic-1"},
+			},
+			wantErr: true,
+		},
+		{
+			name: "update accepts title only custom mapping",
+			req: &UpdateWebhookRequest{
+				Name:        "hook",
+				PayloadType: PayloadTypeCustom,
+				TitlePath:   "data.title",
+				Topics:      []string{"topic-1"},
+			},
+		},
+		{
+			name: "finalize accepts title only custom mapping",
+			req: &FinalizeInspectRequest{
+				TitlePath: "data.title",
+			},
+		},
+		{
+			name: "finalize rejects missing title path",
+			req: &FinalizeInspectRequest{
+				BodyPath: "data.body",
+			},
+			wantErr: true,
+		},
+		{
+			name: "finalize rejects invalid configured body path",
+			req: &FinalizeInspectRequest{
+				TitlePath: "data.title",
+				BodyPath:  "data.#.body",
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			errs := tt.req.Validate()
+			if tt.wantErr && len(errs) == 0 {
+				t.Fatal("Validate() errors = none, want error")
+			}
+			if !tt.wantErr && len(errs) != 0 {
+				t.Fatalf("Validate() errors = %v, want none", errs)
+			}
+		})
 	}
 }
 

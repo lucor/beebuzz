@@ -252,7 +252,7 @@ Webhooks are a separate ingestion path that eventually dispatch into the notific
 Current webhook payload modes:
 
 - `beebuzz`: expects a BeeBuzz-shaped JSON body with `title` and `body`
-- `custom`: extracts `title` and `body` using simple dot-separated JSON paths with optional numeric array indexes, for example `event.items[0].title`
+- `custom`: extracts `title` and optionally `body` using simple dot-separated JSON paths with optional numeric array indexes, for example `event.items[0].title`. When no body path is configured, notifications use an empty body.
 
 Webhook priority is configured on the webhook itself and currently accepts `normal` or `high`, defaulting to `normal`.
 Both modes end up producing a standard server-trusted notification send operation.

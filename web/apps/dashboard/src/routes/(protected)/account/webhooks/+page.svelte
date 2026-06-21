@@ -192,11 +192,6 @@
 			return;
 		}
 
-		if (!newWebhookBodyPath.trim()) {
-			toast.error('Click on a field in the JSON to set the Body path');
-			return;
-		}
-
 		isLoading = true;
 		try {
 			const webhook = await accountApi.finalizeInspect(newWebhookTitlePath, newWebhookBodyPath);
@@ -247,12 +242,7 @@
 				return;
 			}
 
-			if (!newWebhookBodyPath.trim()) {
-				toast.error('Body path is required for custom payloads (e.g., data.body)');
-				return;
-			}
-
-			if (newWebhookBodyPath.trim().startsWith('.')) {
+			if (newWebhookBodyPath.trim() && newWebhookBodyPath.trim().startsWith('.')) {
 				toast.error('Body path must not start with a dot');
 				return;
 			}
@@ -414,12 +404,7 @@
 				return;
 			}
 
-			if (!editWebhookBodyPath.trim()) {
-				toast.error('Body path is required for custom payloads');
-				return;
-			}
-
-			if (editWebhookBodyPath.trim().startsWith('.')) {
+			if (editWebhookBodyPath.trim() && editWebhookBodyPath.trim().startsWith('.')) {
 				toast.error('Body path must not start with a dot');
 				return;
 			}
@@ -475,8 +460,7 @@
 		if (newWebhookPayloadType === 'custom') {
 			if (!newWebhookTitlePath.trim()) return false;
 			if (newWebhookTitlePath.trim().startsWith('.')) return false;
-			if (!newWebhookBodyPath.trim()) return false;
-			if (newWebhookBodyPath.trim().startsWith('.')) return false;
+			if (newWebhookBodyPath.trim() && newWebhookBodyPath.trim().startsWith('.')) return false;
 		}
 		return true;
 	}
@@ -490,8 +474,7 @@
 		if (editWebhookPayloadType === 'custom') {
 			if (!editWebhookTitlePath.trim()) return false;
 			if (editWebhookTitlePath.trim().startsWith('.')) return false;
-			if (!editWebhookBodyPath.trim()) return false;
-			if (editWebhookBodyPath.trim().startsWith('.')) return false;
+			if (editWebhookBodyPath.trim() && editWebhookBodyPath.trim().startsWith('.')) return false;
 		}
 		return true;
 	}
@@ -526,10 +509,11 @@
 		if (webhook.payload_type === 'beebuzz') {
 			body = JSON.stringify({ title: 'Hello', body: 'World' });
 		} else {
-			const nested = buildNestedJson([
-				[webhook.title_path ?? '', 'Hello'],
-				[webhook.body_path ?? '', 'World']
-			]);
+			const entries: [string, string][] = [[webhook.title_path ?? '', 'Hello']];
+			if (webhook.body_path) {
+				entries.push([webhook.body_path, 'World']);
+			}
+			const nested = buildNestedJson(entries);
 			body = JSON.stringify(nested);
 		}
 
@@ -737,7 +721,7 @@
 								<FileText size={16} />
 								Beebuzz Standard
 							</div>
-							<div class="text-xs text-base-content/70">Simple payload with title and message</div>
+							<div class="text-xs text-base-content/70">Simple payload with title and body</div>
 						</div>
 					</label>
 
@@ -757,7 +741,9 @@
 								<Settings size={16} />
 								Custom Payload Mapping
 							</div>
-							<div class="text-xs text-base-content/70">Map JSON fields to title and body</div>
+							<div class="text-xs text-base-content/70">
+								Map JSON fields to notification title and optional body
+							</div>
 						</div>
 					</label>
 
@@ -845,8 +831,7 @@
 						<div class="alert alert-success bg-success/10 border border-success/30 mb-4">
 							<Check size={16} />
 							<div class="text-sm">
-								<strong>Payload received!</strong> Click on any text field in the JSON below to map it
-								to title or body.
+								<strong>Payload received!</strong> Select the title field. Optionally select a body field.
 							</div>
 						</div>
 
@@ -862,9 +847,9 @@
 											<code>subject</code>)
 										</li>
 										<li>
-											<strong>Select Body:</strong> Click on the field containing the message
-											content (e.g., <code>message</code>, <code>body</code>, or
-											<code>description</code>)
+											<strong>Select Body (optional):</strong> Click on the field containing the
+											message content if this payload has one (e.g., <code>message</code>,
+											<code>body</code>, or <code>description</code>)
 										</li>
 										<li>The paths will appear in the fields below automatically</li>
 									</ol>
@@ -902,7 +887,8 @@
 									class="block text-sm font-semibold text-base-content mb-1"
 								>
 									Body Path
-									<span class="text-xs font-normal text-base-content/70">— Click a field above</span
+									<span class="text-xs font-normal text-base-content/70"
+										>— Optional, click a field above</span
 									>
 								</label>
 								<input
@@ -945,7 +931,7 @@
 					<div>
 						<label for="create-bodyPath" class="block text-sm font-semibold text-base-content mb-2">
 							Body Path
-							<span class="text-xs font-normal text-base-content/70">*</span>
+							<span class="text-xs font-normal text-base-content/70">(optional)</span>
 						</label>
 						<input
 							type="text"
@@ -954,10 +940,10 @@
 							class="input input-bordered w-full bg-base-100 text-base-content"
 							bind:value={newWebhookBodyPath}
 							disabled={isLoading}
-							required
 						/>
 						<p class="text-xs text-base-content/70 mt-1">
-							Enter JSON path without leading dot (uses gjson syntax)
+							Leave empty for title-only notifications. Otherwise enter a JSON path without leading
+							dot (uses gjson syntax)
 						</p>
 					</div>
 				</div>
@@ -994,7 +980,7 @@
 				<button
 					type="button"
 					class="btn btn-primary"
-					disabled={isLoading || !newWebhookTitlePath.trim() || !newWebhookBodyPath.trim()}
+					disabled={isLoading || !newWebhookTitlePath.trim()}
 					onclick={() => void finalizeInspect()}
 				>
 					{#if isLoading}
@@ -1228,7 +1214,7 @@
 											class="block text-sm font-semibold text-base-content mb-2"
 										>
 											Body Path
-											<span class="text-xs font-normal text-base-content/70">*</span>
+											<span class="text-xs font-normal text-base-content/70">(optional)</span>
 										</label>
 										<input
 											type="text"
@@ -1237,10 +1223,10 @@
 											class="input input-bordered w-full bg-base-100 text-base-content"
 											bind:value={editWebhookBodyPath}
 											disabled={isLoading}
-											required
 										/>
 										<p class="text-xs text-base-content/70 mt-1">
-											Enter the JSON path without leading dot (uses gjson syntax)
+											Leave empty for title-only notifications. Otherwise enter the JSON path
+											without leading dot (uses gjson syntax)
 										</p>
 									</div>
 								</div>
@@ -1378,9 +1364,13 @@
 											</div>
 											<div>
 												<span class="font-medium text-base-content">Body Path:</span>
-												<code class="text-xs bg-base-200 px-2 py-1 rounded ml-2">
-													{webhook.body_path}
-												</code>
+												{#if webhook.body_path}
+													<code class="text-xs bg-base-200 px-2 py-1 rounded ml-2">
+														{webhook.body_path}
+													</code>
+												{:else}
+													<span class="text-xs text-base-content/70 ml-2">Not set</span>
+												{/if}
 											</div>
 										</div>
 									</div>

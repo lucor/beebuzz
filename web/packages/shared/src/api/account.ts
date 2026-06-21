@@ -344,7 +344,7 @@ export const accountApi = {
 
 	getInspectSession: () => api.get<InspectSessionStatus>('/webhooks/inspect'),
 
-	finalizeInspect: (titlePath: string, bodyPath: string) =>
+	finalizeInspect: (titlePath: string, bodyPath: string = '') =>
 		api.post<CreatedWebhook>('/webhooks/inspect/finalize', {
 			title_path: titlePath,
 			body_path: bodyPath

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"log/slog"
+	"strings"
 	"time"
 
 	"go.beebuzz.app/beebuzz/internal/push"
@@ -150,6 +151,8 @@ func (r *CreateWebhookRequest) Validate() []error {
 	if r.Priority == "" {
 		r.Priority = push.PriorityNormal
 	}
+	r.TitlePath = strings.TrimSpace(r.TitlePath)
+	r.BodyPath = strings.TrimSpace(r.BodyPath)
 	errs := validator.Validate(
 		validator.NotBlank("name", r.Name),
 		validator.RequiredSlice("topics", r.Topics),
@@ -161,10 +164,10 @@ func (r *CreateWebhookRequest) Validate() []error {
 	)
 	switch r.PayloadType {
 	case PayloadTypeCustom:
-		errs = append(errs, validator.Validate(
-			validator.JSONPath("title_path", r.TitlePath),
-			validator.JSONPath("body_path", r.BodyPath),
-		)...)
+		errs = append(errs, validator.Validate(validator.JSONPath("title_path", r.TitlePath))...)
+		if strings.TrimSpace(r.BodyPath) != "" {
+			errs = append(errs, validator.Validate(validator.JSONPath("body_path", r.BodyPath))...)
+		}
 	case PayloadTypeBeebuzz:
 		errs = append(errs, validator.Validate(
 			validator.Blank("title_path", r.TitlePath),
@@ -190,6 +193,8 @@ func (r *UpdateWebhookRequest) Validate() []error {
 	if r.Priority == "" {
 		r.Priority = push.PriorityNormal
 	}
+	r.TitlePath = strings.TrimSpace(r.TitlePath)
+	r.BodyPath = strings.TrimSpace(r.BodyPath)
 	errs := validator.Validate(
 		validator.NotBlank("name", r.Name),
 		validator.RequiredSlice("topics", r.Topics),
@@ -201,10 +206,10 @@ func (r *UpdateWebhookRequest) Validate() []error {
 	)
 	switch r.PayloadType {
 	case PayloadTypeCustom:
-		errs = append(errs, validator.Validate(
-			validator.JSONPath("title_path", r.TitlePath),
-			validator.JSONPath("body_path", r.BodyPath),
-		)...)
+		errs = append(errs, validator.Validate(validator.JSONPath("title_path", r.TitlePath))...)
+		if strings.TrimSpace(r.BodyPath) != "" {
+			errs = append(errs, validator.Validate(validator.JSONPath("body_path", r.BodyPath))...)
+		}
 	case PayloadTypeBeebuzz:
 		errs = append(errs, validator.Validate(
 			validator.Blank("title_path", r.TitlePath),
@@ -290,8 +295,11 @@ type FinalizeInspectRequest struct {
 
 // Validate validates the finalize inspect request fields.
 func (r *FinalizeInspectRequest) Validate() []error {
-	return validator.Validate(
-		validator.JSONPath("title_path", r.TitlePath),
-		validator.JSONPath("body_path", r.BodyPath),
-	)
+	r.TitlePath = strings.TrimSpace(r.TitlePath)
+	r.BodyPath = strings.TrimSpace(r.BodyPath)
+	errs := validator.Validate(validator.JSONPath("title_path", r.TitlePath))
+	if strings.TrimSpace(r.BodyPath) != "" {
+		errs = append(errs, validator.Validate(validator.JSONPath("body_path", r.BodyPath))...)
+	}
+	return errs
 }
