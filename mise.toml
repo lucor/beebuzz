@@ -36,6 +36,7 @@ MP_SMTP_AUTH_ALLOW_INSECURE = "true"
 
 # Frontend defaults — VITE_BEEBUZZ_DOMAIN is now derived from BEEBUZZ_DOMAIN via Vite define
 VITE_BEEBUZZ_DEBUG = true
+VITE_BEEBUZZ_VERSION = "dev"
 
 # =============================================================================
 # Setup / housekeeping

@@ -17,6 +17,111 @@ import {
 declare const self: ServiceWorkerGlobalScope;
 
 const BEEBUZZ_DOMAIN = import.meta.env.VITE_BEEBUZZ_DOMAIN as string | undefined;
+const CACHE_PREFIX = 'beebuzz-hive-';
+const APP_CACHE = `${CACHE_PREFIX}${import.meta.env.VITE_BEEBUZZ_VERSION || 'dev'}`;
+const CORE_ASSETS = ['/', '/manifest.json', '/assets/manifest-icon-192.maskable.png'];
+
+function isSameOrigin(url: URL): boolean {
+	return url.origin === self.location.origin;
+}
+
+function isCacheableResponse(response: Response): boolean {
+	return response.ok && (response.type === 'basic' || response.type === 'default');
+}
+
+function isImmutableAsset(url: URL): boolean {
+	return url.pathname.startsWith('/_app/immutable/');
+}
+
+function isRuntimeAsset(request: Request, url: URL): boolean {
+	if (url.pathname.startsWith('/assets/')) return true;
+	if (url.pathname === '/manifest.json') return true;
+	return ['script', 'style', 'font', 'image', 'manifest'].includes(request.destination);
+}
+
+async function cacheResponse(request: Request, response: Response): Promise<Response> {
+	if (isCacheableResponse(response)) {
+		const cache = await caches.open(APP_CACHE);
+		await cache.put(request, response.clone());
+	}
+	return response;
+}
+
+async function cacheFirst(request: Request): Promise<Response> {
+	const cache = await caches.open(APP_CACHE);
+	const cached = await cache.match(request);
+	if (cached) return cached;
+	return cacheResponse(request, await fetch(request));
+}
+
+async function networkFirst(request: Request): Promise<Response> {
+	const cache = await caches.open(APP_CACHE);
+	try {
+		return await cacheResponse(request, await fetch(request));
+	} catch (error) {
+		const cached = await cache.match(request);
+		if (cached) return cached;
+		throw error;
+	}
+}
+
+async function navigationResponse(request: Request): Promise<Response> {
+	const cache = await caches.open(APP_CACHE);
+	try {
+		return await cacheResponse(request, await fetch(request));
+	} catch (error) {
+		const cachedPage = await cache.match(request);
+		if (cachedPage) return cachedPage;
+		const appShell = await cache.match('/');
+		if (appShell) return appShell;
+		throw error;
+	}
+}
+
+async function deleteOldCaches(): Promise<void> {
+	const keys = await caches.keys();
+	await Promise.all(
+		keys.filter((k) => k.startsWith(CACHE_PREFIX) && k !== APP_CACHE).map((k) => caches.delete(k))
+	);
+}
+
+async function precacheCoreAssets(): Promise<void> {
+	const cache = await caches.open(APP_CACHE);
+	await Promise.all(
+		CORE_ASSETS.map(async (asset) => {
+			try {
+				const response = await fetch(asset, { cache: 'reload' });
+				if (isCacheableResponse(response)) {
+					await cache.put(asset, response);
+				}
+			} catch {
+				// Core cache is best-effort; push handling must not depend on it.
+			}
+		})
+	);
+}
+
+async function handleFetchEvent(event: FetchEvent): Promise<Response> {
+	const request = event.request;
+	if (request.method !== 'GET') return fetch(request);
+
+	const url = new URL(request.url);
+	if (!isSameOrigin(url)) return fetch(request);
+
+	if (request.mode === 'navigate') {
+		return navigationResponse(request);
+	}
+
+	if (isImmutableAsset(url)) {
+		return cacheFirst(request);
+	}
+
+	if (isRuntimeAsset(request, url)) {
+		return networkFirst(request);
+	}
+
+	return fetch(request);
+}
 
 async function decryptPayload(data: ArrayBuffer): Promise<string> {
 	const identity = await getDeviceIdentity();
@@ -114,12 +219,12 @@ self.addEventListener('notificationclick', (event: NotificationEvent) => {
 	event.waitUntil(handleNotificationClickEvent(runtimeDeps, event));
 });
 
-self.addEventListener('install', () => {
-	// Service worker installing — no action required.
+self.addEventListener('install', (event: ExtendableEvent) => {
+	event.waitUntil(precacheCoreAssets());
 });
 
 self.addEventListener('activate', (event: ExtendableEvent) => {
-	event.waitUntil(handleActivateEvent(runtimeDeps));
+	event.waitUntil(Promise.all([handleActivateEvent(runtimeDeps), deleteOldCaches()]));
 });
 
 self.addEventListener('pushsubscriptionchange', (event: ExtendableEvent) => {
@@ -128,4 +233,8 @@ self.addEventListener('pushsubscriptionchange', (event: ExtendableEvent) => {
 
 self.addEventListener('message', (event: ExtendableMessageEvent) => {
 	event.waitUntil(handleMessageEvent(runtimeDeps, event));
+});
+
+self.addEventListener('fetch', (event: FetchEvent) => {
+	event.respondWith(handleFetchEvent(event));
 });

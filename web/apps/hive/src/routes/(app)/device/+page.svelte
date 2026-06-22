@@ -202,7 +202,12 @@
 
 	const serverStatus = $derived.by(() => {
 		if (!connectivity.online) {
-			return { label: 'Offline', tone: 'badge-neutral' as const, loading: false, icon: CircleAlert };
+			return {
+				label: 'Offline',
+				tone: 'badge-neutral' as const,
+				loading: false,
+				icon: CircleAlert
+			};
 		}
 		if (health.loading || health.status === 'unknown') {
 			return {

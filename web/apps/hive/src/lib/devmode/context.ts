@@ -98,8 +98,7 @@ export async function collectHiveSafeContext(): Promise<HiveSafeContext> {
 	const runtimeMetadata = await getNotificationRuntimeMetadata();
 
 	return {
-		app_version: String(import.meta.env.VITE_BEEBUZZ_VERSION || '0.0.0'),
-		build_id: String(import.meta.env.VITE_BEEBUZZ_BUILD_ID || ''),
+		app_version: String(import.meta.env.VITE_BEEBUZZ_VERSION || 'dev'),
 		browser_family: browserFamily,
 		browser_version_major: browserVersionMajor,
 		os,

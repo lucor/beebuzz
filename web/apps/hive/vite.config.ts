@@ -48,7 +48,10 @@ export default defineConfig({
 	],
 	define: {
 		'import.meta.env.VITE_BEEBUZZ_DOMAIN': JSON.stringify(BEEBUZZ_DOMAIN),
-		'import.meta.env.VITE_BEEBUZZ_DEBUG': JSON.stringify(process.env.VITE_BEEBUZZ_DEBUG === 'true')
+		'import.meta.env.VITE_BEEBUZZ_DEBUG': JSON.stringify(process.env.VITE_BEEBUZZ_DEBUG === 'true'),
+		'import.meta.env.VITE_BEEBUZZ_VERSION': JSON.stringify(
+			process.env.VITE_BEEBUZZ_VERSION || 'dev'
+		)
 	},
 	server: {
 		port: 5174,

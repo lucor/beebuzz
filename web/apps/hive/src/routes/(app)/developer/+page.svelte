@@ -33,7 +33,8 @@
 		RefreshCcw,
 		RefreshCw,
 		Server,
-		Shield
+		Shield,
+		Smartphone
 	} from '@lucide/svelte';
 	import type {
 		HiveLogEntry,
@@ -74,6 +75,7 @@
 	let selectedSnapshot = $state<HiveErrorSnapshot | null>(null);
 	let selectedConsoleDiag = $state<HiveConsoleDiagnosticEntry | null>(null);
 	let deviceKey = $state<StoredDeviceKey | null>(null);
+	const hiveVersion = String(import.meta.env.VITE_BEEBUZZ_VERSION || 'dev');
 	let notificationRuntime = $state<NotificationRuntimeMetadata | null>(null);
 	let copyingPublicKey = $state(false);
 	let showPublicKey = $state(false);
@@ -676,6 +678,16 @@
 									</span>
 								{/if}
 							</div>
+						</div>
+
+						<div
+							class="flex items-center justify-between gap-3 rounded-2xl border border-base-300 px-4 py-3"
+						>
+							<div class="flex items-center gap-3">
+								<Smartphone size={18} class="shrink-0 text-base-content/50" aria-hidden="true" />
+								<p class="font-medium text-base-content">Hive version</p>
+							</div>
+							<span class="font-mono text-sm text-base-content/70">{hiveVersion}</span>
 						</div>
 
 						<div
