@@ -7,6 +7,7 @@
 	import { logger } from '@beebuzz/shared/logger';
 	import { notificationsStore } from '$lib/stores/notifications.svelte';
 	import { paired } from '$lib/stores/paired.svelte';
+	import { connectivity } from '$lib/stores/connectivity.svelte';
 	import {
 		RECONNECT_REQUIRED_REASON,
 		type ReconnectRequiredReason
@@ -78,19 +79,34 @@
 			updateAvailable: Boolean(registration?.waiting)
 		};
 
-		const pushState = await reconcilePushState();
-		reconnectRequiredReason =
-			pushState.status === PUSH_STATE_STATUS.RECONNECT_REQUIRED ? pushState.reason : null;
-		backendUnavailable = pushState.status === PUSH_STATE_STATUS.TRANSIENT_BACKEND_ERROR;
+		if (!connectivity.online) {
+			reconnectRequiredReason = null;
+			backendUnavailable = true;
+			return;
+		}
+
+		try {
+			const pushState = await reconcilePushState();
+			reconnectRequiredReason =
+				pushState.status === PUSH_STATE_STATUS.RECONNECT_REQUIRED ? pushState.reason : null;
+			backendUnavailable = pushState.status === PUSH_STATE_STATUS.TRANSIENT_BACKEND_ERROR;
+		} catch (error) {
+			logger.warn('Device push state check failed (non-blocking)', { error: String(error) });
+			reconnectRequiredReason = null;
+			backendUnavailable = true;
+		}
 	};
 
 	onMount(() => {
 		const init = async () => {
 			try {
-				if (health.status === 'unknown' && !health.loading) {
+				if (connectivity.online && health.status === 'unknown' && !health.loading) {
 					await health.check();
 				}
 				await loadDeviceSnapshot();
+			} catch (error) {
+				logger.warn('Device snapshot load failed (non-blocking)', { error: String(error) });
+				backendUnavailable = true;
 			} finally {
 				loading = false;
 			}
@@ -185,6 +201,9 @@
 	});
 
 	const serverStatus = $derived.by(() => {
+		if (!connectivity.online) {
+			return { label: 'Offline', tone: 'badge-neutral' as const, loading: false, icon: CircleAlert };
+		}
 		if (health.loading || health.status === 'unknown') {
 			return {
 				label: 'Checking',
