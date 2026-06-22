@@ -85,6 +85,7 @@
 	let unregisteringSw = $state(false);
 	let showAdvancedRecovery = $state(false);
 	let showUnregisterConfirm = $state(false);
+	let initError = $state<string | null>(null);
 
 	let probeStatus = $state<'idle' | 'running' | 'passed' | 'failed'>('idle');
 	let probeResult = $state<EncryptionProbeResult | null>(null);
@@ -136,21 +137,52 @@
 		}
 		devModeEnabled = true;
 		developerSettings.set(settings);
-		logs = await listLogs();
-		snapshots = await listSnapshots();
-		consoleDiagnostics = await listConsoleDiagnostics(200);
-		deviceKey = await getStoredDeviceKey();
-		notificationRuntime = await getNotificationRuntimeMetadata();
+
+		try {
+			logs = await listLogs();
+		} catch (error) {
+			logger.warn('Developer logs load failed', { error: String(error) });
+			initError = 'Some local diagnostics could not be loaded.';
+		}
+		try {
+			snapshots = await listSnapshots();
+		} catch (error) {
+			logger.warn('Developer snapshots load failed', { error: String(error) });
+			initError = 'Some local diagnostics could not be loaded.';
+		}
+		try {
+			consoleDiagnostics = await listConsoleDiagnostics(200);
+		} catch (error) {
+			logger.warn('Developer console diagnostics load failed', { error: String(error) });
+			initError = 'Some local diagnostics could not be loaded.';
+		}
+		try {
+			deviceKey = await getStoredDeviceKey();
+		} catch (error) {
+			logger.warn('Developer device key load failed', { error: String(error) });
+			initError = 'Some local diagnostics could not be loaded.';
+		}
+		try {
+			notificationRuntime = await getNotificationRuntimeMetadata();
+		} catch (error) {
+			logger.warn('Developer runtime metadata load failed', { error: String(error) });
+			initError = 'Some local diagnostics could not be loaded.';
+		}
 		try {
 			pushSnapshot = await loadPushDebugSnapshot();
-		} catch {
-			// ignore
+		} catch (error) {
+			logger.warn('Developer push snapshot load failed', { error: String(error) });
+			pushError = error instanceof Error ? error.message : String(error);
 		}
 		initDone = true;
 	};
 
 	const refreshRuntimeMetadata = async () => {
-		notificationRuntime = await getNotificationRuntimeMetadata();
+		try {
+			notificationRuntime = await getNotificationRuntimeMetadata();
+		} catch (error) {
+			logger.warn('Developer runtime metadata refresh failed', { error: String(error) });
+		}
 	};
 
 	const startLiveLogSubscription = () => {
@@ -450,19 +482,54 @@
 		}
 	};
 
+	const handleUpdateServiceWorker = async () => {
+		updatingSw = true;
+		pushError = null;
+		try {
+			await updateServiceWorkerRegistration();
+			await refreshPushDiag();
+		} catch (error) {
+			pushError = error instanceof Error ? error.message : String(error);
+		} finally {
+			updatingSw = false;
+		}
+	};
+
+	const handleActivateServiceWorker = async () => {
+		activatingSw = true;
+		pushError = null;
+		try {
+			await activateWaitingServiceWorker();
+			await refreshPushDiag();
+		} catch (error) {
+			pushError = error instanceof Error ? error.message : String(error);
+		} finally {
+			activatingSw = false;
+		}
+	};
+
 	const handleUnregister = async () => {
 		showUnregisterConfirm = false;
 		unregisteringSw = true;
+		pushError = null;
 		try {
 			await unregisterServiceWorker();
 			await refreshPushDiag();
+		} catch (error) {
+			pushError = error instanceof Error ? error.message : String(error);
 		} finally {
 			unregisteringSw = false;
 		}
 	};
 
 	onMount(async () => {
-		await loadInitialData();
+		try {
+			await loadInitialData();
+		} catch (error) {
+			logger.warn('Developer Mode init failed (non-blocking)', { error: String(error) });
+			initError = error instanceof Error ? error.message : 'Developer Mode could not load fully.';
+			initDone = true;
+		}
 		document.addEventListener('visibilitychange', handleVisibilityChange);
 
 		if (devModeEnabled) {
@@ -500,6 +567,12 @@
 		<h1 class="text-3xl font-bold text-base-content">Developer Mode</h1>
 		<p class="text-sm text-base-content/70">Privacy-safe local diagnostics for Hive</p>
 	</div>
+
+	{#if initError}
+		<div class="alert alert-warning text-sm" role="status">
+			<span>{initError}</span>
+		</div>
+	{/if}
 
 	{#if !devModeEnabled}
 		<div class="card bg-base-100 shadow-md">
@@ -1109,30 +1182,14 @@
 							</button>
 							<button
 								class="btn btn-outline btn-sm"
-								onclick={async () => {
-									updatingSw = true;
-									try {
-										await updateServiceWorkerRegistration();
-									} finally {
-										updatingSw = false;
-									}
-									await refreshPushDiag();
-								}}
+								onclick={() => void handleUpdateServiceWorker()}
 								disabled={updatingSw}
 							>
 								Check update
 							</button>
 							<button
 								class="btn btn-outline btn-sm"
-								onclick={async () => {
-									activatingSw = true;
-									try {
-										await activateWaitingServiceWorker();
-									} finally {
-										activatingSw = false;
-									}
-									await refreshPushDiag();
-								}}
+								onclick={() => void handleActivateServiceWorker()}
 								disabled={activatingSw}
 							>
 								Activate update
