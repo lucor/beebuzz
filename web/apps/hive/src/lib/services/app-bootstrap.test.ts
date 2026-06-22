@@ -134,45 +134,50 @@ describe('bootstrapAppShell', () => {
 		expect(calls).toEqual(['register', 'checkPaired', 'getDeviceId']);
 	});
 
-	it('skips the final drain when post-pairing checks fail but keeps the listener attached', async () => {
+	it('runs final drain when post-pairing callback handles its own failure', async () => {
 		const calls: string[] = [];
 		const failure = new Error('post-checks failed');
 
-		await expect(
-			bootstrapAppShell({
-				registerServiceWorker: () => {
-					calls.push('register');
-					return Promise.resolve({ scope: '/' });
-				},
-				checkPaired: () => {
-					calls.push('checkPaired');
-					return Promise.resolve(true);
-				},
-				getDeviceId: () => {
-					calls.push('getDeviceId');
-					return Promise.resolve('dev-a');
-				},
-				activateNotifications: (deviceId) => {
-					calls.push(`activate:${deviceId}`);
-				},
-				attachServiceWorkerListeners: () => {
-					calls.push('attach');
-				},
-				migrateLegacyNotifications: (deviceId) => {
-					calls.push(`migrate:${deviceId}`);
-					return Promise.resolve();
-				},
-				loadPersistedNotifications: (phase) => {
-					calls.push(`load:${phase}`);
-					return Promise.resolve();
-				},
-				runPostPairingChecks: () => {
-					calls.push('postChecks');
-					return Promise.reject(failure);
+		const result = await bootstrapAppShell({
+			registerServiceWorker: () => {
+				calls.push('register');
+				return Promise.resolve({ scope: '/' });
+			},
+			checkPaired: () => {
+				calls.push('checkPaired');
+				return Promise.resolve(true);
+			},
+			getDeviceId: () => {
+				calls.push('getDeviceId');
+				return Promise.resolve('dev-a');
+			},
+			activateNotifications: (deviceId) => {
+				calls.push(`activate:${deviceId}`);
+			},
+			attachServiceWorkerListeners: () => {
+				calls.push('attach');
+			},
+			migrateLegacyNotifications: (deviceId) => {
+				calls.push(`migrate:${deviceId}`);
+				return Promise.resolve();
+			},
+			loadPersistedNotifications: (phase) => {
+				calls.push(`load:${phase}`);
+				return Promise.resolve();
+			},
+			// Simulates the real caller wrapping with runOptional: error is caught inside.
+			runPostPairingChecks: async () => {
+				calls.push('postChecks');
+				try {
+					await Promise.reject(failure);
+				} catch {
+					// handled
 				}
-			})
-		).rejects.toBe(failure);
+			}
+		});
 
+		expect(result.isPaired).toBe(true);
+		expect(result.deviceId).toBe('dev-a');
 		expect(calls).toEqual([
 			'register',
 			'checkPaired',
@@ -181,7 +186,8 @@ describe('bootstrapAppShell', () => {
 			'attach',
 			'migrate:dev-a',
 			'load:initial',
-			'postChecks'
+			'postChecks',
+			'load:final'
 		]);
 	});
 

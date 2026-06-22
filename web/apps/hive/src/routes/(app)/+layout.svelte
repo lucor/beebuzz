@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
-	import { goto } from '$app/navigation';
+	import { goto, preloadCode } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
 	import { BeeBuzzLogo } from '@beebuzz/shared/components';
@@ -23,6 +23,7 @@
 	import { health } from '@beebuzz/shared/stores/health.svelte';
 	import { toast } from '@beebuzz/shared/stores';
 	import { paired } from '$lib/stores/paired.svelte';
+	import { connectivity } from '$lib/stores/connectivity.svelte';
 	import { notificationsStore } from '$lib/stores/notifications.svelte';
 	import { getVapidKey, registerServiceWorker } from '$lib/services/push';
 	import { deviceKeysRepository } from '$lib/services/device-keys-repository';
@@ -53,6 +54,15 @@
 
 	const GITHUB_RELEASES_URL = 'https://codeberg.org/beebuzz/cli/releases';
 	const STARTUP_TIMEOUT_MS = 10000;
+
+	/** Runs a background task with a logged warning instead of throwing. */
+	const runOptional = async (label: string, task: () => Promise<unknown>): Promise<void> => {
+		try {
+			await task();
+		} catch (error) {
+			logger.warn(`${label} failed (non-blocking)`, { error: String(error) });
+		}
+	};
 
 	let { children }: { children: import('svelte').Snippet } = $props();
 
@@ -209,9 +219,8 @@
 	const handleVisibilityChange = () => {
 		if (document.visibilityState === 'visible' && ready) {
 			void notificationsStore.loadFromIndexedDB();
-			void syncNotificationsFromBackend();
 			startPolling();
-			void checkForServiceWorkerUpdate();
+			void refreshRemoteState();
 		} else {
 			stopPolling();
 		}
@@ -225,6 +234,7 @@
 	};
 
 	const syncNotificationsFromBackend = async () => {
+		if (!connectivity.online) return;
 		try {
 			const credentials = await deviceKeysRepository.getDeviceCredentials();
 			if (!credentials) return;
@@ -232,6 +242,104 @@
 		} catch (error) {
 			logger.warn('Notification HTTPS sync failed', { error: String(error) });
 		}
+	};
+
+	/** Background reconcile — avoids blocking the shell when the backend is unreachable. */
+	const backgroundReconcilePushState = async () => {
+		if (!connectivity.online) return;
+		try {
+			const pushState = await withTimeout(
+				reconcilePushState(),
+				STARTUP_TIMEOUT_MS,
+				'Push state validation'
+			);
+			pushStateResult = pushState;
+
+			if (pushState.status === PUSH_STATE_STATUS.OK) return;
+			if (pushState.status === PUSH_STATE_STATUS.RECONNECT_REQUIRED) return;
+			if (pushState.status === PUSH_STATE_STATUS.TRANSIENT_BACKEND_ERROR) return;
+
+			// Local-only repair — key lost or subscription expired.
+			await cleanupStalePairingState();
+			paired.clear();
+			toast.info(
+				pushState.reason === LOCAL_REPAIR_REQUIRED_REASON.KEYS_LOST
+					? 'Device key missing. Please reconnect this device.'
+					: 'Push subscription expired. Please reconnect.'
+			);
+			await goto('/pair');
+		} catch (error) {
+			logger.warn('Push state reconcile failed (non-blocking)', { error: String(error) });
+		}
+	};
+
+	/** Called when the browser transitions from offline → online. */
+	const handleOnlineEvent = () => {
+		if (!ready) return;
+		safeLogger.log(HIVE_DIAGNOSTIC.APP_STARTED, 'Connection restored, refreshing state');
+		void refreshRemoteState();
+	};
+
+	/** Soft-failing wrapper around checkForServiceWorkerUpdate. */
+	const refreshServiceWorkerUpdate = async () => {
+		try {
+			const registration = await navigator.serviceWorker.getRegistration();
+			if (!registration) {
+				updateAvailable = false;
+				activatingUpdate = false;
+				return;
+			}
+			await registration.update();
+			syncWaitingWorker(registration);
+		} catch (error) {
+			logger.warn('SW update check failed (non-blocking)', { error: String(error) });
+		}
+	};
+
+	/** Preloads route chunks that should remain available when the device goes offline. */
+	const preloadOfflineRoutes = async () => {
+		if (!connectivity.online) return;
+		await runOptional('Offline route preload', async () => {
+			await Promise.all([preloadCode(resolve('/device')), preloadCode(resolve('/developer'))]);
+		});
+	};
+
+	/**
+	 * Post-pairing startup checks — local SW bookkeeping first, then
+	 * optional VAPID/health/update when online.
+	 */
+	const runRemoteStartupChecks = async (registration: ServiceWorkerRegistration) => {
+		watchServiceWorkerRegistration(registration);
+		safeLogger.log(
+			HIVE_DIAGNOSTIC.SERVICE_WORKER_REGISTERED,
+			'Service worker registered and active'
+		);
+		syncWaitingWorker(registration);
+
+		if (!connectivity.online) return;
+
+		await runOptional('VAPID key fetch', () =>
+			withTimeout(getVapidKey(), STARTUP_TIMEOUT_MS, 'VAPID key fetch')
+		);
+
+		if (health.status === 'unknown' && !health.loading) {
+			await runOptional('Health check', () =>
+				withTimeout(health.check(), STARTUP_TIMEOUT_MS, 'Health check')
+			);
+		}
+
+		await refreshServiceWorkerUpdate();
+		await preloadOfflineRoutes();
+	};
+
+	/** Refreshes remote state after the shell is ready: health, push reconcile, sync, SW update. */
+	const refreshRemoteState = () => {
+		if (!connectivity.online) return;
+		void health.check();
+		void backgroundReconcilePushState();
+		void syncNotificationsFromBackend();
+		void refreshServiceWorkerUpdate();
+		void preloadOfflineRoutes();
 	};
 
 	const handleServiceWorkerControllerChange = () => {
@@ -264,18 +372,6 @@
 				}
 			});
 		});
-	};
-
-	const checkForServiceWorkerUpdate = async () => {
-		const registration = await navigator.serviceWorker.getRegistration();
-		if (!registration) {
-			updateAvailable = false;
-			activatingUpdate = false;
-			return;
-		}
-
-		await registration.update();
-		syncWaitingWorker(registration);
 	};
 
 	const activateServiceWorkerUpdate = async () => {
@@ -355,17 +451,9 @@
 							: 'Final notification cache load'
 					),
 				runPostPairingChecks: async (registration) => {
-					await withTimeout(getVapidKey(), STARTUP_TIMEOUT_MS, 'VAPID key fetch');
-					if (health.status === 'unknown' && !health.loading) {
-						await withTimeout(health.check(), STARTUP_TIMEOUT_MS, 'Health check');
-					}
-					watchServiceWorkerRegistration(registration);
-					safeLogger.log(
-						HIVE_DIAGNOSTIC.SERVICE_WORKER_REGISTERED,
-						'Service worker registered and active'
+					await runOptional('Post-pairing startup checks', () =>
+						runRemoteStartupChecks(registration)
 					);
-					await withTimeout(registration.update(), STARTUP_TIMEOUT_MS, 'Service worker update');
-					syncWaitingWorker(registration);
 				}
 			});
 
@@ -379,34 +467,13 @@
 				return;
 			}
 
-			// Ensure SW is active and subscription is healthy
-			const pushState = await withTimeout(
-				reconcilePushState(),
-				STARTUP_TIMEOUT_MS,
-				'Push state validation'
-			);
-			pushStateResult = pushState;
-			if (
-				pushState.status === PUSH_STATE_STATUS.RECONNECT_REQUIRED ||
-				pushState.status === PUSH_STATE_STATUS.TRANSIENT_BACKEND_ERROR
-			) {
-				// Let the app boot so the device page can explain the problem and offer recovery.
-			} else if (pushState.status !== PUSH_STATE_STATUS.OK) {
-				await cleanupStalePairingState();
-				paired.clear();
-				toast.info(
-					pushState.reason === LOCAL_REPAIR_REQUIRED_REASON.KEYS_LOST
-						? 'Device key missing. Please reconnect this device.'
-						: 'Push subscription expired. Please reconnect.'
-				);
-				await goto('/pair');
-				return;
-			}
-
+			// Local cache loaded — shell is ready immediately.
 			ready = true;
 			safeLogger.log(HIVE_DIAGNOSTIC.APP_STARTED, 'Hive app ready');
-			void syncNotificationsFromBackend();
 			startPolling();
+
+			// Remote state refresh runs asynchronously; defers to handleOnlineEvent when offline.
+			void refreshRemoteState();
 		} catch (error: unknown) {
 			startupError = formatStartupError(error);
 			logger.error('Hive app bootstrap failed', { error: String(error) });
@@ -422,7 +489,9 @@
 	};
 
 	onMount(() => {
+		connectivity.init();
 		document.addEventListener('visibilitychange', handleVisibilityChange);
+		window.addEventListener('online', handleOnlineEvent);
 		void bootstrapApp();
 	});
 
@@ -436,7 +505,9 @@
 			handleServiceWorkerControllerChange
 		);
 		document.removeEventListener('visibilitychange', handleVisibilityChange);
+		window.removeEventListener('online', handleOnlineEvent);
 		stopPolling();
+		connectivity.destroy();
 		stopConsoleDiagnosticsCapture();
 	});
 
@@ -450,6 +521,10 @@
 	type DeviceStatusTone = 'healthy' | 'check' | 'offline' | 'checking';
 
 	const navbarStatusTone = $derived.by<DeviceStatusTone>(() => {
+		if (!connectivity.online) {
+			return 'offline';
+		}
+
 		if (paired.loading || health.loading || health.status === 'unknown') {
 			return 'checking';
 		}

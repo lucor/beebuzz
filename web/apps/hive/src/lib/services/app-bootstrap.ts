@@ -25,9 +25,9 @@ export interface AppBootstrapResult<TRegistration> {
  *    the service worker bridge is attached or IndexedDB is drained.
  * 3. Legacy IndexedDB records (created before per-device scoping) are stamped
  *    with the current deviceId or removed if they belong to a different device.
- * 4. A final drain runs after slower paired-device checks, closing the residual
- *    window before polling starts. If those checks reject, the final drain is
- *    skipped and the caller owns listener teardown.
+ * 4. A final drain runs after post-pairing checks, closing the residual
+ *    window before polling starts. Callers that need offline-first startup
+ *    should pass a non-throwing `runPostPairingChecks` callback.
  *
  * Early-return contracts:
  * - `checkPaired` resolves to `false`: no further work runs and the caller is

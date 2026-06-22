@@ -3,6 +3,7 @@
 	import { page } from '$app/state';
 	import { inboxUiStore } from '$lib/stores/inbox_ui.svelte';
 	import { notificationsStore, groupByDay } from '$lib/stores/notifications.svelte';
+	import { connectivity } from '$lib/stores/connectivity.svelte';
 	import NotificationCard from '$lib/components/notification_card.svelte';
 	import InboxHeader from '$lib/components/inbox_header.svelte';
 	import TopicsPanel from '$lib/components/topics_panel.svelte';
@@ -202,10 +203,22 @@
 			<div class="flex justify-center mb-4">
 				<Bell size={64} class="text-base-content/50" />
 			</div>
-			<h3 class="text-lg font-bold text-base-content">No notifications yet</h3>
-			<p class="text-base-content/60">You'll see new messages here when they arrive</p>
+			<h3 class="text-lg font-bold text-base-content">
+				{connectivity.online ? 'No notifications yet' : 'No saved messages on this device'}
+			</h3>
+			<p class="text-base-content/60">
+				{connectivity.online
+					? "You'll see new messages here when they arrive"
+					: 'Saved messages will appear here after this device has received one.'}
+			</p>
 		</div>
 	{:else}
+		{#if !connectivity.online}
+			<div class="alert alert-soft mb-4 border-base-300 bg-base-200 text-sm" role="status">
+				<span>Offline. Showing messages saved on this device.</span>
+			</div>
+		{/if}
+
 		<div class="grid gap-6 lg:grid-cols-[240px_minmax(0,1fr)]">
 			<!-- Desktop: topic rail -->
 			{#if topics.length > 0}
