@@ -33,6 +33,10 @@ vi.mock('@beebuzz/shared/api', () => ({
 	}
 }));
 
+vi.mock('@beebuzz/shared/config', () => ({
+	API_URL: 'https://api.example.test'
+}));
+
 vi.mock('@beebuzz/shared/logger', () => ({
 	logger: {
 		warn: loggerWarn
