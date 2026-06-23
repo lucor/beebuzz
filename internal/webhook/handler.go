@@ -110,7 +110,7 @@ func (h *Handler) CreateWebhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tokenStr, webhookID, err := h.service.CreateWebhook(r.Context(), userCtx.ID, req.Name, req.Description, req.PayloadType, req.TitlePath, req.BodyPath, req.Priority, req.Topics)
+	tokenStr, webhookID, err := h.service.CreateWebhook(r.Context(), userCtx.ID, req.Name, req.Description, req.PayloadType, req.TitlePath, req.BodyPath, req.Priority, req.TitleSource, req.TitleValue, req.Topics)
 	if err != nil {
 		if errors.Is(err, ErrAtLeastOneTopic) {
 			core.WriteError(w, http.StatusUnprocessableEntity, "at_least_one_topic", err.Error())
@@ -158,7 +158,7 @@ func (h *Handler) UpdateWebhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.service.UpdateWebhook(r.Context(), userCtx.ID, webhookID, req.Name, req.Description, req.PayloadType, req.TitlePath, req.BodyPath, req.Priority, req.Topics); err != nil {
+	if err := h.service.UpdateWebhook(r.Context(), userCtx.ID, webhookID, req.Name, req.Description, req.PayloadType, req.TitlePath, req.BodyPath, req.Priority, req.TitleSource, req.TitleValue, req.Topics); err != nil {
 		if errors.Is(err, ErrWebhookNotFound) {
 			core.WriteNotFound(w, "webhook_not_found", "Webhook not found")
 			return
@@ -307,7 +307,7 @@ func (h *Handler) FinalizeInspect(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rawToken, webhookID, err := h.service.FinalizeInspect(r.Context(), userCtx.ID, req.TitlePath, req.BodyPath)
+	rawToken, webhookID, err := h.service.FinalizeInspect(r.Context(), userCtx.ID, req.TitlePath, req.BodyPath, req.TitleSource, req.TitleValue)
 	if err != nil {
 		if errors.Is(err, ErrInspectSessionNotFound) {
 			core.WriteNotFound(w, "inspect_session_not_found", "Inspect session not found")

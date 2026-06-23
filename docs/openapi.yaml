@@ -1074,7 +1074,8 @@ paths:
       description: |
         Creates a temporary inspect session that captures the next webhook payload
         without dispatching notifications. Use this to discover the correct
-        title_path and optional body_path values for custom webhooks.
+        title_path and optional body_path values, or set a fixed title with
+        title_value for custom webhooks.
       security:
         - cookieAuth: []
       requestBody:
@@ -1134,9 +1135,12 @@ paths:
       x-audience: [site]
       x-stability: stable
       description: |
-        Creates the actual webhook with the specified title_path and optional body_path.
-        The payload is validated against these paths before creating the webhook.
-        Returns the new webhook token (one-time reveal).
+        Creates the actual webhook with the specified title source, optional
+        title_path, optional title_value, and optional body_path. When
+        title_source is "path", the payload is validated against title_path
+        before creating the webhook. When "static", title_value is used as
+        the fixed notification title. Returns the new webhook token
+        (one-time reveal).
       security:
         - cookieAuth: []
       requestBody:
@@ -1965,6 +1969,14 @@ components:
           type: string
         body_path:
           type: string
+        title_source:
+          type: string
+          enum: [path, static]
+          default: path
+          description: Present only for custom webhooks.
+        title_value:
+          type: string
+          description: Present only for custom webhooks with title_source set to "static".
         priority:
           type: string
           enum: [normal, high]
@@ -2039,7 +2051,7 @@ components:
             type: string
     CreateWebhookRequestCustom:
       type: object
-      required: [name, payload_type, title_path, topics]
+      required: [name, payload_type, topics]
       properties:
         name:
           type: string
@@ -2051,11 +2063,19 @@ components:
         payload_type:
           type: string
           const: custom
+        title_source:
+          type: string
+          enum: [path, static]
+          default: path
+          description: When "path", title_path is required and title must be extracted from the payload. When "static", title_value is required and used as the fixed notification title.
         title_path:
           type: string
-          minLength: 1
           pattern: '^[A-Za-z0-9_]+(?:\[[0-9]+\])*(?:\.[A-Za-z0-9_]+(?:\[[0-9]+\])*)*$'
-          description: Dot-separated JSON path with optional numeric array indexes.
+          description: Dot-separated JSON path with optional numeric array indexes. Required when title_source is "path".
+        title_value:
+          type: string
+          maxLength: 64
+          description: Fixed notification title. Required when title_source is "static".
         body_path:
           type: string
           pattern: '^(?:|[A-Za-z0-9_]+(?:\[[0-9]+\])*(?:\.[A-Za-z0-9_]+(?:\[[0-9]+\])*)*)$'
@@ -2098,7 +2118,7 @@ components:
             type: string
     UpdateWebhookRequestCustom:
       type: object
-      required: [name, payload_type, title_path, topics]
+      required: [name, payload_type, topics]
       properties:
         name:
           type: string
@@ -2110,11 +2130,19 @@ components:
         payload_type:
           type: string
           const: custom
+        title_source:
+          type: string
+          enum: [path, static]
+          default: path
+          description: When "path", title_path is required and title must be extracted from the payload. When "static", title_value is required and used as the fixed notification title.
         title_path:
           type: string
-          minLength: 1
           pattern: '^[A-Za-z0-9_]+(?:\[[0-9]+\])*(?:\.[A-Za-z0-9_]+(?:\[[0-9]+\])*)*$'
-          description: Dot-separated JSON path with optional numeric array indexes.
+          description: Dot-separated JSON path with optional numeric array indexes. Required when title_source is "path".
+        title_value:
+          type: string
+          maxLength: 64
+          description: Fixed notification title. Required when title_source is "static".
         body_path:
           type: string
           pattern: '^(?:|[A-Za-z0-9_]+(?:\[[0-9]+\])*(?:\.[A-Za-z0-9_]+(?:\[[0-9]+\])*)*)$'
@@ -2194,13 +2222,20 @@ components:
           format: date-time
     FinalizeInspectRequest:
       type: object
-      required: [title_path]
       properties:
+        title_source:
+          type: string
+          enum: [path, static]
+          default: path
+          description: When "path", title_path is required and title must be extracted from the captured payload. When "static", title_value is required and used as the fixed notification title.
         title_path:
           type: string
-          minLength: 1
           pattern: '^[A-Za-z0-9_]+(?:\[[0-9]+\])*(?:\.[A-Za-z0-9_]+(?:\[[0-9]+\])*)*$'
-          description: Dot-separated JSON path with optional numeric array indexes for extracting title from payload.
+          description: Dot-separated JSON path with optional numeric array indexes for extracting title from payload. Required when title_source is "path".
+        title_value:
+          type: string
+          maxLength: 64
+          description: Fixed notification title. Required when title_source is "static".
         body_path:
           type: string
           pattern: '^(?:|[A-Za-z0-9_]+(?:\[[0-9]+\])*(?:\.[A-Za-z0-9_]+(?:\[[0-9]+\])*)*)$'

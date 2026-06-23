@@ -189,6 +189,8 @@ export interface Webhook {
 	payload_type: 'beebuzz' | 'custom';
 	title_path?: string;
 	body_path?: string;
+	title_source?: 'path' | 'static';
+	title_value?: string;
 	priority: 'normal' | 'high';
 	created_at: string;
 	last_used_at?: string;
@@ -281,6 +283,8 @@ export const accountApi = {
 		titlePath: string = '',
 		bodyPath: string = '',
 		priority: 'normal' | 'high' = 'normal',
+		titleSource: 'path' | 'static' = 'path',
+		titleValue: string = '',
 		topics: string[]
 	) => {
 		const payload: Record<string, unknown> = {
@@ -291,8 +295,10 @@ export const accountApi = {
 			priority
 		};
 		if (payloadType === 'custom') {
+			payload.title_source = titleSource;
 			payload.title_path = titlePath;
 			payload.body_path = bodyPath;
+			payload.title_value = titleValue;
 		}
 		return api.post<CreatedWebhook>('/webhooks', payload);
 	},
@@ -305,6 +311,8 @@ export const accountApi = {
 		titlePath: string,
 		bodyPath: string,
 		priority: 'normal' | 'high',
+		titleSource: 'path' | 'static',
+		titleValue: string,
 		topics: string[]
 	) => {
 		const payload: Record<string, unknown> = {
@@ -315,8 +323,10 @@ export const accountApi = {
 			priority
 		};
 		if (payloadType === 'custom') {
+			payload.title_source = titleSource;
 			payload.title_path = titlePath;
 			payload.body_path = bodyPath;
+			payload.title_value = titleValue;
 		}
 		return api.patch<void>(`/webhooks/${id}`, payload);
 	},
@@ -344,9 +354,16 @@ export const accountApi = {
 
 	getInspectSession: () => api.get<InspectSessionStatus>('/webhooks/inspect'),
 
-	finalizeInspect: (titlePath: string, bodyPath: string = '') =>
+	finalizeInspect: (
+		titlePath: string,
+		bodyPath: string = '',
+		titleSource: 'path' | 'static' = 'path',
+		titleValue: string = ''
+	) =>
 		api.post<CreatedWebhook>('/webhooks/inspect/finalize', {
+			title_source: titleSource,
 			title_path: titlePath,
+			title_value: titleValue,
 			body_path: bodyPath
 		})
 };

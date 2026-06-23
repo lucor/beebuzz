@@ -256,7 +256,7 @@ func TestReceiveReturnsPartialStatusWhenSomeDispatchesFail(t *testing.T) {
 	svc := NewService(repo, inspectStore, dispatcher, topicSvc, slog.New(slog.NewTextHandler(io.Discard, nil)))
 	handler := NewHandler(svc, "https://hook.example.com", slog.New(slog.NewTextHandler(io.Discard, nil)))
 
-	rawToken, _, err := svc.CreateWebhook(ctx, user.ID, "hook", "", PayloadTypeBeebuzz, "", "", "normal", []string{firstTopic.ID, secondTopic.ID})
+	rawToken, _, err := svc.CreateWebhook(ctx, user.ID, "hook", "", PayloadTypeBeebuzz, "", "", "normal", TitleSourcePath, "", []string{firstTopic.ID, secondTopic.ID})
 	if err != nil {
 		t.Fatalf("CreateWebhook: %v", err)
 	}
@@ -316,7 +316,7 @@ func TestReceiveReturnsBadGatewayWhenAllDispatchesFail(t *testing.T) {
 	svc := NewService(repo, inspectStore, dispatcher, topicSvc, slog.New(slog.NewTextHandler(io.Discard, nil)))
 	handler := NewHandler(svc, "https://hook.example.com", slog.New(slog.NewTextHandler(io.Discard, nil)))
 
-	rawToken, _, err := svc.CreateWebhook(ctx, user.ID, "hook", "", PayloadTypeBeebuzz, "", "", "normal", []string{firstTopic.ID, secondTopic.ID})
+	rawToken, _, err := svc.CreateWebhook(ctx, user.ID, "hook", "", PayloadTypeBeebuzz, "", "", "normal", TitleSourcePath, "", []string{firstTopic.ID, secondTopic.ID})
 	if err != nil {
 		t.Fatalf("CreateWebhook: %v", err)
 	}

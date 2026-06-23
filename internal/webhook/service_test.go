@@ -221,6 +221,146 @@ func TestExtractPayload_Custom(t *testing.T) {
 	}
 }
 
+func TestExtractPayload_CustomStaticTitleWithBodyPath(t *testing.T) {
+	svc := newTestService()
+	wh := &Webhook{
+		PayloadType: PayloadTypeCustom,
+		TitleSource: TitleSourceStatic,
+		TitleValue:  "Slack Alert",
+		BodyPath:    "text",
+	}
+
+	title, msg, err := svc.extractPayload(wh, []byte(`{"text":"Build completed"}`))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if title != "Slack Alert" {
+		t.Errorf("title: want %q, got %q", "Slack Alert", title)
+	}
+	if msg != "Build completed" {
+		t.Errorf("message: want %q, got %q", "Build completed", msg)
+	}
+}
+
+func TestExtractPayload_CustomStaticTitleWithoutBodyPath(t *testing.T) {
+	svc := newTestService()
+	wh := &Webhook{
+		PayloadType: PayloadTypeCustom,
+		TitleSource: TitleSourceStatic,
+		TitleValue:  "Fixed Title",
+		BodyPath:    "",
+	}
+
+	title, msg, err := svc.extractPayload(wh, []byte(`{"some":"payload"}`))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if title != "Fixed Title" {
+		t.Errorf("title: want %q, got %q", "Fixed Title", title)
+	}
+	if msg != "" {
+		t.Errorf("message: want empty, got %q", msg)
+	}
+}
+
+func TestExtractPayload_CustomStaticTitleRejectsEmptyTitleValue(t *testing.T) {
+	svc := newTestService()
+	wh := &Webhook{
+		PayloadType: PayloadTypeCustom,
+		TitleSource: TitleSourceStatic,
+		TitleValue:  "",
+	}
+
+	_, _, err := svc.extractPayload(wh, []byte(`{"text":"Build completed"}`))
+	if !errors.Is(err, ErrPayloadExtraction) {
+		t.Fatalf("want error %v, got %v", ErrPayloadExtraction, err)
+	}
+}
+
+func TestExtractPayload_CustomPathTitleIgnoresTitleValue(t *testing.T) {
+	svc := newTestService()
+	wh := &Webhook{
+		PayloadType: PayloadTypeCustom,
+		TitleSource: TitleSourcePath,
+		TitlePath:   "title",
+		TitleValue:  "should be ignored at service level but validated at request level",
+	}
+
+	title, msg, err := svc.extractPayload(wh, []byte(`{"title":"Hello"}`))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if title != "Hello" {
+		t.Errorf("title: want %q, got %q", "Hello", title)
+	}
+	if msg != "" {
+		t.Errorf("message: want empty, got %q", msg)
+	}
+}
+
+func TestExtractPayload_CustomStaticDefaultsToPathWhenEmpty(t *testing.T) {
+	svc := newTestService()
+	wh := &Webhook{
+		PayloadType: PayloadTypeCustom,
+		TitleSource: "", // empty should default to path behavior
+		TitlePath:   "title",
+		BodyPath:    "body",
+	}
+
+	title, msg, err := svc.extractPayload(wh, []byte(`{"title":"Hello","body":"World"}`))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if title != "Hello" {
+		t.Errorf("title: want %q, got %q", "Hello", title)
+	}
+	if msg != "World" {
+		t.Errorf("message: want %q, got %q", "World", msg)
+	}
+}
+
+func TestExtractPayload_CustomPathTitleWithBodyPath(t *testing.T) {
+	svc := newTestService()
+	wh := &Webhook{
+		PayloadType: PayloadTypeCustom,
+		TitleSource: TitleSourcePath,
+		TitlePath:   "title",
+		BodyPath:    "text",
+	}
+
+	title, msg, err := svc.extractPayload(wh, []byte(`{"title":"Alert","text":"Something happened"}`))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if title != "Alert" {
+		t.Errorf("title: want %q, got %q", "Alert", title)
+	}
+	if msg != "Something happened" {
+		t.Errorf("message: want %q, got %q", "Something happened", msg)
+	}
+}
+
+func TestExtractPayload_CustomStaticTitleIgnoresPayload(t *testing.T) {
+	svc := newTestService()
+	wh := &Webhook{
+		PayloadType: PayloadTypeCustom,
+		TitleSource: TitleSourceStatic,
+		TitleValue:  "Fixed",
+		BodyPath:    "",
+	}
+
+	title, msg, err := svc.extractPayload(wh, []byte(`{"title":"Ignored"}`))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if title != "Fixed" {
+		t.Errorf("title: want %q, got %q", "Fixed", title)
+	}
+	if msg != "" {
+		t.Errorf("message: want empty, got %q", msg)
+	}
+}
+
 func TestExtractPayload_UnsupportedType(t *testing.T) {
 	svc := newTestService()
 	wh := &Webhook{PayloadType: PayloadType("unknown")}
@@ -324,7 +464,7 @@ func TestFinalizeInspectCreatesTitleOnlyWebhook(t *testing.T) {
 		t.Fatalf("CaptureInspectPayload() captured = %v, error = %v, want true nil", captured, err)
 	}
 
-	_, webhookID, err := svc.FinalizeInspect(ctx, user.ID, "title", "")
+	_, webhookID, err := svc.FinalizeInspect(ctx, user.ID, "title", "", TitleSourcePath, "")
 	if err != nil {
 		t.Fatalf("FinalizeInspect() error = %v, want nil", err)
 	}
@@ -341,6 +481,145 @@ func TestFinalizeInspectCreatesTitleOnlyWebhook(t *testing.T) {
 	}
 	if wh.TitlePath != "title" {
 		t.Fatalf("title_path = %q, want title", wh.TitlePath)
+	}
+	if wh.BodyPath != "" {
+		t.Fatalf("body_path = %q, want empty", wh.BodyPath)
+	}
+}
+
+func TestFinalizeInspectWithStaticTitle(t *testing.T) {
+	db := testutil.NewDB(t)
+	ctx := context.Background()
+
+	authRepo := auth.NewRepository(db)
+	topicRepo := topic.NewRepository(db)
+	repo := NewRepository(db)
+	topicSvc := topic.NewService(topicRepo, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	inspectStore := NewInspectStore()
+	svc := NewService(repo, inspectStore, noopDispatcher{}, topicSvc, slog.New(slog.NewTextHandler(io.Discard, nil)))
+
+	user, _, err := authRepo.GetOrCreateUser(ctx, "inspect-static@example.com")
+	if err != nil {
+		t.Fatalf("GetOrCreateUser: %v", err)
+	}
+	tp, err := topicRepo.Create(ctx, user.ID, "alerts", "")
+	if err != nil {
+		t.Fatalf("topic.Create: %v", err)
+	}
+	rawInspectToken, _, err := inspectStore.Create(user.ID, "inspect", "desc", push.PriorityNormal, []string{tp.ID})
+	if err != nil {
+		t.Fatalf("inspectStore.Create: %v", err)
+	}
+	if captured, err := svc.CaptureInspectPayload(rawInspectToken, []byte(`{"text":"Build completed"}`)); err != nil || !captured {
+		t.Fatalf("CaptureInspectPayload() captured = %v, error = %v, want true nil", captured, err)
+	}
+
+	_, webhookID, err := svc.FinalizeInspect(ctx, user.ID, "", "text", TitleSourceStatic, "Slack Alert")
+	if err != nil {
+		t.Fatalf("FinalizeInspect() error = %v, want nil", err)
+	}
+
+	wh, err := repo.GetByID(ctx, user.ID, webhookID)
+	if err != nil {
+		t.Fatalf("GetByID: %v", err)
+	}
+	if wh == nil {
+		t.Fatal("GetByID() = nil, want webhook")
+	}
+	if wh.PayloadType != PayloadTypeCustom {
+		t.Fatalf("payload_type = %q, want %q", wh.PayloadType, PayloadTypeCustom)
+	}
+	if wh.TitleSource != TitleSourceStatic {
+		t.Fatalf("title_source = %q, want %q", wh.TitleSource, TitleSourceStatic)
+	}
+	if wh.TitleValue != "Slack Alert" {
+		t.Fatalf("title_value = %q, want %q", wh.TitleValue, "Slack Alert")
+	}
+	if wh.TitlePath != "" {
+		t.Fatalf("title_path = %q, want empty", wh.TitlePath)
+	}
+	if wh.BodyPath != "text" {
+		t.Fatalf("body_path = %q, want text", wh.BodyPath)
+	}
+}
+
+func TestFinalizeInspectStaticTitleValidatesBodyPathAgainstPayload(t *testing.T) {
+	db := testutil.NewDB(t)
+	ctx := context.Background()
+
+	authRepo := auth.NewRepository(db)
+	topicRepo := topic.NewRepository(db)
+	repo := NewRepository(db)
+	topicSvc := topic.NewService(topicRepo, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	inspectStore := NewInspectStore()
+	svc := NewService(repo, inspectStore, noopDispatcher{}, topicSvc, slog.New(slog.NewTextHandler(io.Discard, nil)))
+
+	user, _, err := authRepo.GetOrCreateUser(ctx, "inspect-static-body@example.com")
+	if err != nil {
+		t.Fatalf("GetOrCreateUser: %v", err)
+	}
+	tp, err := topicRepo.Create(ctx, user.ID, "alerts", "")
+	if err != nil {
+		t.Fatalf("topic.Create: %v", err)
+	}
+	rawInspectToken, _, err := inspectStore.Create(user.ID, "inspect", "desc", push.PriorityNormal, []string{tp.ID})
+	if err != nil {
+		t.Fatalf("inspectStore.Create: %v", err)
+	}
+	if captured, err := svc.CaptureInspectPayload(rawInspectToken, []byte(`{"text":"Build completed"}`)); err != nil || !captured {
+		t.Fatalf("CaptureInspectPayload() captured = %v, error = %v, want true nil", captured, err)
+	}
+
+	_, _, err = svc.FinalizeInspect(ctx, user.ID, "", "missing_field", TitleSourceStatic, "Slack Alert")
+	if !errors.Is(err, ErrPayloadExtraction) {
+		t.Fatalf("FinalizeInspect() error = %v, want %v", err, ErrPayloadExtraction)
+	}
+}
+
+func TestFinalizeInspectStaticTitleDoesNotRequireTitlePath(t *testing.T) {
+	db := testutil.NewDB(t)
+	ctx := context.Background()
+
+	authRepo := auth.NewRepository(db)
+	topicRepo := topic.NewRepository(db)
+	repo := NewRepository(db)
+	topicSvc := topic.NewService(topicRepo, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	inspectStore := NewInspectStore()
+	svc := NewService(repo, inspectStore, noopDispatcher{}, topicSvc, slog.New(slog.NewTextHandler(io.Discard, nil)))
+
+	user, _, err := authRepo.GetOrCreateUser(ctx, "inspect-static-notitlepath@example.com")
+	if err != nil {
+		t.Fatalf("GetOrCreateUser: %v", err)
+	}
+	tp, err := topicRepo.Create(ctx, user.ID, "alerts", "")
+	if err != nil {
+		t.Fatalf("topic.Create: %v", err)
+	}
+	rawInspectToken, _, err := inspectStore.Create(user.ID, "inspect", "desc", push.PriorityNormal, []string{tp.ID})
+	if err != nil {
+		t.Fatalf("inspectStore.Create: %v", err)
+	}
+	if captured, err := svc.CaptureInspectPayload(rawInspectToken, []byte(`{"text":"Build completed"}`)); err != nil || !captured {
+		t.Fatalf("CaptureInspectPayload() captured = %v, error = %v, want true nil", captured, err)
+	}
+
+	_, webhookID, err := svc.FinalizeInspect(ctx, user.ID, "", "", TitleSourceStatic, "Fixed Title")
+	if err != nil {
+		t.Fatalf("FinalizeInspect() error = %v, want nil", err)
+	}
+
+	wh, err := repo.GetByID(ctx, user.ID, webhookID)
+	if err != nil {
+		t.Fatalf("GetByID: %v", err)
+	}
+	if wh == nil {
+		t.Fatal("GetByID() = nil, want webhook")
+	}
+	if wh.TitleSource != TitleSourceStatic {
+		t.Fatalf("title_source = %q, want %q", wh.TitleSource, TitleSourceStatic)
+	}
+	if wh.TitleValue != "Fixed Title" {
+		t.Fatalf("title_value = %q, want %q", wh.TitleValue, "Fixed Title")
 	}
 	if wh.BodyPath != "" {
 		t.Fatalf("body_path = %q, want empty", wh.BodyPath)
@@ -374,7 +653,7 @@ func TestFinalizeInspectRejectsEmptyTitle(t *testing.T) {
 		t.Fatalf("CaptureInspectPayload() captured = %v, error = %v, want true nil", captured, err)
 	}
 
-	_, _, err = svc.FinalizeInspect(ctx, user.ID, "title", "")
+	_, _, err = svc.FinalizeInspect(ctx, user.ID, "title", "", TitleSourcePath, "")
 	if !errors.Is(err, ErrPayloadExtraction) {
 		t.Fatalf("FinalizeInspect() error = %v, want %v", err, ErrPayloadExtraction)
 	}
@@ -443,7 +722,7 @@ func TestReceive_SetsLastUsedAt(t *testing.T) {
 	svc := newTestServiceWithDeps(repo, noopDispatcher{}, topicSvc)
 
 	// Create a webhook through the service.
-	rawToken, webhookID, err := svc.CreateWebhook(ctx, userID, "test-wh", "", PayloadTypeBeebuzz, "", "", "normal", []string{topicID})
+	rawToken, webhookID, err := svc.CreateWebhook(ctx, userID, "test-wh", "", PayloadTypeBeebuzz, "", "", "normal", TitleSourcePath, "", []string{topicID})
 	if err != nil {
 		t.Fatalf("failed to create webhook: %v", err)
 	}
@@ -505,7 +784,7 @@ func TestReceiveReturnsDeliveredResponseWhenAllDispatchesSucceed(t *testing.T) {
 	}
 	svc := newTestServiceWithDeps(repo, dispatcher, topicSvc)
 
-	rawToken, _, err := svc.CreateWebhook(ctx, user.ID, "hook", "", PayloadTypeBeebuzz, "", "", "normal", []string{firstTopic.ID, secondTopic.ID})
+	rawToken, _, err := svc.CreateWebhook(ctx, user.ID, "hook", "", PayloadTypeBeebuzz, "", "", "normal", TitleSourcePath, "", []string{firstTopic.ID, secondTopic.ID})
 	if err != nil {
 		t.Fatalf("CreateWebhook: %v", err)
 	}
@@ -560,7 +839,7 @@ func TestReceiveReturnsPartialResponseWhenSomeDispatchesFail(t *testing.T) {
 	}
 	svc := newTestServiceWithDeps(repo, dispatcher, topicSvc)
 
-	rawToken, _, err := svc.CreateWebhook(ctx, user.ID, "hook", "", PayloadTypeBeebuzz, "", "", "normal", []string{firstTopic.ID, secondTopic.ID})
+	rawToken, _, err := svc.CreateWebhook(ctx, user.ID, "hook", "", PayloadTypeBeebuzz, "", "", "normal", TitleSourcePath, "", []string{firstTopic.ID, secondTopic.ID})
 	if err != nil {
 		t.Fatalf("CreateWebhook: %v", err)
 	}
@@ -615,7 +894,7 @@ func TestReceiveReturnsErrorWhenAllDispatchesFail(t *testing.T) {
 	}
 	svc := newTestServiceWithDeps(repo, dispatcher, topicSvc)
 
-	rawToken, _, err := svc.CreateWebhook(ctx, user.ID, "hook", "", PayloadTypeBeebuzz, "", "", "normal", []string{firstTopic.ID, secondTopic.ID})
+	rawToken, _, err := svc.CreateWebhook(ctx, user.ID, "hook", "", PayloadTypeBeebuzz, "", "", "normal", TitleSourcePath, "", []string{firstTopic.ID, secondTopic.ID})
 	if err != nil {
 		t.Fatalf("CreateWebhook: %v", err)
 	}
@@ -657,7 +936,7 @@ func TestCreateWebhookRollsBackOnTopicAssociationFailure(t *testing.T) {
 		t.Fatalf("GetOrCreateUser: %v", err)
 	}
 
-	_, _, err = svc.CreateWebhook(ctx, user.ID, "test-wh", "", PayloadTypeBeebuzz, "", "", "normal", []string{"missing-topic"})
+	_, _, err = svc.CreateWebhook(ctx, user.ID, "test-wh", "", PayloadTypeBeebuzz, "", "", "normal", TitleSourcePath, "", []string{"missing-topic"})
 	if !errors.Is(err, ErrInvalidTopicSelection) {
 		t.Fatalf("CreateWebhook() error = %v, want %v", err, ErrInvalidTopicSelection)
 	}
@@ -691,12 +970,12 @@ func TestUpdateWebhookRollsBackOnTopicAssociationFailure(t *testing.T) {
 		t.Fatalf("topic.Create: %v", err)
 	}
 
-	_, webhookID, err := svc.CreateWebhook(ctx, user.ID, "test-wh", "desc", PayloadTypeBeebuzz, "", "", "normal", []string{originalTopic.ID})
+	_, webhookID, err := svc.CreateWebhook(ctx, user.ID, "test-wh", "desc", PayloadTypeBeebuzz, "", "", "normal", TitleSourcePath, "", []string{originalTopic.ID})
 	if err != nil {
 		t.Fatalf("CreateWebhook: %v", err)
 	}
 
-	err = svc.UpdateWebhook(ctx, user.ID, webhookID, "updated-wh", "updated-desc", PayloadTypeBeebuzz, "", "", "normal", []string{"missing-topic"})
+	err = svc.UpdateWebhook(ctx, user.ID, webhookID, "updated-wh", "updated-desc", PayloadTypeBeebuzz, "", "", "normal", TitleSourcePath, "", []string{"missing-topic"})
 	if !errors.Is(err, ErrInvalidTopicSelection) {
 		t.Fatalf("UpdateWebhook() error = %v, want %v", err, ErrInvalidTopicSelection)
 	}
@@ -745,7 +1024,7 @@ func TestCreateWebhookRejectsTopicOwnedByAnotherUser(t *testing.T) {
 		t.Fatalf("topic.Create: %v", err)
 	}
 
-	_, _, err = svc.CreateWebhook(ctx, owner.ID, "test-wh", "", PayloadTypeBeebuzz, "", "", "normal", []string{otherTopic.ID})
+	_, _, err = svc.CreateWebhook(ctx, owner.ID, "test-wh", "", PayloadTypeBeebuzz, "", "", "normal", TitleSourcePath, "", []string{otherTopic.ID})
 	if !errors.Is(err, ErrInvalidTopicSelection) {
 		t.Fatalf("CreateWebhook() error = %v, want %v", err, ErrInvalidTopicSelection)
 	}
@@ -771,7 +1050,7 @@ func TestReceive_BlockedUser(t *testing.T) {
 		t.Fatalf("topic.Create: %v", err)
 	}
 
-	rawToken, _, err := svc.CreateWebhook(ctx, user.ID, "test-wh", "", PayloadTypeBeebuzz, "", "", "normal", []string{tp.ID})
+	rawToken, _, err := svc.CreateWebhook(ctx, user.ID, "test-wh", "", PayloadTypeBeebuzz, "", "", "normal", TitleSourcePath, "", []string{tp.ID})
 	if err != nil {
 		t.Fatalf("CreateWebhook: %v", err)
 	}
@@ -802,6 +1081,309 @@ func TestCreateWebhookRequestValidateDefaultsPriority(t *testing.T) {
 	}
 	if req.Priority != push.PriorityNormal {
 		t.Fatalf("Validate() priority = %q, want %q", req.Priority, push.PriorityNormal)
+	}
+}
+
+func TestCreateWebhookRequestValidateTitleSource(t *testing.T) {
+	tests := []struct {
+		name    string
+		req     *CreateWebhookRequest
+		wantErr bool
+	}{
+		{
+			name: "custom path title accepts valid title_path",
+			req: &CreateWebhookRequest{
+				Name:        "hook",
+				PayloadType: PayloadTypeCustom,
+				TitleSource: TitleSourcePath,
+				TitlePath:   "data.title",
+				Topics:      []string{"topic-1"},
+			},
+		},
+		{
+			name: "custom static title accepts valid title_value",
+			req: &CreateWebhookRequest{
+				Name:        "hook",
+				PayloadType: PayloadTypeCustom,
+				TitleSource: TitleSourceStatic,
+				TitleValue:  "Fixed Title",
+				Topics:      []string{"topic-1"},
+			},
+		},
+		{
+			name: "custom static title rejects empty title_value",
+			req: &CreateWebhookRequest{
+				Name:        "hook",
+				PayloadType: PayloadTypeCustom,
+				TitleSource: TitleSourceStatic,
+				TitleValue:  "",
+				Topics:      []string{"topic-1"},
+			},
+			wantErr: true,
+		},
+		{
+			name: "custom static title rejects non-empty title_path",
+			req: &CreateWebhookRequest{
+				Name:        "hook",
+				PayloadType: PayloadTypeCustom,
+				TitleSource: TitleSourceStatic,
+				TitleValue:  "Fixed",
+				TitlePath:   "data.title",
+				Topics:      []string{"topic-1"},
+			},
+			wantErr: true,
+		},
+		{
+			name: "custom path title rejects non-empty title_value",
+			req: &CreateWebhookRequest{
+				Name:        "hook",
+				PayloadType: PayloadTypeCustom,
+				TitleSource: TitleSourcePath,
+				TitlePath:   "data.title",
+				TitleValue:  "should not be set",
+				Topics:      []string{"topic-1"},
+			},
+			wantErr: true,
+		},
+		{
+			name: "custom defaults to path when title_source empty",
+			req: &CreateWebhookRequest{
+				Name:        "hook",
+				PayloadType: PayloadTypeCustom,
+				TitlePath:   "data.title",
+				Topics:      []string{"topic-1"},
+			},
+		},
+		{
+			name: "custom path title still requires title_path after default",
+			req: &CreateWebhookRequest{
+				Name:        "hook",
+				PayloadType: PayloadTypeCustom,
+				Topics:      []string{"topic-1"},
+			},
+			wantErr: true,
+		},
+		{
+			name: "beebuzz rejects title_value",
+			req: &CreateWebhookRequest{
+				Name:        "hook",
+				PayloadType: PayloadTypeBeebuzz,
+				TitleValue:  "not allowed",
+				Topics:      []string{"topic-1"},
+			},
+			wantErr: true,
+		},
+		{
+			name: "beebuzz accepts valid request with no extra fields",
+			req: &CreateWebhookRequest{
+				Name:        "hook",
+				PayloadType: PayloadTypeBeebuzz,
+				Topics:      []string{"topic-1"},
+			},
+		},
+		{
+			name: "beebuzz rejects static title_source",
+			req: &CreateWebhookRequest{
+				Name:        "hook",
+				PayloadType: PayloadTypeBeebuzz,
+				TitleSource: TitleSourceStatic,
+				Topics:      []string{"topic-1"},
+			},
+			wantErr: true,
+		},
+		{
+			name: "beebuzz rejects title_source path",
+			req: &CreateWebhookRequest{
+				Name:        "hook",
+				PayloadType: PayloadTypeBeebuzz,
+				TitleSource: TitleSourcePath,
+				Topics:      []string{"topic-1"},
+			},
+			wantErr: true,
+		},
+		{
+			name: "beebuzz rejects title_source=static with non-empty title_value",
+			req: &CreateWebhookRequest{
+				Name:        "hook",
+				PayloadType: PayloadTypeBeebuzz,
+				TitleSource: TitleSourceStatic,
+				TitleValue:  "something",
+				Topics:      []string{"topic-1"},
+			},
+			wantErr: true,
+		},
+		{
+			name: "custom static title respects max length",
+			req: &CreateWebhookRequest{
+				Name:        "hook",
+				PayloadType: PayloadTypeCustom,
+				TitleSource: TitleSourceStatic,
+				TitleValue:  "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", // 65 chars
+				Topics:      []string{"topic-1"},
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			errs := tt.req.Validate()
+			if tt.wantErr && len(errs) == 0 {
+				t.Fatal("Validate() errors = none, want error")
+			}
+			if !tt.wantErr && len(errs) != 0 {
+				t.Fatalf("Validate() errors = %v, want none", errs)
+			}
+		})
+	}
+}
+
+func TestUpdateWebhookRequestValidateTitleSource(t *testing.T) {
+	tests := []struct {
+		name    string
+		req     *UpdateWebhookRequest
+		wantErr bool
+	}{
+		{
+			name: "update custom static title valid",
+			req: &UpdateWebhookRequest{
+				Name:        "hook",
+				PayloadType: PayloadTypeCustom,
+				TitleSource: TitleSourceStatic,
+				TitleValue:  "New Fixed",
+				Topics:      []string{"topic-1"},
+			},
+		},
+		{
+			name: "update custom path title valid",
+			req: &UpdateWebhookRequest{
+				Name:        "hook",
+				PayloadType: PayloadTypeCustom,
+				TitleSource: TitleSourcePath,
+				TitlePath:   "data.title",
+				Topics:      []string{"topic-1"},
+			},
+		},
+		{
+			name: "update custom static rejects title_path",
+			req: &UpdateWebhookRequest{
+				Name:        "hook",
+				PayloadType: PayloadTypeCustom,
+				TitleSource: TitleSourceStatic,
+				TitleValue:  "Fixed",
+				TitlePath:   "data.title",
+				Topics:      []string{"topic-1"},
+			},
+			wantErr: true,
+		},
+		{
+			name: "update beebuzz rejects static title_source",
+			req: &UpdateWebhookRequest{
+				Name:        "hook",
+				PayloadType: PayloadTypeBeebuzz,
+				TitleSource: TitleSourceStatic,
+				Topics:      []string{"topic-1"},
+			},
+			wantErr: true,
+		},
+		{
+			name: "update beebuzz rejects path title_source",
+			req: &UpdateWebhookRequest{
+				Name:        "hook",
+				PayloadType: PayloadTypeBeebuzz,
+				TitleSource: TitleSourcePath,
+				Topics:      []string{"topic-1"},
+			},
+			wantErr: true,
+		},
+		{
+			name: "update beebuzz rejects title_value",
+			req: &UpdateWebhookRequest{
+				Name:        "hook",
+				PayloadType: PayloadTypeBeebuzz,
+				TitleValue:  "not allowed",
+				Topics:      []string{"topic-1"},
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			errs := tt.req.Validate()
+			if tt.wantErr && len(errs) == 0 {
+				t.Fatal("Validate() errors = none, want error")
+			}
+			if !tt.wantErr && len(errs) != 0 {
+				t.Fatalf("Validate() errors = %v, want none", errs)
+			}
+		})
+	}
+}
+
+func TestFinalizeInspectRequestValidateTitleSource(t *testing.T) {
+	tests := []struct {
+		name    string
+		req     *FinalizeInspectRequest
+		wantErr bool
+	}{
+		{
+			name: "finalize path title requires title_path",
+			req: &FinalizeInspectRequest{
+				TitleSource: TitleSourcePath,
+				TitlePath:   "data.title",
+			},
+		},
+		{
+			name: "finalize static title requires title_value",
+			req: &FinalizeInspectRequest{
+				TitleSource: TitleSourceStatic,
+				TitleValue:  "Fixed",
+			},
+		},
+		{
+			name: "finalize static title rejects title_path",
+			req: &FinalizeInspectRequest{
+				TitleSource: TitleSourceStatic,
+				TitleValue:  "Fixed",
+				TitlePath:   "data.title",
+			},
+			wantErr: true,
+		},
+		{
+			name: "finalize path title rejects title_value",
+			req: &FinalizeInspectRequest{
+				TitleSource: TitleSourcePath,
+				TitlePath:   "data.title",
+				TitleValue:  "not allowed",
+			},
+			wantErr: true,
+		},
+		{
+			name: "finalize defaults to path when empty",
+			req: &FinalizeInspectRequest{
+				TitlePath: "data.title",
+			},
+		},
+		{
+			name: "finalize default path rejects missing title_path",
+			req: &FinalizeInspectRequest{
+				TitleValue: "something",
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			errs := tt.req.Validate()
+			if tt.wantErr && len(errs) == 0 {
+				t.Fatal("Validate() errors = none, want error")
+			}
+			if !tt.wantErr && len(errs) != 0 {
+				t.Fatalf("Validate() errors = %v, want none", errs)
+			}
+		})
 	}
 }
 
@@ -912,7 +1494,7 @@ func TestReceivePassesWebhookPriorityToDispatcher(t *testing.T) {
 	dispatcher := &priorityCapturingDispatcher{}
 	svc := newTestServiceWithDeps(repo, dispatcher, topicSvc)
 
-	rawToken, _, err := svc.CreateWebhook(ctx, user.ID, "hook", "", PayloadTypeBeebuzz, "", "", push.PriorityHigh, []string{firstTopic.ID, secondTopic.ID})
+	rawToken, _, err := svc.CreateWebhook(ctx, user.ID, "hook", "", PayloadTypeBeebuzz, "", "", push.PriorityHigh, TitleSourcePath, "", []string{firstTopic.ID, secondTopic.ID})
 	if err != nil {
 		t.Fatalf("CreateWebhook: %v", err)
 	}

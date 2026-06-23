@@ -21,8 +21,19 @@ const (
 	PayloadTypeCustom  PayloadType = "custom"
 )
 
+// TitleSource identifies how the title is determined for custom webhooks.
+type TitleSource string
+
+const (
+	TitleSourcePath   TitleSource = "path"
+	TitleSourceStatic TitleSource = "static"
+)
+
 // validPayloadTypes lists accepted payload_type values.
 var validPayloadTypes = []string{string(PayloadTypeBeebuzz), string(PayloadTypeCustom)}
+
+// validTitleSources lists accepted title_source values.
+var validTitleSources = []string{string(TitleSourcePath), string(TitleSourceStatic)}
 
 // validWebhookPriorities lists accepted priority values at the webhook boundary (no empty string).
 var validWebhookPriorities = []string{push.PriorityNormal, push.PriorityHigh}
@@ -47,6 +58,8 @@ type Webhook struct {
 	PayloadType PayloadType `db:"payload_type"`
 	TitlePath   string      `db:"title_path"`
 	BodyPath    string      `db:"body_path"`
+	TitleSource TitleSource `db:"title_source"`
+	TitleValue  string      `db:"title_value"`
 	Priority    string      `db:"priority"`
 	IsActive    bool        `db:"is_active"`
 	RevokedAt   *int64      `db:"revoked_at"`
@@ -68,6 +81,8 @@ type WebhookResponse struct {
 	PayloadType PayloadType `json:"payload_type"`
 	TitlePath   string      `json:"title_path,omitempty"`
 	BodyPath    string      `json:"body_path,omitempty"`
+	TitleSource TitleSource `json:"title_source,omitempty"`
+	TitleValue  string      `json:"title_value,omitempty"`
 	Priority    string      `json:"priority"`
 	IsActive    bool        `json:"is_active"`
 	CreatedAt   time.Time   `json:"created_at"`
@@ -120,7 +135,7 @@ func unixMilliPtr(v *int64) *time.Time {
 
 // toWebhookResponse converts a Webhook DB struct to its HTTP response representation.
 func toWebhookResponse(wh Webhook, topicIDs []string) WebhookResponse {
-	return WebhookResponse{
+	resp := WebhookResponse{
 		ID:          wh.ID,
 		Name:        wh.Name,
 		Description: wh.Description,
@@ -133,6 +148,11 @@ func toWebhookResponse(wh Webhook, topicIDs []string) WebhookResponse {
 		LastUsedAt:  unixMilliPtr(wh.LastUsedAt),
 		TopicIDs:    topicIDs,
 	}
+	if wh.PayloadType == PayloadTypeCustom {
+		resp.TitleSource = wh.TitleSource
+		resp.TitleValue = wh.TitleValue
+	}
+	return resp
 }
 
 // CreateWebhookRequest is the request body for POST /webhooks.
@@ -142,6 +162,8 @@ type CreateWebhookRequest struct {
 	PayloadType PayloadType `json:"payload_type"`
 	TitlePath   string      `json:"title_path"`
 	BodyPath    string      `json:"body_path"`
+	TitleSource TitleSource `json:"title_source"`
+	TitleValue  string      `json:"title_value"`
 	Priority    string      `json:"priority"`
 	Topics      []string    `json:"topics"`
 }
@@ -153,6 +175,7 @@ func (r *CreateWebhookRequest) Validate() []error {
 	}
 	r.TitlePath = strings.TrimSpace(r.TitlePath)
 	r.BodyPath = strings.TrimSpace(r.BodyPath)
+	r.TitleValue = strings.TrimSpace(r.TitleValue)
 	errs := validator.Validate(
 		validator.NotBlank("name", r.Name),
 		validator.RequiredSlice("topics", r.Topics),
@@ -164,14 +187,32 @@ func (r *CreateWebhookRequest) Validate() []error {
 	)
 	switch r.PayloadType {
 	case PayloadTypeCustom:
-		errs = append(errs, validator.Validate(validator.JSONPath("title_path", r.TitlePath))...)
+		if r.TitleSource == "" {
+			r.TitleSource = TitleSourcePath
+		}
+		errs = append(errs, validator.Validate(
+			validator.OneOf("title_source", string(r.TitleSource), validTitleSources),
+		)...)
+		switch r.TitleSource {
+		case TitleSourcePath:
+			errs = append(errs, validator.Validate(validator.JSONPath("title_path", r.TitlePath))...)
+			errs = append(errs, validator.Validate(validator.Blank("title_value", r.TitleValue))...)
+		case TitleSourceStatic:
+			errs = append(errs, validator.Validate(
+				validator.Blank("title_path", r.TitlePath),
+				validator.NotBlank("title_value", r.TitleValue),
+				validator.MaxLen("title_value", r.TitleValue, validator.MaxDisplayNameLen),
+			)...)
+		}
 		if strings.TrimSpace(r.BodyPath) != "" {
 			errs = append(errs, validator.Validate(validator.JSONPath("body_path", r.BodyPath))...)
 		}
 	case PayloadTypeBeebuzz:
 		errs = append(errs, validator.Validate(
+			validator.Blank("title_source", string(r.TitleSource)),
 			validator.Blank("title_path", r.TitlePath),
 			validator.Blank("body_path", r.BodyPath),
+			validator.Blank("title_value", r.TitleValue),
 		)...)
 	}
 	return errs
@@ -184,6 +225,8 @@ type UpdateWebhookRequest struct {
 	PayloadType PayloadType `json:"payload_type"`
 	TitlePath   string      `json:"title_path"`
 	BodyPath    string      `json:"body_path"`
+	TitleSource TitleSource `json:"title_source"`
+	TitleValue  string      `json:"title_value"`
 	Priority    string      `json:"priority"`
 	Topics      []string    `json:"topics"`
 }
@@ -195,6 +238,7 @@ func (r *UpdateWebhookRequest) Validate() []error {
 	}
 	r.TitlePath = strings.TrimSpace(r.TitlePath)
 	r.BodyPath = strings.TrimSpace(r.BodyPath)
+	r.TitleValue = strings.TrimSpace(r.TitleValue)
 	errs := validator.Validate(
 		validator.NotBlank("name", r.Name),
 		validator.RequiredSlice("topics", r.Topics),
@@ -206,14 +250,32 @@ func (r *UpdateWebhookRequest) Validate() []error {
 	)
 	switch r.PayloadType {
 	case PayloadTypeCustom:
-		errs = append(errs, validator.Validate(validator.JSONPath("title_path", r.TitlePath))...)
+		if r.TitleSource == "" {
+			r.TitleSource = TitleSourcePath
+		}
+		errs = append(errs, validator.Validate(
+			validator.OneOf("title_source", string(r.TitleSource), validTitleSources),
+		)...)
+		switch r.TitleSource {
+		case TitleSourcePath:
+			errs = append(errs, validator.Validate(validator.JSONPath("title_path", r.TitlePath))...)
+			errs = append(errs, validator.Validate(validator.Blank("title_value", r.TitleValue))...)
+		case TitleSourceStatic:
+			errs = append(errs, validator.Validate(
+				validator.Blank("title_path", r.TitlePath),
+				validator.NotBlank("title_value", r.TitleValue),
+				validator.MaxLen("title_value", r.TitleValue, validator.MaxDisplayNameLen),
+			)...)
+		}
 		if strings.TrimSpace(r.BodyPath) != "" {
 			errs = append(errs, validator.Validate(validator.JSONPath("body_path", r.BodyPath))...)
 		}
 	case PayloadTypeBeebuzz:
 		errs = append(errs, validator.Validate(
+			validator.Blank("title_source", string(r.TitleSource)),
 			validator.Blank("title_path", r.TitlePath),
 			validator.Blank("body_path", r.BodyPath),
+			validator.Blank("title_value", r.TitleValue),
 		)...)
 	}
 	return errs
@@ -241,6 +303,9 @@ var (
 	ErrInspectNotCaptured = errors.New("no payload has been captured")
 	// ErrInspectSessionExpired is returned when an inspect session has expired.
 	ErrInspectSessionExpired = errors.New("inspect session expired")
+
+	// ErrUnsupportedTitleSource is returned when an unknown title_source is used.
+	ErrUnsupportedTitleSource = errors.New("unsupported title_source")
 )
 
 // TopicValidator verifies that topic IDs belong to the given user.
@@ -289,15 +354,34 @@ type InspectSessionStatusResponse struct {
 
 // FinalizeInspectRequest is the request body for POST /webhooks/inspect/finalize.
 type FinalizeInspectRequest struct {
-	TitlePath string `json:"title_path"`
-	BodyPath  string `json:"body_path"`
+	TitlePath   string      `json:"title_path"`
+	BodyPath    string      `json:"body_path"`
+	TitleSource TitleSource `json:"title_source"`
+	TitleValue  string      `json:"title_value"`
 }
 
 // Validate validates the finalize inspect request fields.
 func (r *FinalizeInspectRequest) Validate() []error {
 	r.TitlePath = strings.TrimSpace(r.TitlePath)
 	r.BodyPath = strings.TrimSpace(r.BodyPath)
-	errs := validator.Validate(validator.JSONPath("title_path", r.TitlePath))
+	r.TitleValue = strings.TrimSpace(r.TitleValue)
+	if r.TitleSource == "" {
+		r.TitleSource = TitleSourcePath
+	}
+	errs := validator.Validate(
+		validator.OneOf("title_source", string(r.TitleSource), validTitleSources),
+	)
+	switch r.TitleSource {
+	case TitleSourcePath:
+		errs = append(errs, validator.Validate(validator.JSONPath("title_path", r.TitlePath))...)
+		errs = append(errs, validator.Validate(validator.Blank("title_value", r.TitleValue))...)
+	case TitleSourceStatic:
+		errs = append(errs, validator.Validate(
+			validator.Blank("title_path", r.TitlePath),
+			validator.NotBlank("title_value", r.TitleValue),
+			validator.MaxLen("title_value", r.TitleValue, validator.MaxDisplayNameLen),
+		)...)
+	}
 	if strings.TrimSpace(r.BodyPath) != "" {
 		errs = append(errs, validator.Validate(validator.JSONPath("body_path", r.BodyPath))...)
 	}

@@ -35,7 +35,7 @@ func NewService(repo *Repository, inspectStore *InspectStore, dispatcher Dispatc
 }
 
 // CreateWebhook creates a new webhook and returns the raw token (one-time reveal) and webhook ID.
-func (s *Service) CreateWebhook(ctx context.Context, userID, name, description string, payloadType PayloadType, titlePath, bodyPath, priority string, topics []string) (string, string, error) {
+func (s *Service) CreateWebhook(ctx context.Context, userID, name, description string, payloadType PayloadType, titlePath, bodyPath, priority string, titleSource TitleSource, titleValue string, topics []string) (string, string, error) {
 	if len(topics) == 0 {
 		return "", "", ErrAtLeastOneTopic
 	}
@@ -51,8 +51,9 @@ func (s *Service) CreateWebhook(ctx context.Context, userID, name, description s
 		return "", "", err
 	}
 
+	titleSource, titleValue = storedTitleConfig(payloadType, titleSource, titleValue)
 	tokenHash := secure.Hash(rawToken)
-	webhookID, err := s.repo.CreateWithTopics(ctx, userID, name, description, payloadType, tokenHash, titlePath, bodyPath, priority, topics)
+	webhookID, err := s.repo.CreateWithTopics(ctx, userID, name, description, payloadType, tokenHash, titlePath, bodyPath, priority, titleSource, titleValue, topics)
 	if err != nil {
 		return "", "", err
 	}
@@ -80,7 +81,7 @@ func (s *Service) ListWebhooks(ctx context.Context, userID string) ([]WebhookRes
 }
 
 // UpdateWebhook updates a webhook's settings and topic associations.
-func (s *Service) UpdateWebhook(ctx context.Context, userID, webhookID, name, description string, payloadType PayloadType, titlePath, bodyPath, priority string, topicIDs []string) error {
+func (s *Service) UpdateWebhook(ctx context.Context, userID, webhookID, name, description string, payloadType PayloadType, titlePath, bodyPath, priority string, titleSource TitleSource, titleValue string, topicIDs []string) error {
 	if len(topicIDs) == 0 {
 		return ErrAtLeastOneTopic
 	}
@@ -91,7 +92,16 @@ func (s *Service) UpdateWebhook(ctx context.Context, userID, webhookID, name, de
 		return ErrInvalidTopicSelection
 	}
 
-	return s.repo.UpdateWithTopics(ctx, userID, webhookID, name, description, payloadType, titlePath, bodyPath, priority, topicIDs)
+	titleSource, titleValue = storedTitleConfig(payloadType, titleSource, titleValue)
+	return s.repo.UpdateWithTopics(ctx, userID, webhookID, name, description, payloadType, titlePath, bodyPath, priority, titleSource, titleValue, topicIDs)
+}
+
+// storedTitleConfig returns DB-safe title fields for webhook storage.
+func storedTitleConfig(payloadType PayloadType, titleSource TitleSource, titleValue string) (TitleSource, string) {
+	if payloadType == PayloadTypeBeebuzz {
+		return TitleSourcePath, ""
+	}
+	return titleSource, titleValue
 }
 
 // RevokeWebhook revokes a webhook, returning ErrWebhookNotFound if it does not exist.
@@ -186,17 +196,28 @@ func (s *Service) extractPayload(wh *Webhook, body []byte) (title, bodyText stri
 		return p.Title, p.Body, nil
 
 	case PayloadTypeCustom:
-		titlePath := strings.TrimSpace(wh.TitlePath)
-		if err := validator.JSONPath("title_path", titlePath); err != nil {
-			return "", "", fmt.Errorf("%w: invalid title_path", ErrPayloadExtraction)
-		}
-		titleResult := gjson.GetBytes(body, titlePath)
-		if !titleResult.Exists() {
-			return "", "", fmt.Errorf("%w: title_path not found in payload", ErrPayloadExtraction)
-		}
-		title := titleResult.String()
-		if title == "" {
-			return "", "", fmt.Errorf("%w: title is required", ErrPayloadExtraction)
+		var title string
+		switch wh.TitleSource {
+		case TitleSourcePath, "":
+			titlePath := strings.TrimSpace(wh.TitlePath)
+			if err := validator.JSONPath("title_path", titlePath); err != nil {
+				return "", "", fmt.Errorf("%w: invalid title_path", ErrPayloadExtraction)
+			}
+			titleResult := gjson.GetBytes(body, titlePath)
+			if !titleResult.Exists() {
+				return "", "", fmt.Errorf("%w: title_path not found in payload", ErrPayloadExtraction)
+			}
+			title = titleResult.String()
+			if title == "" {
+				return "", "", fmt.Errorf("%w: title is required", ErrPayloadExtraction)
+			}
+		case TitleSourceStatic:
+			title = strings.TrimSpace(wh.TitleValue)
+			if title == "" {
+				return "", "", fmt.Errorf("%w: static title is required", ErrPayloadExtraction)
+			}
+		default:
+			return "", "", fmt.Errorf("%w: %s", ErrUnsupportedTitleSource, string(wh.TitleSource))
 		}
 
 		bodyPath := strings.TrimSpace(wh.BodyPath)
@@ -282,7 +303,7 @@ func (s *Service) GetInspectSession(ctx context.Context, userID string) *Inspect
 }
 
 // FinalizeInspect creates the actual webhook from a completed inspect session.
-func (s *Service) FinalizeInspect(ctx context.Context, userID, titlePath, bodyPath string) (string, string, error) {
+func (s *Service) FinalizeInspect(ctx context.Context, userID, titlePath, bodyPath string, titleSource TitleSource, titleValue string) (string, string, error) {
 	session := s.inspectStore.GetByUserID(userID)
 	if session == nil {
 		return "", "", ErrInspectSessionNotFound
@@ -293,23 +314,35 @@ func (s *Service) FinalizeInspect(ctx context.Context, userID, titlePath, bodyPa
 
 	titlePath = strings.TrimSpace(titlePath)
 	bodyPath = strings.TrimSpace(bodyPath)
-	if err := validator.JSONPath("title_path", titlePath); err != nil {
-		return "", "", fmt.Errorf("%w: invalid title_path", ErrPayloadExtraction)
+	titleValue = strings.TrimSpace(titleValue)
+
+	switch titleSource {
+	case TitleSourcePath, "":
+		if err := validator.JSONPath("title_path", titlePath); err != nil {
+			return "", "", fmt.Errorf("%w: invalid title_path", ErrPayloadExtraction)
+		}
+		titleResult := gjson.GetBytes(session.Payload, titlePath)
+		if !titleResult.Exists() {
+			return "", "", fmt.Errorf("%w: title_path not found in payload", ErrPayloadExtraction)
+		}
+		if titleResult.String() == "" {
+			return "", "", fmt.Errorf("%w: title is required", ErrPayloadExtraction)
+		}
+	case TitleSourceStatic:
+		if titleValue == "" {
+			return "", "", fmt.Errorf("%w: static title is required", ErrPayloadExtraction)
+		}
+	default:
+		return "", "", ErrUnsupportedTitleSource
 	}
+
 	if bodyPath != "" {
 		if err := validator.JSONPath("body_path", bodyPath); err != nil {
 			return "", "", fmt.Errorf("%w: invalid body_path", ErrPayloadExtraction)
 		}
-	}
-	titleResult := gjson.GetBytes(session.Payload, titlePath)
-	if !titleResult.Exists() {
-		return "", "", fmt.Errorf("%w: title_path not found in payload", ErrPayloadExtraction)
-	}
-	if titleResult.String() == "" {
-		return "", "", fmt.Errorf("%w: title is required", ErrPayloadExtraction)
-	}
-	if strings.TrimSpace(bodyPath) != "" && !gjson.GetBytes(session.Payload, bodyPath).Exists() {
-		return "", "", fmt.Errorf("%w: body_path not found in payload", ErrPayloadExtraction)
+		if !gjson.GetBytes(session.Payload, bodyPath).Exists() {
+			return "", "", fmt.Errorf("%w: body_path not found in payload", ErrPayloadExtraction)
+		}
 	}
 
 	rawToken, err := secure.NewWebhookToken()
@@ -318,7 +351,7 @@ func (s *Service) FinalizeInspect(ctx context.Context, userID, titlePath, bodyPa
 	}
 	tokenHash := secure.Hash(rawToken)
 
-	webhookID, err := s.repo.CreateWithTopics(ctx, userID, session.Name, session.Description, PayloadTypeCustom, tokenHash, titlePath, bodyPath, session.Priority, session.Topics)
+	webhookID, err := s.repo.CreateWithTopics(ctx, userID, session.Name, session.Description, PayloadTypeCustom, tokenHash, titlePath, bodyPath, session.Priority, titleSource, titleValue, session.Topics)
 	if err != nil {
 		return "", "", err
 	}

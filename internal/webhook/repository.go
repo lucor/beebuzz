@@ -21,7 +21,7 @@ func NewRepository(db *sqlx.DB) *Repository {
 }
 
 // Create inserts a new webhook. tokenHash must be the SHA-256 hash of the raw token.
-func (r *Repository) Create(ctx context.Context, userID, name, description string, payloadType PayloadType, tokenHash, titlePath, bodyPath, priority string) (string, error) {
+func (r *Repository) Create(ctx context.Context, userID, name, description string, payloadType PayloadType, tokenHash, titlePath, bodyPath, priority string, titleSource TitleSource, titleValue string) (string, error) {
 	webhookID := uuid.NewString()
 	now := time.Now().UTC().UnixMilli()
 
@@ -31,9 +31,9 @@ func (r *Repository) Create(ctx context.Context, userID, name, description strin
 	}
 
 	_, err := r.db.ExecContext(ctx,
-		`INSERT INTO webhooks (id, user_id, token_hash, name, description, payload_type, title_path, body_path, priority, created_at, is_active)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		webhookID, userID, tokenHash, name, desc, payloadType, titlePath, bodyPath, priority, now, true,
+		`INSERT INTO webhooks (id, user_id, token_hash, name, description, payload_type, title_path, body_path, title_source, title_value, priority, created_at, is_active)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		webhookID, userID, tokenHash, name, desc, payloadType, titlePath, bodyPath, titleSource, titleValue, priority, now, true,
 	)
 	if err != nil {
 		return "", fmt.Errorf("failed to create webhook: %w", err)
@@ -43,7 +43,7 @@ func (r *Repository) Create(ctx context.Context, userID, name, description strin
 }
 
 // CreateWithTopics atomically creates a webhook and its topic associations.
-func (r *Repository) CreateWithTopics(ctx context.Context, userID, name, description string, payloadType PayloadType, tokenHash, titlePath, bodyPath, priority string, topicIDs []string) (string, error) {
+func (r *Repository) CreateWithTopics(ctx context.Context, userID, name, description string, payloadType PayloadType, tokenHash, titlePath, bodyPath, priority string, titleSource TitleSource, titleValue string, topicIDs []string) (string, error) {
 	tx, err := r.db.BeginTxx(ctx, nil)
 	if err != nil {
 		return "", fmt.Errorf("failed to begin webhook create transaction: %w", err)
@@ -59,9 +59,9 @@ func (r *Repository) CreateWithTopics(ctx context.Context, userID, name, descrip
 	}
 
 	if _, err := tx.ExecContext(ctx,
-		`INSERT INTO webhooks (id, user_id, token_hash, name, description, payload_type, title_path, body_path, priority, created_at, is_active)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		webhookID, userID, tokenHash, name, desc, payloadType, titlePath, bodyPath, priority, now, true,
+		`INSERT INTO webhooks (id, user_id, token_hash, name, description, payload_type, title_path, body_path, title_source, title_value, priority, created_at, is_active)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		webhookID, userID, tokenHash, name, desc, payloadType, titlePath, bodyPath, titleSource, titleValue, priority, now, true,
 	); err != nil {
 		return "", fmt.Errorf("failed to create webhook: %w", err)
 	}
@@ -86,7 +86,7 @@ func (r *Repository) CreateWithTopics(ctx context.Context, userID, name, descrip
 func (r *Repository) GetByUser(ctx context.Context, userID string) ([]Webhook, error) {
 	var webhooks []Webhook
 	err := r.db.SelectContext(ctx, &webhooks,
-		`SELECT id, user_id, token_hash, name, description, payload_type, title_path, body_path, priority, is_active, revoked_at, last_used_at, created_at
+		`SELECT id, user_id, token_hash, name, description, payload_type, title_path, body_path, title_source, title_value, priority, is_active, revoked_at, last_used_at, created_at
 		 FROM webhooks WHERE user_id = ? AND is_active = 1
 		 ORDER BY created_at DESC`,
 		userID,
@@ -101,7 +101,7 @@ func (r *Repository) GetByUser(ctx context.Context, userID string) ([]Webhook, e
 func (r *Repository) GetByID(ctx context.Context, userID, webhookID string) (*Webhook, error) {
 	var webhook Webhook
 	err := r.db.GetContext(ctx, &webhook,
-		`SELECT id, user_id, token_hash, name, description, payload_type, title_path, body_path, priority, is_active, revoked_at, last_used_at, created_at
+		`SELECT id, user_id, token_hash, name, description, payload_type, title_path, body_path, title_source, title_value, priority, is_active, revoked_at, last_used_at, created_at
 		 FROM webhooks WHERE id = ? AND user_id = ?`,
 		webhookID, userID,
 	)
@@ -118,7 +118,7 @@ func (r *Repository) GetByID(ctx context.Context, userID, webhookID string) (*We
 func (r *Repository) GetByTokenHash(ctx context.Context, tokenHash string) (*Webhook, error) {
 	var webhook Webhook
 	err := r.db.GetContext(ctx, &webhook,
-		`SELECT w.id, w.user_id, w.token_hash, w.name, w.description, w.payload_type, w.title_path, w.body_path, w.priority, w.is_active, w.revoked_at, w.last_used_at, w.created_at
+		`SELECT w.id, w.user_id, w.token_hash, w.name, w.description, w.payload_type, w.title_path, w.body_path, w.title_source, w.title_value, w.priority, w.is_active, w.revoked_at, w.last_used_at, w.created_at
 		 FROM webhooks w
 		 JOIN users u ON w.user_id = u.id
 		 WHERE w.token_hash = ?
@@ -219,16 +219,16 @@ func (r *Repository) GetTopicsWithIDs(ctx context.Context, webhookID string) ([]
 }
 
 // Update updates mutable fields of a webhook.
-func (r *Repository) Update(ctx context.Context, userID, webhookID, name, description string, payloadType PayloadType, titlePath, bodyPath, priority string) error {
+func (r *Repository) Update(ctx context.Context, userID, webhookID, name, description string, payloadType PayloadType, titlePath, bodyPath, priority string, titleSource TitleSource, titleValue string) error {
 	var desc *string
 	if description != "" {
 		desc = &description
 	}
 
 	_, err := r.db.ExecContext(ctx,
-		`UPDATE webhooks SET name = ?, description = ?, payload_type = ?, title_path = ?, body_path = ?, priority = ?
+		`UPDATE webhooks SET name = ?, description = ?, payload_type = ?, title_path = ?, body_path = ?, title_source = ?, title_value = ?, priority = ?
 		 WHERE id = ? AND user_id = ?`,
-		name, desc, payloadType, titlePath, bodyPath, priority, webhookID, userID,
+		name, desc, payloadType, titlePath, bodyPath, titleSource, titleValue, priority, webhookID, userID,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to update webhook: %w", err)
@@ -237,7 +237,7 @@ func (r *Repository) Update(ctx context.Context, userID, webhookID, name, descri
 }
 
 // UpdateWithTopics atomically updates a webhook and replaces topic associations.
-func (r *Repository) UpdateWithTopics(ctx context.Context, userID, webhookID, name, description string, payloadType PayloadType, titlePath, bodyPath, priority string, topicIDs []string) error {
+func (r *Repository) UpdateWithTopics(ctx context.Context, userID, webhookID, name, description string, payloadType PayloadType, titlePath, bodyPath, priority string, titleSource TitleSource, titleValue string, topicIDs []string) error {
 	tx, err := r.db.BeginTxx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("failed to begin webhook update transaction: %w", err)
@@ -250,9 +250,9 @@ func (r *Repository) UpdateWithTopics(ctx context.Context, userID, webhookID, na
 	}
 
 	result, err := tx.ExecContext(ctx,
-		`UPDATE webhooks SET name = ?, description = ?, payload_type = ?, title_path = ?, body_path = ?, priority = ?
+		`UPDATE webhooks SET name = ?, description = ?, payload_type = ?, title_path = ?, body_path = ?, title_source = ?, title_value = ?, priority = ?
 		 WHERE id = ? AND user_id = ?`,
-		name, desc, payloadType, titlePath, bodyPath, priority, webhookID, userID,
+		name, desc, payloadType, titlePath, bodyPath, titleSource, titleValue, priority, webhookID, userID,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to update webhook: %w", err)

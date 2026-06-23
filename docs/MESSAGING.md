@@ -252,7 +252,25 @@ Webhooks are a separate ingestion path that eventually dispatch into the notific
 Current webhook payload modes:
 
 - `beebuzz`: expects a BeeBuzz-shaped JSON body with `title` and `body`
-- `custom`: extracts `title` and optionally `body` using simple dot-separated JSON paths with optional numeric array indexes, for example `event.items[0].title`. When no body path is configured, notifications use an empty body.
+- `custom`: extracts `title` and optionally `body` using either a JSON path or a fixed value. When no body path is configured, notifications use an empty body.
+
+For `custom` payloads, `title_source` determines how the title is resolved:
+
+- `title_source = "path"` (default): extracts the title from a dot-separated JSON path with optional numeric array indexes, for example `event.items[0].title`. `title_path` is required.
+- `title_source = "static"`: uses `title_value` as the fixed notification title. The payload is not inspected for the title. `title_value` is required and max length is 64 characters.
+
+Example for `title_source = "static"` with a Slack-like payload:
+
+```json
+{
+  "text": "Build completed successfully..."
+}
+```
+
+Mapping:
+- `title_source = static`
+- `title_value = Slack`
+- `body_path = text`
 
 Webhook priority is configured on the webhook itself and currently accepts `normal` or `high`, defaulting to `normal`.
 Both modes end up producing a standard server-trusted notification send operation.

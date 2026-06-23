@@ -28,7 +28,7 @@ func TestGetByTokenHash_ActiveUser(t *testing.T) {
 		t.Fatalf("secure.NewWebhookToken: %v", err)
 	}
 
-	webhookID, err := repo.Create(ctx, user.ID, "test-webhook", "", PayloadTypeBeebuzz, secure.Hash(rawToken), "", "", push.PriorityNormal)
+	webhookID, err := repo.Create(ctx, user.ID, "test-webhook", "", PayloadTypeBeebuzz, secure.Hash(rawToken), "", "", push.PriorityNormal, TitleSourcePath, "")
 	if err != nil {
 		t.Fatalf("Create: %v", err)
 	}
@@ -62,7 +62,7 @@ func TestGetByTokenHash_BlockedUser(t *testing.T) {
 		t.Fatalf("secure.NewWebhookToken: %v", err)
 	}
 
-	_, err = repo.Create(ctx, user.ID, "test-webhook", "", PayloadTypeBeebuzz, secure.Hash(rawToken), "", "", push.PriorityNormal)
+	_, err = repo.Create(ctx, user.ID, "test-webhook", "", PayloadTypeBeebuzz, secure.Hash(rawToken), "", "", push.PriorityNormal, TitleSourcePath, "")
 	if err != nil {
 		t.Fatalf("Create: %v", err)
 	}
@@ -114,7 +114,7 @@ func TestGetByTokenHash_InactiveWebhook(t *testing.T) {
 		t.Fatalf("secure.NewWebhookToken: %v", err)
 	}
 
-	webhookID, err := repo.Create(ctx, user.ID, "test-webhook", "", PayloadTypeBeebuzz, secure.Hash(rawToken), "", "", push.PriorityNormal)
+	webhookID, err := repo.Create(ctx, user.ID, "test-webhook", "", PayloadTypeBeebuzz, secure.Hash(rawToken), "", "", push.PriorityNormal, TitleSourcePath, "")
 	if err != nil {
 		t.Fatalf("Create: %v", err)
 	}
@@ -155,7 +155,7 @@ func TestCreate_WithTopics(t *testing.T) {
 		t.Fatalf("secure.NewWebhookToken: %v", err)
 	}
 
-	webhookID, err := repo.CreateWithTopics(ctx, user.ID, "test-wh", "", PayloadTypeBeebuzz, secure.Hash(rawToken), "", "", push.PriorityNormal, []string{tp.ID})
+	webhookID, err := repo.CreateWithTopics(ctx, user.ID, "test-wh", "", PayloadTypeBeebuzz, secure.Hash(rawToken), "", "", push.PriorityNormal, TitleSourcePath, "", []string{tp.ID})
 	if err != nil {
 		t.Fatalf("CreateWithTopics: %v", err)
 	}
@@ -189,7 +189,7 @@ func TestRevoke(t *testing.T) {
 		t.Fatalf("secure.NewWebhookToken: %v", err)
 	}
 
-	webhookID, err := repo.Create(ctx, user.ID, "test-webhook", "", PayloadTypeBeebuzz, secure.Hash(rawToken), "", "", push.PriorityNormal)
+	webhookID, err := repo.Create(ctx, user.ID, "test-webhook", "", PayloadTypeBeebuzz, secure.Hash(rawToken), "", "", push.PriorityNormal, TitleSourcePath, "")
 	if err != nil {
 		t.Fatalf("Create: %v", err)
 	}
@@ -224,7 +224,7 @@ func TestGetByUser(t *testing.T) {
 		if err != nil {
 			t.Fatalf("secure.NewWebhookToken: %v", err)
 		}
-		if _, err := repo.Create(ctx, user.ID, "test-webhook", "", PayloadTypeBeebuzz, secure.Hash(rawToken), "", "", push.PriorityNormal); err != nil {
+		if _, err := repo.Create(ctx, user.ID, "test-webhook", "", PayloadTypeBeebuzz, secure.Hash(rawToken), "", "", push.PriorityNormal, TitleSourcePath, ""); err != nil {
 			t.Fatalf("Create: %v", err)
 		}
 	}
@@ -250,7 +250,7 @@ func TestGetByID(t *testing.T) {
 		t.Fatalf("GetOrCreateUser: %v", err)
 	}
 
-	webhookID, err := repo.Create(ctx, user.ID, "test-webhook", "", PayloadTypeBeebuzz, secure.Hash("token"), "", "", push.PriorityNormal)
+	webhookID, err := repo.Create(ctx, user.ID, "test-webhook", "", PayloadTypeBeebuzz, secure.Hash("token"), "", "", push.PriorityNormal, TitleSourcePath, "")
 	if err != nil {
 		t.Fatalf("Create: %v", err)
 	}
@@ -300,7 +300,7 @@ func TestUpdateTokenHash(t *testing.T) {
 		t.Fatalf("GetOrCreateUser: %v", err)
 	}
 
-	webhookID, err := repo.Create(ctx, user.ID, "test-webhook", "", PayloadTypeBeebuzz, secure.Hash("old-token"), "", "", push.PriorityNormal)
+	webhookID, err := repo.Create(ctx, user.ID, "test-webhook", "", PayloadTypeBeebuzz, secure.Hash("old-token"), "", "", push.PriorityNormal, TitleSourcePath, "")
 	if err != nil {
 		t.Fatalf("Create: %v", err)
 	}

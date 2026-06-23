@@ -37,6 +37,8 @@
 	let newWebhookPayloadType = $state<'beebuzz' | 'custom'>('beebuzz');
 	let newWebhookTitlePath = $state('');
 	let newWebhookBodyPath = $state('');
+	let newWebhookTitleSource = $state<'path' | 'static'>('path');
+	let newWebhookTitleValue = $state('');
 	let newWebhookPriority = $state<'normal' | 'high'>('normal');
 	let selectedTopics = $state<string[]>([]);
 
@@ -60,6 +62,8 @@
 	let editWebhookPayloadType = $state<'beebuzz' | 'custom'>('beebuzz');
 	let editWebhookTitlePath = $state('');
 	let editWebhookBodyPath = $state('');
+	let editWebhookTitleSource = $state<'path' | 'static'>('path');
+	let editWebhookTitleValue = $state('');
 	let editWebhookPriority = $state<'normal' | 'high'>('normal');
 	let editSelectedTopics = $state<string[]>([]);
 	let webhookPendingDelete = $state<Webhook | null>(null);
@@ -177,7 +181,7 @@
 
 	function handlePathClick(path: string, _value: string) {
 		void _value;
-		if (!newWebhookTitlePath) {
+		if (newWebhookTitleSource === 'path' && !newWebhookTitlePath) {
 			newWebhookTitlePath = path;
 		} else if (!newWebhookBodyPath) {
 			newWebhookBodyPath = path;
@@ -187,14 +191,26 @@
 	async function finalizeInspect() {
 		if (!inspectSession) return;
 
-		if (!newWebhookTitlePath.trim()) {
-			toast.error('Click on a field in the JSON to set the Title path');
-			return;
+		if (newWebhookTitleSource === 'static') {
+			if (!newWebhookTitleValue.trim()) {
+				toast.error('Enter a custom title for the webhook');
+				return;
+			}
+		} else {
+			if (!newWebhookTitlePath.trim()) {
+				toast.error('Click on a field in the JSON to set the Title path');
+				return;
+			}
 		}
 
 		isLoading = true;
 		try {
-			const webhook = await accountApi.finalizeInspect(newWebhookTitlePath, newWebhookBodyPath);
+			const webhook = await accountApi.finalizeInspect(
+				newWebhookTitlePath,
+				newWebhookBodyPath,
+				newWebhookTitleSource,
+				newWebhookTitleValue
+			);
 			revealedToken = webhook.token;
 			revealedWebhookName = webhook.name;
 			isRegenerated = false;
@@ -216,6 +232,8 @@
 		enableInspectMode = false;
 		newWebhookTitlePath = '';
 		newWebhookBodyPath = '';
+		newWebhookTitleSource = 'path';
+		newWebhookTitleValue = '';
 	}
 
 	// --- CREATE HANDLER ---
@@ -232,14 +250,20 @@
 
 		// Only validate paths for custom payload type
 		if (newWebhookPayloadType === 'custom') {
-			if (!newWebhookTitlePath.trim()) {
-				toast.error('Title path is required for custom payloads (e.g., data.title)');
-				return;
-			}
-
-			if (newWebhookTitlePath.trim().startsWith('.')) {
-				toast.error('Title path must not start with a dot');
-				return;
+			if (newWebhookTitleSource === 'static') {
+				if (!newWebhookTitleValue.trim()) {
+					toast.error('Custom title is required');
+					return;
+				}
+			} else {
+				if (!newWebhookTitlePath.trim()) {
+					toast.error('Title path is required for custom payloads (e.g., data.title)');
+					return;
+				}
+				if (newWebhookTitlePath.trim().startsWith('.')) {
+					toast.error('Title path must not start with a dot');
+					return;
+				}
 			}
 
 			if (newWebhookBodyPath.trim() && newWebhookBodyPath.trim().startsWith('.')) {
@@ -257,6 +281,8 @@
 				newWebhookTitlePath,
 				newWebhookBodyPath,
 				newWebhookPriority,
+				newWebhookTitleSource,
+				newWebhookTitleValue,
 				selectedTopics
 			);
 			revealedToken = webhook.token;
@@ -267,6 +293,8 @@
 			newWebhookPayloadType = 'beebuzz';
 			newWebhookTitlePath = '';
 			newWebhookBodyPath = '';
+			newWebhookTitleSource = 'path';
+			newWebhookTitleValue = '';
 			newWebhookPriority = 'normal';
 			selectedTopics = [];
 			showCreateModal = false;
@@ -351,6 +379,8 @@
 		editWebhookPayloadType = webhook.payload_type;
 		editWebhookTitlePath = webhook.title_path ?? '';
 		editWebhookBodyPath = webhook.body_path ?? '';
+		editWebhookTitleSource = webhook.title_source ?? 'path';
+		editWebhookTitleValue = webhook.title_value ?? '';
 		editWebhookPriority = webhook.priority;
 		editSelectedTopics = webhook.topic_ids || [];
 		expandedWebhookId = null;
@@ -363,6 +393,8 @@
 		editWebhookPayloadType = 'beebuzz';
 		editWebhookTitlePath = '';
 		editWebhookBodyPath = '';
+		editWebhookTitleSource = 'path';
+		editWebhookTitleValue = '';
 		editWebhookPriority = 'normal';
 		editSelectedTopics = [];
 	}
@@ -394,14 +426,20 @@
 
 		// Only validate paths for custom payload type
 		if (editWebhookPayloadType === 'custom') {
-			if (!editWebhookTitlePath.trim()) {
-				toast.error('Title path is required for custom payloads');
-				return;
-			}
-
-			if (editWebhookTitlePath.trim().startsWith('.')) {
-				toast.error('Title path must not start with a dot');
-				return;
+			if (editWebhookTitleSource === 'static') {
+				if (!editWebhookTitleValue.trim()) {
+					toast.error('Custom title is required');
+					return;
+				}
+			} else {
+				if (!editWebhookTitlePath.trim()) {
+					toast.error('Title path is required for custom payloads');
+					return;
+				}
+				if (editWebhookTitlePath.trim().startsWith('.')) {
+					toast.error('Title path must not start with a dot');
+					return;
+				}
 			}
 
 			if (editWebhookBodyPath.trim() && editWebhookBodyPath.trim().startsWith('.')) {
@@ -420,6 +458,8 @@
 				editWebhookTitlePath,
 				editWebhookBodyPath,
 				editWebhookPriority,
+				editWebhookTitleSource,
+				editWebhookTitleValue,
 				editSelectedTopics
 			);
 			toast.success('Webhook updated');
@@ -456,10 +496,13 @@
 		if (newWebhookName.length > MAX_DISPLAY_NAME_LEN) return false;
 		if (newWebhookDescription.length > MAX_DESCRIPTION_LEN) return false;
 		if (selectedTopics.length === 0) return false;
-		// Only validate paths for custom payload type
 		if (newWebhookPayloadType === 'custom') {
-			if (!newWebhookTitlePath.trim()) return false;
-			if (newWebhookTitlePath.trim().startsWith('.')) return false;
+			if (newWebhookTitleSource === 'static') {
+				if (!newWebhookTitleValue.trim()) return false;
+			} else {
+				if (!newWebhookTitlePath.trim()) return false;
+				if (newWebhookTitlePath.trim().startsWith('.')) return false;
+			}
 			if (newWebhookBodyPath.trim() && newWebhookBodyPath.trim().startsWith('.')) return false;
 		}
 		return true;
@@ -470,10 +513,13 @@
 		if (editWebhookName.length > MAX_DISPLAY_NAME_LEN) return false;
 		if (editWebhookDescription.length > MAX_DESCRIPTION_LEN) return false;
 		if (editSelectedTopics.length === 0) return false;
-		// Only validate paths for custom payload type
 		if (editWebhookPayloadType === 'custom') {
-			if (!editWebhookTitlePath.trim()) return false;
-			if (editWebhookTitlePath.trim().startsWith('.')) return false;
+			if (editWebhookTitleSource === 'static') {
+				if (!editWebhookTitleValue.trim()) return false;
+			} else {
+				if (!editWebhookTitlePath.trim()) return false;
+				if (editWebhookTitlePath.trim().startsWith('.')) return false;
+			}
 			if (editWebhookBodyPath.trim() && editWebhookBodyPath.trim().startsWith('.')) return false;
 		}
 		return true;
@@ -508,6 +554,13 @@
 
 		if (webhook.payload_type === 'beebuzz') {
 			body = JSON.stringify({ title: 'Hello', body: 'World' });
+		} else if (webhook.title_source === 'static') {
+			const entries: [string, string][] = [];
+			if (webhook.body_path) {
+				entries.push([webhook.body_path, 'World']);
+			}
+			const nested = buildNestedJson(entries);
+			body = webhook.body_path ? JSON.stringify(nested) : '{}';
 		} else {
 			const entries: [string, string][] = [[webhook.title_path ?? '', 'Hello']];
 			if (webhook.body_path) {
@@ -831,9 +884,47 @@
 						<div class="alert alert-success bg-success/10 border border-success/30 mb-4">
 							<Check size={16} />
 							<div class="text-sm">
-								<strong>Payload received!</strong> Select the title field. Optionally select a body field.
+								<strong>Payload received!</strong> Choose a payload field or use a custom title.
 							</div>
 						</div>
+
+						<fieldset>
+							<legend class="block text-sm font-semibold text-base-content mb-2">
+								Title Source
+							</legend>
+							<div class="flex gap-2 mb-4">
+								<label
+									class="btn btn-sm flex-1 {newWebhookTitleSource === 'path'
+										? 'btn-primary'
+										: 'btn-outline'}"
+								>
+									<input
+										type="radio"
+										name="inspect-title-source"
+										value="path"
+										bind:group={newWebhookTitleSource}
+										disabled={isLoading}
+										class="hidden"
+									/>
+									Title from payload
+								</label>
+								<label
+									class="btn btn-sm flex-1 {newWebhookTitleSource === 'static'
+										? 'btn-primary'
+										: 'btn-outline'}"
+								>
+									<input
+										type="radio"
+										name="inspect-title-source"
+										value="static"
+										bind:group={newWebhookTitleSource}
+										disabled={isLoading}
+										class="hidden"
+									/>
+									Custom title
+								</label>
+							</div>
+						</fieldset>
 
 						<div class="bg-info/5 border border-info/20 rounded p-3 mb-4">
 							<div class="flex items-start gap-2">
@@ -841,17 +932,21 @@
 								<div class="text-sm text-base-content">
 									<p class="font-medium mb-1">How to configure your webhook:</p>
 									<ol class="list-decimal list-inside space-y-1 text-xs text-base-content/80">
-										<li>
-											<strong>Select Title:</strong> Click on the JSON field containing the
-											notification title (e.g., <code>text</code>, <code>title</code>, or
-											<code>subject</code>)
-										</li>
+										{#if newWebhookTitleSource === 'path'}
+											<li>
+												<strong>Select Title:</strong> Click on the JSON field containing the
+												notification title (e.g., <code>text</code>, <code>title</code>, or
+												<code>subject</code>)
+											</li>
+										{/if}
 										<li>
 											<strong>Select Body (optional):</strong> Click on the field containing the
 											message content if this payload has one (e.g., <code>message</code>,
 											<code>body</code>, or <code>description</code>)
 										</li>
-										<li>The paths will appear in the fields below automatically</li>
+										{#if newWebhookTitleSource === 'path'}
+											<li>The paths will appear in the fields below automatically</li>
+										{/if}
 									</ol>
 								</div>
 							</div>
@@ -862,24 +957,46 @@
 						</div>
 
 						<div class="space-y-3">
-							<div>
-								<label
-									for="inspect-titlePath"
-									class="block text-sm font-semibold text-base-content mb-1"
-								>
-									Title Path
-									<span class="text-xs font-normal text-base-content/70">— Click a field above</span
+							{#if newWebhookTitleSource === 'path'}
+								<div>
+									<label
+										for="inspect-titlePath"
+										class="block text-sm font-semibold text-base-content mb-1"
 									>
-								</label>
-								<input
-									type="text"
-									id="inspect-titlePath"
-									placeholder="e.g., text, title, or subject field"
-									class="input input-bordered w-full bg-base-100 text-base-content"
-									bind:value={newWebhookTitlePath}
-									disabled={isLoading}
-								/>
-							</div>
+										Title Path
+										<span class="text-xs font-normal text-base-content/70"
+											>— Click a field above</span
+										>
+									</label>
+									<input
+										type="text"
+										id="inspect-titlePath"
+										placeholder="e.g., text, title, or subject field"
+										class="input input-bordered w-full bg-base-100 text-base-content"
+										bind:value={newWebhookTitlePath}
+										disabled={isLoading}
+									/>
+								</div>
+							{:else}
+								<div>
+									<label
+										for="inspect-titleValue"
+										class="block text-sm font-semibold text-base-content mb-1"
+									>
+										Custom Title
+										<span class="text-xs text-error">*</span>
+									</label>
+									<input
+										type="text"
+										id="inspect-titleValue"
+										placeholder="e.g., Slack Alert"
+										class="input input-bordered w-full bg-base-100 text-base-content"
+										bind:value={newWebhookTitleValue}
+										disabled={isLoading}
+										maxlength={MAX_DISPLAY_NAME_LEN}
+									/>
+								</div>
+							{/if}
 
 							<div>
 								<label
@@ -906,27 +1023,90 @@
 			{:else if newWebhookPayloadType === 'custom' && !enableInspectMode}
 				<!-- Manual path entry (when not using inspect mode) -->
 				<div class="border-t border-base-300 pt-4 space-y-4">
-					<div>
-						<label
-							for="create-titlePath"
-							class="block text-sm font-semibold text-base-content mb-2"
-						>
-							Title Path
-							<span class="text-xs font-normal text-base-content/70">*</span>
-						</label>
-						<input
-							type="text"
-							id="create-titlePath"
-							placeholder="e.g., data.title or message.subject"
-							class="input input-bordered w-full bg-base-100 text-base-content"
-							bind:value={newWebhookTitlePath}
-							disabled={isLoading}
-							required
-						/>
-						<p class="text-xs text-base-content/70 mt-1">
-							Enter JSON path without leading dot (uses gjson syntax)
-						</p>
-					</div>
+					<fieldset>
+						<legend class="block text-sm font-semibold text-base-content mb-2">
+							Title Source
+						</legend>
+						<div class="flex gap-2">
+							<label
+								class="btn btn-sm flex-1 {newWebhookTitleSource === 'path'
+									? 'btn-primary'
+									: 'btn-outline'}"
+							>
+								<input
+									type="radio"
+									name="create-title-source"
+									value="path"
+									bind:group={newWebhookTitleSource}
+									disabled={isLoading}
+									class="hidden"
+								/>
+								From payload field
+							</label>
+							<label
+								class="btn btn-sm flex-1 {newWebhookTitleSource === 'static'
+									? 'btn-primary'
+									: 'btn-outline'}"
+							>
+								<input
+									type="radio"
+									name="create-title-source"
+									value="static"
+									bind:group={newWebhookTitleSource}
+									disabled={isLoading}
+									class="hidden"
+								/>
+								Custom title
+							</label>
+						</div>
+					</fieldset>
+
+					{#if newWebhookTitleSource === 'path'}
+						<div>
+							<label
+								for="create-titlePath"
+								class="block text-sm font-semibold text-base-content mb-2"
+							>
+								Title Path
+								<span class="text-xs font-normal text-base-content/70">*</span>
+							</label>
+							<input
+								type="text"
+								id="create-titlePath"
+								placeholder="e.g., data.title or message.subject"
+								class="input input-bordered w-full bg-base-100 text-base-content"
+								bind:value={newWebhookTitlePath}
+								disabled={isLoading}
+								required
+							/>
+							<p class="text-xs text-base-content/70 mt-1">
+								Enter JSON path without leading dot (uses gjson syntax)
+							</p>
+						</div>
+					{:else}
+						<div>
+							<label
+								for="create-titleValue"
+								class="block text-sm font-semibold text-base-content mb-2"
+							>
+								Custom Title
+								<span class="text-xs font-normal text-base-content/70">*</span>
+							</label>
+							<input
+								type="text"
+								id="create-titleValue"
+								placeholder="e.g., Slack Alert"
+								class="input input-bordered w-full bg-base-100 text-base-content"
+								bind:value={newWebhookTitleValue}
+								disabled={isLoading}
+								maxlength={MAX_DISPLAY_NAME_LEN}
+								required
+							/>
+							<p class="text-xs text-base-content/70 mt-1">
+								All notifications from this webhook will use this title.
+							</p>
+						</div>
+					{/if}
 
 					<div>
 						<label for="create-bodyPath" class="block text-sm font-semibold text-base-content mb-2">
@@ -980,7 +1160,10 @@
 				<button
 					type="button"
 					class="btn btn-primary"
-					disabled={isLoading || !newWebhookTitlePath.trim()}
+					disabled={isLoading ||
+						(newWebhookTitleSource === 'static'
+							? !newWebhookTitleValue.trim()
+							: !newWebhookTitlePath.trim())}
 					onclick={() => void finalizeInspect()}
 				>
 					{#if isLoading}
@@ -1186,27 +1369,90 @@
 
 							{#if editWebhookPayloadType === 'custom'}
 								<div class="border-t border-base-300 pt-4 space-y-4">
-									<div>
-										<label
-											for="edit-titlePath-{webhook.id}"
-											class="block text-sm font-semibold text-base-content mb-2"
-										>
-											Title Path
-											<span class="text-xs font-normal text-base-content/70">*</span>
-										</label>
-										<input
-											type="text"
-											id="edit-titlePath-{webhook.id}"
-											placeholder="e.g., data.title or message.subject"
-											class="input input-bordered w-full bg-base-100 text-base-content"
-											bind:value={editWebhookTitlePath}
-											disabled={isLoading}
-											required
-										/>
-										<p class="text-xs text-base-content/70 mt-1">
-											Enter the JSON path without leading dot (uses gjson syntax)
-										</p>
-									</div>
+									<fieldset>
+										<legend class="block text-sm font-semibold text-base-content mb-2">
+											Title Source
+										</legend>
+										<div class="flex gap-2">
+											<label
+												class="btn btn-sm flex-1 {editWebhookTitleSource === 'path'
+													? 'btn-primary'
+													: 'btn-outline'}"
+											>
+												<input
+													type="radio"
+													name="edit-title-source-{webhook.id}"
+													value="path"
+													bind:group={editWebhookTitleSource}
+													disabled={isLoading}
+													class="hidden"
+												/>
+												From payload field
+											</label>
+											<label
+												class="btn btn-sm flex-1 {editWebhookTitleSource === 'static'
+													? 'btn-primary'
+													: 'btn-outline'}"
+											>
+												<input
+													type="radio"
+													name="edit-title-source-{webhook.id}"
+													value="static"
+													bind:group={editWebhookTitleSource}
+													disabled={isLoading}
+													class="hidden"
+												/>
+												Custom title
+											</label>
+										</div>
+									</fieldset>
+
+									{#if editWebhookTitleSource === 'path'}
+										<div>
+											<label
+												for="edit-titlePath-{webhook.id}"
+												class="block text-sm font-semibold text-base-content mb-2"
+											>
+												Title Path
+												<span class="text-xs font-normal text-base-content/70">*</span>
+											</label>
+											<input
+												type="text"
+												id="edit-titlePath-{webhook.id}"
+												placeholder="e.g., data.title or message.subject"
+												class="input input-bordered w-full bg-base-100 text-base-content"
+												bind:value={editWebhookTitlePath}
+												disabled={isLoading}
+												required
+											/>
+											<p class="text-xs text-base-content/70 mt-1">
+												Enter the JSON path without leading dot (uses gjson syntax)
+											</p>
+										</div>
+									{:else}
+										<div>
+											<label
+												for="edit-titleValue-{webhook.id}"
+												class="block text-sm font-semibold text-base-content mb-2"
+											>
+												Custom Title
+												<span class="text-xs font-normal text-base-content/70">*</span>
+											</label>
+											<input
+												type="text"
+												id="edit-titleValue-{webhook.id}"
+												placeholder="e.g., Slack Alert"
+												class="input input-bordered w-full bg-base-100 text-base-content"
+												bind:value={editWebhookTitleValue}
+												disabled={isLoading}
+												maxlength={MAX_DISPLAY_NAME_LEN}
+												required
+											/>
+											<p class="text-xs text-base-content/70 mt-1">
+												All notifications from this webhook will use this title.
+											</p>
+										</div>
+									{/if}
 
 									<div>
 										<label
@@ -1356,12 +1602,21 @@
 											Mapping Rules
 										</div>
 										<div class="bg-base-100 border border-base-300 rounded p-3 space-y-2 text-sm">
-											<div>
-												<span class="font-medium text-base-content">Title Path:</span>
-												<code class="text-xs bg-base-200 px-2 py-1 rounded ml-2">
-													{webhook.title_path}
-												</code>
-											</div>
+											{#if webhook.title_source === 'static'}
+												<div>
+													<span class="font-medium text-base-content">Custom Title:</span>
+													<code class="text-xs bg-base-200 px-2 py-1 rounded ml-2">
+														{webhook.title_value}
+													</code>
+												</div>
+											{:else}
+												<div>
+													<span class="font-medium text-base-content">Title Path:</span>
+													<code class="text-xs bg-base-200 px-2 py-1 rounded ml-2">
+														{webhook.title_path}
+													</code>
+												</div>
+											{/if}
 											<div>
 												<span class="font-medium text-base-content">Body Path:</span>
 												{#if webhook.body_path}
