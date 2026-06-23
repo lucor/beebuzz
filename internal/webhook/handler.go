@@ -307,7 +307,7 @@ func (h *Handler) FinalizeInspect(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rawToken, webhookID, err := h.service.FinalizeInspect(r.Context(), userCtx.ID, req.TitlePath, req.BodyPath, req.TitleSource, req.TitleValue)
+	rawToken, webhookID, webhookName, err := h.service.FinalizeInspect(r.Context(), userCtx.ID, req.TitlePath, req.BodyPath, req.TitleSource, req.TitleValue)
 	if err != nil {
 		if errors.Is(err, ErrInspectSessionNotFound) {
 			core.WriteNotFound(w, "inspect_session_not_found", "Inspect session not found")
@@ -329,6 +329,6 @@ func (h *Handler) FinalizeInspect(w http.ResponseWriter, r *http.Request) {
 	core.WriteJSON(w, http.StatusCreated, CreatedWebhookResponse{
 		ID:    webhookID,
 		Token: rawToken,
-		Name:  req.TitlePath,
+		Name:  webhookName,
 	})
 }

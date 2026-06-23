@@ -2052,6 +2052,19 @@ components:
     CreateWebhookRequestCustom:
       type: object
       required: [name, payload_type, topics]
+      oneOf:
+        - required: [title_path]
+          properties:
+            title_source:
+              const: path
+            title_value:
+              maxLength: 0
+        - required: [title_source, title_value]
+          properties:
+            title_source:
+              const: static
+            title_path:
+              maxLength: 0
       properties:
         name:
           type: string
@@ -2071,11 +2084,11 @@ components:
         title_path:
           type: string
           pattern: '^[A-Za-z0-9_]+(?:\[[0-9]+\])*(?:\.[A-Za-z0-9_]+(?:\[[0-9]+\])*)*$'
-          description: Dot-separated JSON path with optional numeric array indexes. Required when title_source is "path".
+          description: Dot-separated JSON path with optional numeric array indexes. Required when title_source is omitted or "path"; must be omitted or empty when title_source is "static".
         title_value:
           type: string
           maxLength: 64
-          description: Fixed notification title. Required when title_source is "static".
+          description: Fixed notification title. Required when title_source is "static"; must be omitted or empty when title_source is omitted or "path".
         body_path:
           type: string
           pattern: '^(?:|[A-Za-z0-9_]+(?:\[[0-9]+\])*(?:\.[A-Za-z0-9_]+(?:\[[0-9]+\])*)*)$'
@@ -2119,6 +2132,19 @@ components:
     UpdateWebhookRequestCustom:
       type: object
       required: [name, payload_type, topics]
+      oneOf:
+        - required: [title_path]
+          properties:
+            title_source:
+              const: path
+            title_value:
+              maxLength: 0
+        - required: [title_source, title_value]
+          properties:
+            title_source:
+              const: static
+            title_path:
+              maxLength: 0
       properties:
         name:
           type: string
@@ -2138,11 +2164,11 @@ components:
         title_path:
           type: string
           pattern: '^[A-Za-z0-9_]+(?:\[[0-9]+\])*(?:\.[A-Za-z0-9_]+(?:\[[0-9]+\])*)*$'
-          description: Dot-separated JSON path with optional numeric array indexes. Required when title_source is "path".
+          description: Dot-separated JSON path with optional numeric array indexes. Required when title_source is omitted or "path"; must be omitted or empty when title_source is "static".
         title_value:
           type: string
           maxLength: 64
-          description: Fixed notification title. Required when title_source is "static".
+          description: Fixed notification title. Required when title_source is "static"; must be omitted or empty when title_source is omitted or "path".
         body_path:
           type: string
           pattern: '^(?:|[A-Za-z0-9_]+(?:\[[0-9]+\])*(?:\.[A-Za-z0-9_]+(?:\[[0-9]+\])*)*)$'
@@ -2222,6 +2248,19 @@ components:
           format: date-time
     FinalizeInspectRequest:
       type: object
+      oneOf:
+        - required: [title_path]
+          properties:
+            title_source:
+              const: path
+            title_value:
+              maxLength: 0
+        - required: [title_source, title_value]
+          properties:
+            title_source:
+              const: static
+            title_path:
+              maxLength: 0
       properties:
         title_source:
           type: string
@@ -2231,11 +2270,11 @@ components:
         title_path:
           type: string
           pattern: '^[A-Za-z0-9_]+(?:\[[0-9]+\])*(?:\.[A-Za-z0-9_]+(?:\[[0-9]+\])*)*$'
-          description: Dot-separated JSON path with optional numeric array indexes for extracting title from payload. Required when title_source is "path".
+          description: Dot-separated JSON path with optional numeric array indexes for extracting title from payload. Required when title_source is omitted or "path"; must be omitted or empty when title_source is "static".
         title_value:
           type: string
           maxLength: 64
-          description: Fixed notification title. Required when title_source is "static".
+          description: Fixed notification title. Required when title_source is "static"; must be omitted or empty when title_source is omitted or "path".
         body_path:
           type: string
           pattern: '^(?:|[A-Za-z0-9_]+(?:\[[0-9]+\])*(?:\.[A-Za-z0-9_]+(?:\[[0-9]+\])*)*)$'

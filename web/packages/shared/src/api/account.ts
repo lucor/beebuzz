@@ -218,6 +218,30 @@ export interface InspectSessionStatus {
 	expires_at: string;
 }
 
+type WebhookPayloadType = 'beebuzz' | 'custom';
+type WebhookTitleSource = 'path' | 'static';
+type WebhookPriority = 'normal' | 'high';
+
+function customWebhookFields(
+	titlePath: string,
+	bodyPath: string,
+	titleSource: WebhookTitleSource,
+	titleValue: string
+): Record<string, unknown> {
+	const fields: Record<string, unknown> = {
+		title_source: titleSource,
+		body_path: bodyPath
+	};
+
+	if (titleSource === 'static') {
+		fields.title_value = titleValue;
+	} else {
+		fields.title_path = titlePath;
+	}
+
+	return fields;
+}
+
 /**
  * Account management API namespace.
  */
@@ -279,11 +303,11 @@ export const accountApi = {
 	createWebhook: (
 		name: string,
 		description: string = '',
-		payloadType: 'beebuzz' | 'custom' = 'beebuzz',
+		payloadType: WebhookPayloadType = 'beebuzz',
 		titlePath: string = '',
 		bodyPath: string = '',
-		priority: 'normal' | 'high' = 'normal',
-		titleSource: 'path' | 'static' = 'path',
+		priority: WebhookPriority = 'normal',
+		titleSource: WebhookTitleSource = 'path',
 		titleValue: string = '',
 		topics: string[]
 	) => {
@@ -295,10 +319,7 @@ export const accountApi = {
 			priority
 		};
 		if (payloadType === 'custom') {
-			payload.title_source = titleSource;
-			payload.title_path = titlePath;
-			payload.body_path = bodyPath;
-			payload.title_value = titleValue;
+			Object.assign(payload, customWebhookFields(titlePath, bodyPath, titleSource, titleValue));
 		}
 		return api.post<CreatedWebhook>('/webhooks', payload);
 	},
@@ -307,11 +328,11 @@ export const accountApi = {
 		id: string,
 		name: string,
 		description: string,
-		payloadType: 'beebuzz' | 'custom',
+		payloadType: WebhookPayloadType,
 		titlePath: string,
 		bodyPath: string,
-		priority: 'normal' | 'high',
-		titleSource: 'path' | 'static',
+		priority: WebhookPriority,
+		titleSource: WebhookTitleSource,
 		titleValue: string,
 		topics: string[]
 	) => {
@@ -323,10 +344,7 @@ export const accountApi = {
 			priority
 		};
 		if (payloadType === 'custom') {
-			payload.title_source = titleSource;
-			payload.title_path = titlePath;
-			payload.body_path = bodyPath;
-			payload.title_value = titleValue;
+			Object.assign(payload, customWebhookFields(titlePath, bodyPath, titleSource, titleValue));
 		}
 		return api.patch<void>(`/webhooks/${id}`, payload);
 	},
@@ -357,13 +375,11 @@ export const accountApi = {
 	finalizeInspect: (
 		titlePath: string,
 		bodyPath: string = '',
-		titleSource: 'path' | 'static' = 'path',
+		titleSource: WebhookTitleSource = 'path',
 		titleValue: string = ''
 	) =>
-		api.post<CreatedWebhook>('/webhooks/inspect/finalize', {
-			title_source: titleSource,
-			title_path: titlePath,
-			title_value: titleValue,
-			body_path: bodyPath
-		})
+		api.post<CreatedWebhook>(
+			'/webhooks/inspect/finalize',
+			customWebhookFields(titlePath, bodyPath, titleSource, titleValue)
+		)
 };

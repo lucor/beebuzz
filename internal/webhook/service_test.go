@@ -263,6 +263,20 @@ func TestExtractPayload_CustomStaticTitleWithoutBodyPath(t *testing.T) {
 	}
 }
 
+func TestExtractPayload_CustomStaticTitleWithoutBodyPathRejectsInvalidJSON(t *testing.T) {
+	svc := newTestService()
+	wh := &Webhook{
+		PayloadType: PayloadTypeCustom,
+		TitleSource: TitleSourceStatic,
+		TitleValue:  "Fixed Title",
+	}
+
+	_, _, err := svc.extractPayload(wh, []byte(`not json`))
+	if !errors.Is(err, ErrPayloadExtraction) {
+		t.Fatalf("want error %v, got %v", ErrPayloadExtraction, err)
+	}
+}
+
 func TestExtractPayload_CustomStaticTitleRejectsEmptyTitleValue(t *testing.T) {
 	svc := newTestService()
 	wh := &Webhook{
@@ -464,7 +478,7 @@ func TestFinalizeInspectCreatesTitleOnlyWebhook(t *testing.T) {
 		t.Fatalf("CaptureInspectPayload() captured = %v, error = %v, want true nil", captured, err)
 	}
 
-	_, webhookID, err := svc.FinalizeInspect(ctx, user.ID, "title", "", TitleSourcePath, "")
+	_, webhookID, _, err := svc.FinalizeInspect(ctx, user.ID, "title", "", TitleSourcePath, "")
 	if err != nil {
 		t.Fatalf("FinalizeInspect() error = %v, want nil", err)
 	}
@@ -514,9 +528,12 @@ func TestFinalizeInspectWithStaticTitle(t *testing.T) {
 		t.Fatalf("CaptureInspectPayload() captured = %v, error = %v, want true nil", captured, err)
 	}
 
-	_, webhookID, err := svc.FinalizeInspect(ctx, user.ID, "", "text", TitleSourceStatic, "Slack Alert")
+	_, webhookID, webhookName, err := svc.FinalizeInspect(ctx, user.ID, "", "text", TitleSourceStatic, "Slack Alert")
 	if err != nil {
 		t.Fatalf("FinalizeInspect() error = %v, want nil", err)
+	}
+	if webhookName != "inspect" {
+		t.Fatalf("FinalizeInspect() name = %q, want %q", webhookName, "inspect")
 	}
 
 	wh, err := repo.GetByID(ctx, user.ID, webhookID)
@@ -570,7 +587,7 @@ func TestFinalizeInspectStaticTitleValidatesBodyPathAgainstPayload(t *testing.T)
 		t.Fatalf("CaptureInspectPayload() captured = %v, error = %v, want true nil", captured, err)
 	}
 
-	_, _, err = svc.FinalizeInspect(ctx, user.ID, "", "missing_field", TitleSourceStatic, "Slack Alert")
+	_, _, _, err = svc.FinalizeInspect(ctx, user.ID, "", "missing_field", TitleSourceStatic, "Slack Alert")
 	if !errors.Is(err, ErrPayloadExtraction) {
 		t.Fatalf("FinalizeInspect() error = %v, want %v", err, ErrPayloadExtraction)
 	}
@@ -603,7 +620,7 @@ func TestFinalizeInspectStaticTitleDoesNotRequireTitlePath(t *testing.T) {
 		t.Fatalf("CaptureInspectPayload() captured = %v, error = %v, want true nil", captured, err)
 	}
 
-	_, webhookID, err := svc.FinalizeInspect(ctx, user.ID, "", "", TitleSourceStatic, "Fixed Title")
+	_, webhookID, _, err := svc.FinalizeInspect(ctx, user.ID, "", "", TitleSourceStatic, "Fixed Title")
 	if err != nil {
 		t.Fatalf("FinalizeInspect() error = %v, want nil", err)
 	}
@@ -653,7 +670,7 @@ func TestFinalizeInspectRejectsEmptyTitle(t *testing.T) {
 		t.Fatalf("CaptureInspectPayload() captured = %v, error = %v, want true nil", captured, err)
 	}
 
-	_, _, err = svc.FinalizeInspect(ctx, user.ID, "title", "", TitleSourcePath, "")
+	_, _, _, err = svc.FinalizeInspect(ctx, user.ID, "title", "", TitleSourcePath, "")
 	if !errors.Is(err, ErrPayloadExtraction) {
 		t.Fatalf("FinalizeInspect() error = %v, want %v", err, ErrPayloadExtraction)
 	}
@@ -1065,6 +1082,80 @@ func TestReceive_BlockedUser(t *testing.T) {
 	_, err = svc.Receive(ctx, rawToken, []byte(`{"title":"Test","body":"Hello"}`), slog.Default())
 	if !errors.Is(err, ErrWebhookNotFound) {
 		t.Fatalf("Receive() error = %v, want %v", err, ErrWebhookNotFound)
+	}
+}
+
+func TestStoredWebhookMappingClearsInactiveFields(t *testing.T) {
+	tests := []struct {
+		name            string
+		payloadType     PayloadType
+		titlePath       string
+		bodyPath        string
+		titleSource     TitleSource
+		titleValue      string
+		wantTitlePath   string
+		wantBodyPath    string
+		wantTitleSource TitleSource
+		wantTitleValue  string
+	}{
+		{
+			name:            "beebuzz clears all custom mapping fields",
+			payloadType:     PayloadTypeBeebuzz,
+			titlePath:       "data.title",
+			bodyPath:        "data.body",
+			titleSource:     TitleSourceStatic,
+			titleValue:      "Fixed",
+			wantTitleSource: TitleSourcePath,
+		},
+		{
+			name:            "custom path clears stale static title",
+			payloadType:     PayloadTypeCustom,
+			titlePath:       "data.title",
+			bodyPath:        "data.body",
+			titleSource:     TitleSourcePath,
+			titleValue:      "Fixed",
+			wantTitlePath:   "data.title",
+			wantBodyPath:    "data.body",
+			wantTitleSource: TitleSourcePath,
+		},
+		{
+			name:            "custom static clears stale title path",
+			payloadType:     PayloadTypeCustom,
+			titlePath:       "data.title",
+			bodyPath:        "data.body",
+			titleSource:     TitleSourceStatic,
+			titleValue:      "Fixed",
+			wantBodyPath:    "data.body",
+			wantTitleSource: TitleSourceStatic,
+			wantTitleValue:  "Fixed",
+		},
+		{
+			name:            "custom empty title source defaults to path",
+			payloadType:     PayloadTypeCustom,
+			titlePath:       "data.title",
+			bodyPath:        "data.body",
+			wantTitlePath:   "data.title",
+			wantBodyPath:    "data.body",
+			wantTitleSource: TitleSourcePath,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			titlePath, bodyPath, titleSource, titleValue := storedWebhookMapping(tt.payloadType, tt.titlePath, tt.bodyPath, tt.titleSource, tt.titleValue)
+			if titlePath != tt.wantTitlePath {
+				t.Fatalf("titlePath = %q, want %q", titlePath, tt.wantTitlePath)
+			}
+			if bodyPath != tt.wantBodyPath {
+				t.Fatalf("bodyPath = %q, want %q", bodyPath, tt.wantBodyPath)
+			}
+			if titleSource != tt.wantTitleSource {
+				t.Fatalf("titleSource = %q, want %q", titleSource, tt.wantTitleSource)
+			}
+			if titleValue != tt.wantTitleValue {
+				t.Fatalf("titleValue = %q, want %q", titleValue, tt.wantTitleValue)
+			}
+		})
 	}
 }
 
