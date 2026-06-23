@@ -81,6 +81,8 @@ fi
 
 IP=$(echo "${DOMAIN%.lancert.dev}" | tr '-' '.')
 export BEEBUZZ_DOMAIN="$DOMAIN"
+export VITE_BEEBUZZ_COMMIT=$(git rev-parse --short HEAD 2>/dev/null || echo "dev")
+export COMMIT_SHA="$VITE_BEEBUZZ_COMMIT"
 echo "[setup-dev] Domain: $DOMAIN"
 
 # --- Fetch certs if not cached locally ---

@@ -99,6 +99,8 @@ export async function collectHiveSafeContext(): Promise<HiveSafeContext> {
 
 	return {
 		app_version: String(import.meta.env.VITE_BEEBUZZ_VERSION || 'dev'),
+		app_commit: String(import.meta.env.VITE_BEEBUZZ_COMMIT || 'dev'),
+		app_dirty: import.meta.env.VITE_BEEBUZZ_DIRTY === true,
 		browser_family: browserFamily,
 		browser_version_major: browserVersionMajor,
 		os,

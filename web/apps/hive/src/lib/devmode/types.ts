@@ -395,6 +395,8 @@ export type HiveLogEntry = {
 
 export type HiveSafeContext = {
 	app_version: string;
+	app_commit: string;
+	app_dirty: boolean;
 	browser_family: string;
 	browser_version_major: string;
 	os: string;

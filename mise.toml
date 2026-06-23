@@ -37,6 +37,9 @@ MP_SMTP_AUTH_ALLOW_INSECURE = "true"
 # Frontend defaults — VITE_BEEBUZZ_DOMAIN is now derived from BEEBUZZ_DOMAIN via Vite define
 VITE_BEEBUZZ_DEBUG = true
 VITE_BEEBUZZ_VERSION = "dev"
+# VITE_BEEBUZZ_COMMIT is computed dynamically from git in .mise/setup-dev.sh for local dev,
+# and passed as ARG in Docker builds. Fallback "dev" is in vite configs.
+VITE_BEEBUZZ_DIRTY = "false"
 
 # =============================================================================
 # Setup / housekeeping
@@ -159,7 +162,12 @@ run = [
 
 [tasks.binary]
 description = "Build the beebuzzd binary into ./bin"
-run = "go build -o ./bin/beebuzzd ."
+run = """
+#!/usr/bin/env bash
+set -euo pipefail
+SHA=$(git rev-parse --short HEAD 2>/dev/null || echo "dev")
+go build -ldflags="-w -s -X main.commitHash=$SHA -X main.version=dev" -o ./bin/beebuzzd .
+"""
 
 # =============================================================================
 # Demo

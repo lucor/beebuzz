@@ -4,6 +4,7 @@ import { api } from './client';
 export interface HealthCheckStatus {
 	status: string;
 	version: string;
+	commit: string;
 }
 
 /**

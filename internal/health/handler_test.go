@@ -18,7 +18,7 @@ type stubPinger struct {
 func (s *stubPinger) PingContext(_ context.Context) error { return s.err }
 
 func TestHealth_OK(t *testing.T) {
-	h := health.NewHandler("v1.0.0", &stubPinger{})
+	h := health.NewHandler("v1.0.0", "abc1234", &stubPinger{})
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/health", nil)
 
@@ -38,10 +38,13 @@ func TestHealth_OK(t *testing.T) {
 	if resp.Version != "v1.0.0" {
 		t.Errorf("expected version v1.0.0, got %s", resp.Version)
 	}
+	if resp.Commit != "abc1234" {
+		t.Errorf("expected commit abc1234, got %s", resp.Commit)
+	}
 }
 
 func TestHealth_DBDown(t *testing.T) {
-	h := health.NewHandler("v1.0.0", &stubPinger{err: errors.New("connection refused")})
+	h := health.NewHandler("v1.0.0", "abc1234", &stubPinger{err: errors.New("connection refused")})
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/health", nil)
 

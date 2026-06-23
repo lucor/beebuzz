@@ -12,6 +12,9 @@ import (
 // commitHash is set at build time via -ldflags "-X main.commitHash=<commit-sha>".
 var commitHash = "dev"
 
+// version is set at build time via -ldflags "-X main.version=<version>".
+var version = "dev"
+
 func main() {
 	if err := run(os.Args[1:], os.Stdout, os.Stderr); err != nil {
 		fmt.Fprintf(os.Stderr, "beebuzzd failed: %v\n", err)
@@ -32,7 +35,7 @@ func run(args []string, stdout, stderr io.Writer) error {
 			writeUsage(stderr)
 			return fmt.Errorf("serve does not accept additional arguments")
 		}
-		return server.RunServe(commitHash)
+		return server.RunServe(version, commitHash)
 	case "healthcheck":
 		if len(args) != 1 {
 			writeUsage(stderr)

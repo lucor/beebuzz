@@ -70,9 +70,7 @@ type appServices struct {
 }
 
 // RunServe bootstraps and runs the HTTP server lifecycle.
-func RunServe(commitHash string) error {
-	version := "beebuzz@" + commitHash[:min(7, len(commitHash))]
-
+func RunServe(version, commitHash string) error {
 	cfg, err := config.Load()
 	if err != nil {
 		return fmt.Errorf("load config: %w", err)
@@ -110,11 +108,11 @@ func RunServe(commitHash string) error {
 		return err
 	}
 
-	handler := buildHTTPHandler(services, cfg, log, version)
+	handler := buildHTTPHandler(services, cfg, log, version, commitHash)
 	httpServer := newHTTPServer(cfg.Port, handler)
 	startBackgroundWorkers(rootCtx, services, log)
 
-	log.Info("beebuzzd server starting", "address", httpServer.Addr, "env", cfg.Env, "version", version)
+	log.Info("beebuzzd server starting", "address", httpServer.Addr, "env", cfg.Env, "version", version, "commit", commitHash)
 
 	if err := runHTTPServer(rootCtx, httpServer); err != nil {
 		return err
@@ -231,9 +229,9 @@ func loadVAPIDKeys(cfg *config.Config) (*notification.VAPIDKeys, error) {
 }
 
 // buildHTTPHandler creates the router and wraps it with global middleware.
-func buildHTTPHandler(services *appServices, cfg *config.Config, log *slog.Logger, version string) http.Handler {
+func buildHTTPHandler(services *appServices, cfg *config.Config, log *slog.Logger, version string, commitHash string) http.Handler {
 	authHandler := auth.NewHandler(services.authSvc, cfg.CookieDomain, log)
-	healthHandler := health.NewHandler(version, services.db)
+	healthHandler := health.NewHandler(version, commitHash, services.db)
 	userHandler := user.NewHandler(services.userSvc, log)
 	topicHandler := topic.NewHandler(services.topicSvc, log)
 	adminHandler := admin.NewHandler(services.adminSvc, log)

@@ -14,16 +14,18 @@ type DBPinger interface {
 
 type Handler struct {
 	version string
+	commit  string
 	db      DBPinger
 }
 
-func NewHandler(version string, db DBPinger) *Handler {
-	return &Handler{version: version, db: db}
+func NewHandler(version, commit string, db DBPinger) *Handler {
+	return &Handler{version: version, commit: commit, db: db}
 }
 
 type HealthResponse struct {
 	Status  string `json:"status"`
 	Version string `json:"version"`
+	Commit  string `json:"commit"`
 }
 
 // Health returns 200 if the database is reachable, 503 otherwise.
@@ -32,6 +34,7 @@ func (h *Handler) Health(w http.ResponseWriter, r *http.Request) {
 		core.WriteJSON(w, http.StatusServiceUnavailable, HealthResponse{
 			Status:  "unavailable",
 			Version: h.version,
+			Commit:  h.commit,
 		})
 		return
 	}
@@ -39,5 +42,6 @@ func (h *Handler) Health(w http.ResponseWriter, r *http.Request) {
 	core.WriteJSON(w, http.StatusOK, HealthResponse{
 		Status:  "ok",
 		Version: h.version,
+		Commit:  h.commit,
 	})
 }

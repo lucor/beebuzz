@@ -5,7 +5,7 @@ tmp_dir = "tmp"
 
 [build]
   entrypoint = "."
-  cmd = "go build -o ./bin/beebuzzd ."
+  cmd = "go build -ldflags=\"-w -s -X main.commitHash=${COMMIT_SHA} -X main.version=dev\" -o ./bin/beebuzzd ."
   delay = 1000
   exclude_dir = ["web", "bin", "tmp", "vendor", "data", "docs", "certs", "public", "node_modules", ".mise"]
   exclude_file = []

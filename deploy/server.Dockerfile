@@ -3,6 +3,7 @@ FROM golang:1.26.4-alpine AS server-builder
 WORKDIR /build
 
 ARG COMMIT_SHA=dev
+ARG VERSION=dev
 
 COPY go.mod go.sum ./
 RUN go mod download
@@ -11,7 +12,7 @@ COPY docs/openapi.go docs/openapi.yaml ./docs/
 COPY internal ./internal
 
 RUN CGO_ENABLED=0 go build -trimpath \
-    -ldflags="-w -s -X main.commitHash=$(echo ${COMMIT_SHA} | cut -c1-7)" \
+    -ldflags="-w -s -X main.commitHash=${COMMIT_SHA} -X main.version=${VERSION}" \
     -o beebuzzd .
 
 # Stage 2: Runtime image

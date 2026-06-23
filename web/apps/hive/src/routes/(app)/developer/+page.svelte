@@ -50,6 +50,7 @@
 		type NotificationRuntimeMetadata
 	} from '$lib/services/runtime-metadata-repository';
 	import { health } from '@beebuzz/shared/stores/health.svelte';
+	import { formatVersionDisplay } from '@beebuzz/shared/utils/version';
 	import { toast } from '@beebuzz/shared/stores';
 	import { logger } from '@beebuzz/shared/logger';
 
@@ -75,7 +76,19 @@
 	let selectedSnapshot = $state<HiveErrorSnapshot | null>(null);
 	let selectedConsoleDiag = $state<HiveConsoleDiagnosticEntry | null>(null);
 	let deviceKey = $state<StoredDeviceKey | null>(null);
-	const hiveVersion = String(import.meta.env.VITE_BEEBUZZ_VERSION || 'dev');
+	const hiveVersionDisplay = $derived(
+		formatVersionDisplay({
+			version: String(import.meta.env.VITE_BEEBUZZ_VERSION || 'dev'),
+			commit: String(import.meta.env.VITE_BEEBUZZ_COMMIT || 'dev'),
+			dirty: import.meta.env.VITE_BEEBUZZ_DIRTY === true
+		})
+	);
+	const backendVersionDisplay = $derived(
+		formatVersionDisplay({
+			version: health.version ?? 'dev',
+			commit: health.commit
+		})
+	);
 	let notificationRuntime = $state<NotificationRuntimeMetadata | null>(null);
 	let copyingPublicKey = $state(false);
 	let showPublicKey = $state(false);
@@ -687,7 +700,19 @@
 								<Smartphone size={18} class="shrink-0 text-base-content/50" aria-hidden="true" />
 								<p class="font-medium text-base-content">Hive version</p>
 							</div>
-							<span class="font-mono text-sm text-base-content/70">{hiveVersion}</span>
+							<div class="text-right">
+								<span class="font-mono text-sm text-base-content/70"
+									>{hiveVersionDisplay.primary}</span
+								>
+								{#if hiveVersionDisplay.badge}
+									<span class="badge badge-warning badge-sm ml-2">{hiveVersionDisplay.badge}</span>
+								{/if}
+								{#if hiveVersionDisplay.secondary}
+									<p class="text-xs font-mono text-base-content/40">
+										{hiveVersionDisplay.secondary}
+									</p>
+								{/if}
+							</div>
 						</div>
 
 						<div
@@ -698,7 +723,21 @@
 								<p class="font-medium text-base-content">Backend version</p>
 							</div>
 							{#if health.version}
-								<span class="font-mono text-sm text-base-content/70">{health.version}</span>
+								<div class="text-right">
+									<span class="font-mono text-sm text-base-content/70"
+										>{backendVersionDisplay.primary}</span
+									>
+									{#if backendVersionDisplay.badge}
+										<span class="badge badge-warning badge-sm ml-2"
+											>{backendVersionDisplay.badge}</span
+										>
+									{/if}
+									{#if backendVersionDisplay.secondary}
+										<p class="text-xs font-mono text-base-content/40">
+											{backendVersionDisplay.secondary}
+										</p>
+									{/if}
+								</div>
 							{:else}
 								<span class="badge badge-error gap-1">
 									<CircleX size={12} aria-hidden="true" />
