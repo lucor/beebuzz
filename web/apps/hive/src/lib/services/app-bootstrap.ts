@@ -4,7 +4,6 @@ export interface AppBootstrapDeps<TRegistration> {
 	getDeviceId: () => Promise<string | null>;
 	activateNotifications: (deviceId: string) => void;
 	attachServiceWorkerListeners: () => void;
-	migrateLegacyNotifications: (deviceId: string) => Promise<void>;
 	loadPersistedNotifications: (phase: 'initial' | 'final') => Promise<void>;
 	runPostPairingChecks: (registration: TRegistration) => Promise<void>;
 }
@@ -23,9 +22,7 @@ export interface AppBootstrapResult<TRegistration> {
  *    notification history is loaded.
  * 2. Notification history is activated for the current backend device ID before
  *    the service worker bridge is attached or IndexedDB is drained.
- * 3. Legacy IndexedDB records (created before per-device scoping) are stamped
- *    with the current deviceId or removed if they belong to a different device.
- * 4. A final drain runs after post-pairing checks, closing the residual
+ * 3. A final drain runs after post-pairing checks, closing the residual
  *    window before polling starts. Callers that need offline-first startup
  *    should pass a non-throwing `runPostPairingChecks` callback.
  *
@@ -53,7 +50,6 @@ export async function bootstrapAppShell<TRegistration>(
 
 	deps.activateNotifications(deviceId);
 	deps.attachServiceWorkerListeners();
-	await deps.migrateLegacyNotifications(deviceId);
 	await deps.loadPersistedNotifications('initial');
 	await deps.runPostPairingChecks(registration);
 	await deps.loadPersistedNotifications('final');

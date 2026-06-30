@@ -1,7 +1,8 @@
 export const HIVE_DB_NAME = 'BeeBuzz';
-export const HIVE_DB_VERSION = 3;
+export const HIVE_DB_VERSION = 4;
 export const NOTIFICATIONS_STORE = 'notifications';
 export const NOTIFICATIONS_BY_DEVICE_INDEX = 'by-device';
+export const NOTIFICATION_STATE_STORE = 'notification_state';
 export const ENCRYPTION_METADATA_STORE = 'encryption_keys';
 export const WRAPPING_KEY_STORE = 'wrapping_keys';
 export const ENCRYPTED_KEY_STORE = 'encrypted_private_keys';
@@ -31,7 +32,7 @@ export function openHiveDB(): Promise<IDBDatabase> {
 			}
 
 			// v1 -> v2: per-device scoping was introduced. Add the by-device index to
-			// the existing store so legacy rows can be migrated lazily by the app shell.
+			// the existing store when upgrading an older development database.
 			if (oldVersion >= 1 && oldVersion < 2) {
 				if (!db.objectStoreNames.contains(NOTIFICATIONS_STORE)) {
 					const notifications = db.createObjectStore(NOTIFICATIONS_STORE, { keyPath: 'id' });
@@ -56,6 +57,10 @@ export function openHiveDB(): Promise<IDBDatabase> {
 			// receive / notification display timestamps used by debug reports).
 			if (!db.objectStoreNames.contains(RUNTIME_METADATA_STORE)) {
 				db.createObjectStore(RUNTIME_METADATA_STORE, { keyPath: 'key' });
+			}
+
+			if (!db.objectStoreNames.contains(NOTIFICATION_STATE_STORE)) {
+				db.createObjectStore(NOTIFICATION_STATE_STORE, { keyPath: 'deviceId' });
 			}
 		};
 		request.onerror = () => reject(new Error(request.error?.message ?? 'IndexedDB open failed'));

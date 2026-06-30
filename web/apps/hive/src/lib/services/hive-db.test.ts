@@ -4,6 +4,7 @@ import {
 	ENCRYPTION_METADATA_STORE,
 	HIVE_DB_NAME,
 	NOTIFICATIONS_BY_DEVICE_INDEX,
+	NOTIFICATION_STATE_STORE,
 	NOTIFICATIONS_STORE,
 	RUNTIME_METADATA_STORE,
 	WRAPPING_KEY_STORE,
@@ -90,8 +91,9 @@ describe('hive-db', () => {
 
 		const upgraded = await openHiveDB();
 
-		expect(upgraded.version).toBe(3);
+		expect(upgraded.version).toBe(4);
 		expect(upgraded.objectStoreNames.contains(NOTIFICATIONS_STORE)).toBe(true);
+		expect(upgraded.objectStoreNames.contains(NOTIFICATION_STATE_STORE)).toBe(true);
 		const tx = upgraded.transaction(NOTIFICATIONS_STORE, 'readonly');
 		expect(
 			tx.objectStore(NOTIFICATIONS_STORE).indexNames.contains(NOTIFICATIONS_BY_DEVICE_INDEX)
@@ -102,12 +104,13 @@ describe('hive-db', () => {
 	it('creates the runtime metadata store in the latest schema', async () => {
 		const db = await openHiveDB();
 
-		expect(db.version).toBe(3);
+		expect(db.version).toBe(4);
 		expect(db.objectStoreNames.contains(RUNTIME_METADATA_STORE)).toBe(true);
+		expect(db.objectStoreNames.contains(NOTIFICATION_STATE_STORE)).toBe(true);
 		db.close();
 	});
 
-	it('upgrades published v2 databases to v3 without clearing existing notifications', async () => {
+	it('upgrades published v2 databases to v4 without clearing existing notifications', async () => {
 		const v2DB = await createV2HiveDBWithNotification();
 		expect(v2DB.version).toBe(2);
 		expect(v2DB.objectStoreNames.contains(RUNTIME_METADATA_STORE)).toBe(false);
@@ -115,8 +118,9 @@ describe('hive-db', () => {
 
 		const upgraded = await openHiveDB();
 
-		expect(upgraded.version).toBe(3);
+		expect(upgraded.version).toBe(4);
 		expect(upgraded.objectStoreNames.contains(RUNTIME_METADATA_STORE)).toBe(true);
+		expect(upgraded.objectStoreNames.contains(NOTIFICATION_STATE_STORE)).toBe(true);
 		const tx = upgraded.transaction(NOTIFICATIONS_STORE, 'readonly');
 		const request = tx.objectStore(NOTIFICATIONS_STORE).get('n-published');
 		await new Promise<void>((resolve, reject) => {

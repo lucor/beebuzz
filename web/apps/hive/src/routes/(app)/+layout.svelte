@@ -27,7 +27,6 @@
 	import { notificationsStore } from '$lib/stores/notifications.svelte';
 	import { getVapidKey, registerServiceWorker } from '$lib/services/push';
 	import { deviceKeysRepository } from '$lib/services/device-keys-repository';
-	import { notificationsRepository } from '$lib/services/notifications-repository';
 	import { bootstrapAppShell } from '$lib/services/app-bootstrap';
 	import { syncRecentNotifications } from '$lib/services/notification-sync';
 	import { cleanupStalePairingState } from '$lib/services/startup-recovery';
@@ -436,12 +435,6 @@
 						handleServiceWorkerControllerChange
 					);
 				},
-				migrateLegacyNotifications: (deviceId) =>
-					withTimeout(
-						notificationsRepository.migrateLegacyNotifications(deviceId),
-						STARTUP_TIMEOUT_MS,
-						'Legacy notification migration'
-					),
 				loadPersistedNotifications: (phase) =>
 					withTimeout(
 						notificationsStore.loadFromIndexedDB(),

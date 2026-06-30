@@ -1,5 +1,6 @@
 import {
 	NOTIFICATIONS_BY_DEVICE_INDEX,
+	NOTIFICATION_STATE_STORE,
 	NOTIFICATIONS_STORE,
 	openExistingHiveDB,
 	openHiveDB
@@ -10,27 +11,111 @@ export interface StoredNotificationRecord {
 	deviceId: string;
 	title: string;
 	body: string;
-	topic: string;
+	topic: string | null;
 	sentAt: string;
 	topicId?: string;
 	attachment?: unknown;
 	priority?: string;
 }
 
+export interface NotificationStateRecord {
+	deviceId: string;
+	readIds: string[];
+	syncCursor: string | null;
+	updatedAt: string;
+}
+
+export class StorageQuotaError extends Error {
+	constructor(message = 'Browser storage quota exceeded') {
+		super(message);
+		this.name = 'StorageQuotaError';
+	}
+}
+
+function isQuotaExceeded(error: unknown): boolean {
+	if (!error || typeof error !== 'object') return false;
+	const name = 'name' in error ? String((error as { name?: unknown }).name) : '';
+	const code = 'code' in error ? Number((error as { code?: unknown }).code) : 0;
+	return name === 'QuotaExceededError' || name === 'NS_ERROR_DOM_QUOTA_REACHED' || code === 22;
+}
+
+function storageError(error: unknown, fallback: string): Error {
+	if (isQuotaExceeded(error)) {
+		return new StorageQuotaError();
+	}
+	if (error instanceof Error) {
+		return error;
+	}
+	return new Error(fallback);
+}
+
+function transactionError(tx: IDBTransaction, fallback: string): Error {
+	return storageError(tx.error, tx.error?.message ?? fallback);
+}
+
+function defaultNotificationState(deviceId: string): NotificationStateRecord {
+	return {
+		deviceId,
+		readIds: [],
+		syncCursor: null,
+		updatedAt: new Date(0).toISOString()
+	};
+}
+
+async function getNotificationState(
+	db: IDBDatabase,
+	deviceId: string
+): Promise<NotificationStateRecord> {
+	return new Promise((resolve, reject) => {
+		const tx = db.transaction(NOTIFICATION_STATE_STORE, 'readonly');
+		const request = tx.objectStore(NOTIFICATION_STATE_STORE).get(deviceId);
+		request.onsuccess = () => {
+			resolve({
+				...defaultNotificationState(deviceId),
+				...(request.result as Partial<NotificationStateRecord> | undefined)
+			});
+		};
+		request.onerror = () =>
+			reject(
+				storageError(request.error, request.error?.message ?? 'Notification state fetch failed')
+			);
+	});
+}
+
 /**
- * Normalizes a legacy record by converting snake_case fields to camelCase.
+ * Reads, mutates, and writes a device's notification state inside a single
+ * readwrite transaction. IndexedDB serializes overlapping readwrite
+ * transactions, so keeping the read-modify-write in one transaction keeps
+ * concurrent `readIds` and `syncCursor` updates from overwriting each other.
  */
-function normalizeLegacyRecord(record: Record<string, unknown>): Record<string, unknown> {
-	const normalized: Record<string, unknown> = { ...record };
-	if ('sent_at' in record && !('sentAt' in record)) {
-		normalized.sentAt = record.sent_at;
-		delete normalized.sent_at;
-	}
-	if ('topic_id' in record && !('topicId' in record)) {
-		normalized.topicId = record.topic_id;
-		delete normalized.topic_id;
-	}
-	return normalized;
+async function updateNotificationState(
+	db: IDBDatabase,
+	deviceId: string,
+	mutate: (state: NotificationStateRecord) => NotificationStateRecord
+): Promise<void> {
+	return new Promise((resolve, reject) => {
+		const tx = db.transaction(NOTIFICATION_STATE_STORE, 'readwrite');
+		const store = tx.objectStore(NOTIFICATION_STATE_STORE);
+		const request = store.get(deviceId);
+		request.onsuccess = () => {
+			const current: NotificationStateRecord = {
+				...defaultNotificationState(deviceId),
+				...(request.result as Partial<NotificationStateRecord> | undefined)
+			};
+			store.put({
+				...mutate(current),
+				deviceId,
+				updatedAt: new Date().toISOString()
+			});
+		};
+		request.onerror = () =>
+			reject(
+				storageError(request.error, request.error?.message ?? 'Notification state fetch failed')
+			);
+		tx.oncomplete = () => resolve();
+		tx.onerror = () => reject(transactionError(tx, 'Notification state transaction failed'));
+		tx.onabort = () => reject(transactionError(tx, 'Notification state transaction aborted'));
+	});
 }
 
 export const notificationsRepository = {
@@ -42,9 +127,10 @@ export const notificationsRepository = {
 			const tx = db.transaction(NOTIFICATIONS_STORE, 'readwrite');
 			const request = tx.objectStore(NOTIFICATIONS_STORE).put(input);
 			request.onerror = () =>
-				reject(new Error(request.error?.message ?? 'Notification write failed'));
+				reject(storageError(request.error, request.error?.message ?? 'Notification write failed'));
 			tx.oncomplete = () => resolve();
-			tx.onerror = () => reject(new Error(tx.error?.message ?? 'Notification transaction failed'));
+			tx.onerror = () => reject(transactionError(tx, 'Notification transaction failed'));
+			tx.onabort = () => reject(transactionError(tx, 'Notification transaction aborted'));
 		});
 	},
 
@@ -58,7 +144,7 @@ export const notificationsRepository = {
 			const request = index.getAll(deviceId);
 			request.onsuccess = () => resolve(request.result as StoredNotificationRecord[]);
 			request.onerror = () =>
-				reject(new Error(request.error?.message ?? 'Notifications fetch failed'));
+				reject(storageError(request.error, request.error?.message ?? 'Notifications fetch failed'));
 		});
 	},
 
@@ -77,41 +163,68 @@ export const notificationsRepository = {
 				store.delete(id);
 			}
 			tx.oncomplete = () => resolve();
-			tx.onerror = () => reject(new Error(tx.error?.message ?? 'Notifications delete failed'));
+			tx.onerror = () => reject(transactionError(tx, 'Notifications delete failed'));
+			tx.onabort = () => reject(transactionError(tx, 'Notifications delete aborted'));
 		});
 	},
 
-	/**
-	 * Migrates legacy notification records that lack a deviceId.
-	 *
-	 * - Records without a deviceId are stamped with the current deviceId and
-	 *   re-saved so they become queryable via the by-device index.
-	 * - Records that already belong to a different deviceId are deleted.
-	 */
-	async migrateLegacyNotifications(deviceId: string): Promise<void> {
+	/** Deletes all notification records for one backend device ID. */
+	async clearByDevice(deviceId: string): Promise<void> {
 		const db = await openHiveDB();
 
 		return new Promise((resolve, reject) => {
 			const tx = db.transaction(NOTIFICATIONS_STORE, 'readwrite');
-			const store = tx.objectStore(NOTIFICATIONS_STORE);
-			const request = store.getAll();
-
+			const index = tx.objectStore(NOTIFICATIONS_STORE).index(NOTIFICATIONS_BY_DEVICE_INDEX);
+			const request = index.getAllKeys(deviceId);
 			request.onsuccess = () => {
-				const records = request.result as Array<Record<string, unknown>>;
-				for (const record of records) {
-					const recordDeviceId = record.deviceId;
-					if (typeof recordDeviceId !== 'string') {
-						// Legacy record: normalize fields and stamp with current deviceId.
-						store.put({ ...normalizeLegacyRecord(record), deviceId });
-					} else if (recordDeviceId !== deviceId) {
-						// Belongs to a different device: remove.
-						store.delete(record.id as string);
-					}
+				const store = tx.objectStore(NOTIFICATIONS_STORE);
+				for (const key of request.result) {
+					store.delete(key);
 				}
 			};
+			request.onerror = () =>
+				reject(
+					storageError(request.error, request.error?.message ?? 'Notification keys fetch failed')
+				);
 			tx.oncomplete = () => resolve();
-			tx.onerror = () =>
-				reject(new Error(tx.error?.message ?? 'Legacy migration transaction failed'));
+			tx.onerror = () => reject(transactionError(tx, 'Notifications clear failed'));
+			tx.onabort = () => reject(transactionError(tx, 'Notifications clear aborted'));
+		});
+	},
+
+	/** Loads read-state and sync cursor metadata for one backend device ID. */
+	async getState(deviceId: string): Promise<NotificationStateRecord> {
+		const db = await openHiveDB();
+		return getNotificationState(db, deviceId);
+	},
+
+	/** Persists read notification IDs for one backend device ID. */
+	async saveReadIds(deviceId: string, readIds: string[]): Promise<void> {
+		const db = await openHiveDB();
+		await updateNotificationState(db, deviceId, (state) => ({
+			...state,
+			readIds: [...new Set(readIds)]
+		}));
+	},
+
+	/** Persists the outbox sync cursor for one backend device ID. */
+	async saveSyncCursor(deviceId: string, syncCursor: string | null): Promise<void> {
+		const db = await openHiveDB();
+		await updateNotificationState(db, deviceId, (state) => ({
+			...state,
+			syncCursor
+		}));
+	},
+
+	/** Clears notification state metadata for one backend device ID. */
+	async clearState(deviceId: string): Promise<void> {
+		const db = await openHiveDB();
+		return new Promise((resolve, reject) => {
+			const tx = db.transaction(NOTIFICATION_STATE_STORE, 'readwrite');
+			tx.objectStore(NOTIFICATION_STATE_STORE).delete(deviceId);
+			tx.oncomplete = () => resolve();
+			tx.onerror = () => reject(transactionError(tx, 'Notification state clear failed'));
+			tx.onabort = () => reject(transactionError(tx, 'Notification state clear aborted'));
 		});
 	}
 };

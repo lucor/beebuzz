@@ -1,11 +1,12 @@
 import { browser } from '$app/environment';
-import { notificationsRepository } from '$lib/services/notifications-repository';
+import {
+	notificationsRepository,
+	StorageQuotaError,
+	type StoredNotificationRecord
+} from '$lib/services/notifications-repository';
 import { SvelteSet } from 'svelte/reactivity';
 import type { Notification, NotificationPriority } from '@beebuzz/shared/types';
 
-const STORAGE_KEY_PREFIX = 'notifications:';
-const READ_IDS_KEY_PREFIX = 'notifications_read_ids:';
-const SYNC_CURSOR_KEY_PREFIX = 'notification_sync_cursor:';
 export type TopicSummary = {
 	name: string;
 	count: number;
@@ -53,6 +54,7 @@ function createNotificationsStore() {
 	let notifications = $state<Notification[]>([]);
 	let activeDeviceId = $state<string | null>(null);
 	let syncCursor = $state<string | null>(null);
+	let storageError = $state<string | null>(null);
 	const unreadIds = new SvelteSet<string>();
 
 	function parseStoredNotification(record: unknown): Notification | null {
@@ -78,125 +80,83 @@ function createNotificationsStore() {
 			title: r.title,
 			body: r.body,
 			topicId: (r.topicId as string | null) ?? null,
-			topic: (r.topic as string | null) ?? null,
+			// Writers persist an empty string for "no topic"; normalize it back to
+			// null so the in-memory representation matches Notification.topic.
+			topic: typeof r.topic === 'string' && r.topic !== '' ? r.topic : null,
 			sentAt,
 			priority: (r.priority as NotificationPriority) ?? 'normal',
 			attachment: r.attachment as Notification['attachment']
 		};
 	}
 
-	/** Persists read IDs to localStorage. */
+	function normalizeStorageError(error: unknown): string {
+		if (
+			error instanceof StorageQuotaError ||
+			(error &&
+				typeof error === 'object' &&
+				(error as { name?: unknown }).name === 'StorageQuotaError')
+		) {
+			return 'Browser storage is full. New notification history may not persist.';
+		}
+		return error instanceof Error ? error.message : 'Notification storage failed';
+	}
+
+	function recordStorageError(error: unknown) {
+		storageError = normalizeStorageError(error);
+		console.error('[NotificationsStore] Storage operation failed', error);
+	}
+
+	function clearStorageError() {
+		storageError = null;
+	}
+
+	function toStoredRecord(notification: Notification, deviceId: string): StoredNotificationRecord {
+		return {
+			id: notification.id,
+			deviceId,
+			title: notification.title,
+			body: notification.body,
+			topicId: notification.topicId ?? undefined,
+			topic: notification.topic,
+			sentAt: notification.sentAt.toISOString(),
+			priority: notification.priority,
+			attachment: notification.attachment
+		};
+	}
+
 	function saveReadIds() {
 		if (!browser || !activeDeviceId) return;
+		const deviceId = activeDeviceId;
 		const readArray = notifications.map((n) => n.id).filter((id) => !unreadIds.has(id));
-		localStorage.setItem(`${READ_IDS_KEY_PREFIX}${activeDeviceId}`, JSON.stringify(readArray));
+		void notificationsRepository.saveReadIds(deviceId, readArray).catch(recordStorageError);
 	}
 
-	function save() {
+	function persistNotification(notification: Notification) {
 		if (!browser || !activeDeviceId) return;
-		const toSave = notifications.map((n) => ({
-			id: n.id,
-			title: n.title,
-			body: n.body,
-			topicId: n.topicId,
-			topic: n.topic,
-			sentAt: n.sentAt.toISOString(),
-			priority: n.priority,
-			attachment: n.attachment
-		}));
-		localStorage.setItem(`${STORAGE_KEY_PREFIX}${activeDeviceId}`, JSON.stringify(toSave));
+		const deviceId = activeDeviceId;
+		void notificationsRepository
+			.save(toStoredRecord(notification, deviceId))
+			.then(clearStorageError)
+			.catch(recordStorageError);
 		saveReadIds();
-	}
-
-	function loadForActiveDevice() {
-		if (!browser || !activeDeviceId) return;
-		const saved = localStorage.getItem(`${STORAGE_KEY_PREFIX}${activeDeviceId}`);
-		notifications = [];
-		unreadIds.clear();
-		if (saved) {
-			try {
-				const parsed: unknown = JSON.parse(saved);
-				if (!Array.isArray(parsed)) {
-					notifications = [];
-					return;
-				}
-				notifications = parsed
-					.map((n) => parseStoredNotification(n))
-					.filter((n): n is Notification => n !== null);
-
-				// Restore read state: only mark as unread those not in the persisted read list
-				unreadIds.clear();
-				// eslint-disable-next-line svelte/prefer-svelte-reactivity -- local temp set inside load, not reactive state
-				const readSet = new Set<string>();
-				const savedReadIds = localStorage.getItem(`${READ_IDS_KEY_PREFIX}${activeDeviceId}`);
-				if (savedReadIds) {
-					try {
-						const readArray: unknown = JSON.parse(savedReadIds);
-						if (Array.isArray(readArray)) {
-							readArray.forEach((id) => readSet.add(id as string));
-						}
-					} catch {
-						// ignore malformed data
-					}
-				}
-				for (const n of notifications) {
-					if (!readSet.has(n.id)) {
-						unreadIds.add(n.id);
-					}
-				}
-			} catch {
-				notifications = [];
-				unreadIds.clear();
-			}
-		}
-	}
-
-	function loadSyncCursor() {
-		if (!browser || !activeDeviceId) return;
-		const saved = localStorage.getItem(`${SYNC_CURSOR_KEY_PREFIX}${activeDeviceId}`);
-		syncCursor = saved ?? null;
 	}
 
 	function saveSyncCursor() {
 		if (!browser || !activeDeviceId) return;
-		if (syncCursor) {
-			localStorage.setItem(`${SYNC_CURSOR_KEY_PREFIX}${activeDeviceId}`, syncCursor);
-		} else {
-			localStorage.removeItem(`${SYNC_CURSOR_KEY_PREFIX}${activeDeviceId}`);
-		}
-	}
-
-	/** Removes localStorage entries belonging to devices other than the active one. */
-	function removeStaleLocalStorage() {
-		if (!browser || !activeDeviceId) return;
-		const activeStorageKey = `${STORAGE_KEY_PREFIX}${activeDeviceId}`;
-		const activeReadKey = `${READ_IDS_KEY_PREFIX}${activeDeviceId}`;
-		const keysToRemove: string[] = [];
-		for (let i = 0; i < localStorage.length; i++) {
-			const key = localStorage.key(i);
-			if (!key) continue;
-			if (
-				(key.startsWith(STORAGE_KEY_PREFIX) || key.startsWith(READ_IDS_KEY_PREFIX)) &&
-				key !== activeStorageKey &&
-				key !== activeReadKey
-			) {
-				keysToRemove.push(key);
-			}
-		}
-		for (const key of keysToRemove) {
-			localStorage.removeItem(key);
-		}
-		// One-shot cleanup of legacy unscoped keys (pre-device-scoping).
-		localStorage.removeItem('notifications');
-		localStorage.removeItem('notifications_read_ids');
+		const deviceId = activeDeviceId;
+		void notificationsRepository
+			.saveSyncCursor(deviceId, syncCursor)
+			.then(clearStorageError)
+			.catch(recordStorageError);
 	}
 
 	function activateDevice(deviceId: string) {
 		if (activeDeviceId === deviceId) return;
 		activeDeviceId = deviceId;
-		removeStaleLocalStorage();
-		loadForActiveDevice();
-		loadSyncCursor();
+		notifications = [];
+		unreadIds.clear();
+		syncCursor = null;
+		storageError = null;
 	}
 
 	function deactivateDevice() {
@@ -204,62 +164,50 @@ function createNotificationsStore() {
 		notifications = [];
 		unreadIds.clear();
 		syncCursor = null;
+		storageError = null;
 	}
 
 	async function loadFromIndexedDB(): Promise<void> {
 		if (!browser || !activeDeviceId) return;
 		const deviceId = activeDeviceId;
+		try {
+			const [records, state] = await Promise.all([
+				notificationsRepository.listByDevice(deviceId),
+				notificationsRepository.getState(deviceId)
+			]);
+			if (activeDeviceId !== deviceId) return;
 
-		return new Promise((resolve) => {
-			try {
-				void notificationsRepository
-					.listByDevice(deviceId)
-					.then((records) => {
-						if (activeDeviceId !== deviceId) {
-							resolve();
-							return;
-						}
-
-						const importedIds: string[] = [];
-						const idbNotifications: Notification[] = [];
-
-						for (const record of records) {
-							const parsed = parseStoredNotification(record);
-							if (!parsed) {
-								console.error(
-									'[NotificationsStore] Skipped malformed IndexedDB notification record',
-									{ id: record.id }
-								);
-								continue;
-							}
-
-							idbNotifications.push(parsed);
-							importedIds.push(parsed.id);
-						}
-
-						// Deduplicate: the SW always persists to IndexedDB, so if the app
-						// was visible it may have already received the same notification
-						// via postMessage. Match on id to skip dupes.
-						const existingIds = new Set(notifications.map((n) => n.id));
-						const newNotifications = idbNotifications.filter((n) => !existingIds.has(n.id));
-
-						if (newNotifications.length) {
-							notifications = [...newNotifications, ...notifications].sort(
-								(a, b) => b.sentAt.getTime() - a.sentAt.getTime()
-							);
-							newNotifications.forEach((n) => unreadIds.add(n.id));
-							save();
-						}
-
-						// Delete only records we successfully parsed so malformed
-						// entries stay available for inspection instead of being lost.
-						void notificationsRepository.deleteMany(importedIds).finally(() => resolve());
-					})
-					.catch(() => resolve());
-			} catch {
-				resolve();
+			const idbNotifications: Notification[] = [];
+			for (const record of records) {
+				const parsed = parseStoredNotification(record);
+				if (!parsed) {
+					console.error('[NotificationsStore] Skipped malformed IndexedDB notification record', {
+						id: record.id
+					});
+					continue;
+				}
+				idbNotifications.push(parsed);
 			}
-		});
+
+			// eslint-disable-next-line svelte/prefer-svelte-reactivity -- local dedupe map, not reactive state
+			const byId = new Map<string, Notification>();
+			for (const notification of [...notifications, ...idbNotifications]) {
+				byId.set(notification.id, notification);
+			}
+			notifications = [...byId.values()].sort((a, b) => b.sentAt.getTime() - a.sentAt.getTime());
+
+			const readSet = new Set(state.readIds);
+			unreadIds.clear();
+			for (const notification of notifications) {
+				if (!readSet.has(notification.id)) {
+					unreadIds.add(notification.id);
+				}
+			}
+			syncCursor = state.syncCursor;
+			clearStorageError();
+		} catch (error) {
+			recordStorageError(error);
+		}
 	}
 
 	function add(
@@ -295,7 +243,7 @@ function createNotificationsStore() {
 		};
 		notifications = [notification, ...notifications];
 		unreadIds.add(notification.id);
-		save();
+		persistNotification(notification);
 		return true;
 	}
 
@@ -305,29 +253,50 @@ function createNotificationsStore() {
 
 	function remove(id: string) {
 		if (!activeDeviceId) return;
+		const deviceId = activeDeviceId;
 		notifications = notifications.filter((n) => n.id !== id);
 		unreadIds.delete(id);
-		save();
+		void notificationsRepository
+			.deleteMany([id])
+			.then(() => notificationsRepository.saveReadIds(deviceId, readIdsForCurrentNotifications()))
+			.then(clearStorageError)
+			.catch(recordStorageError);
 	}
 
 	/** Removes multiple notifications in one pass. */
 	function removeMany(ids: string[]) {
 		if (!activeDeviceId) return;
 		if (ids.length === 0) return;
+		const deviceId = activeDeviceId;
 
 		const idSet = new Set(ids);
 		notifications = notifications.filter((notification) => !idSet.has(notification.id));
 		for (const id of ids) {
 			unreadIds.delete(id);
 		}
-		save();
+		void notificationsRepository
+			.deleteMany(ids)
+			.then(() => notificationsRepository.saveReadIds(deviceId, readIdsForCurrentNotifications()))
+			.then(clearStorageError)
+			.catch(recordStorageError);
 	}
 
 	function clearAll() {
 		if (!activeDeviceId) return;
+		const deviceId = activeDeviceId;
 		notifications = [];
 		unreadIds.clear();
-		save();
+		syncCursor = null;
+		void Promise.all([
+			notificationsRepository.clearByDevice(deviceId),
+			notificationsRepository.clearState(deviceId)
+		])
+			.then(clearStorageError)
+			.catch(recordStorageError);
+	}
+
+	function readIdsForCurrentNotifications(): string[] {
+		return notifications.map((n) => n.id).filter((id) => !unreadIds.has(id));
 	}
 
 	function markAsRead(id: string) {
@@ -388,6 +357,9 @@ function createNotificationsStore() {
 		set syncCursor(value: string | null) {
 			syncCursor = value;
 			saveSyncCursor();
+		},
+		get storageError() {
+			return storageError;
 		},
 		get topicSummaries() {
 			return computeTopicSummaries(notifications, unreadIds);

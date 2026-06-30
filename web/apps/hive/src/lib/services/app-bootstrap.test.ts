@@ -25,10 +25,6 @@ describe('bootstrapAppShell', () => {
 			attachServiceWorkerListeners: () => {
 				calls.push('attach');
 			},
-			migrateLegacyNotifications: (deviceId) => {
-				calls.push(`migrate:${deviceId}`);
-				return Promise.resolve();
-			},
 			loadPersistedNotifications: (phase) => {
 				calls.push(`load:${phase}`);
 				return Promise.resolve();
@@ -46,7 +42,6 @@ describe('bootstrapAppShell', () => {
 			'getDeviceId',
 			'activate:dev-a',
 			'attach',
-			'migrate:dev-a',
 			'load:initial',
 			'postChecks',
 			'load:final'
@@ -74,10 +69,6 @@ describe('bootstrapAppShell', () => {
 			},
 			attachServiceWorkerListeners: () => {
 				calls.push('attach');
-			},
-			migrateLegacyNotifications: (deviceId) => {
-				calls.push(`migrate:${deviceId}`);
-				return Promise.resolve();
 			},
 			loadPersistedNotifications: (phase) => {
 				calls.push(`load:${phase}`);
@@ -116,10 +107,6 @@ describe('bootstrapAppShell', () => {
 			attachServiceWorkerListeners: () => {
 				calls.push('attach');
 			},
-			migrateLegacyNotifications: (deviceId) => {
-				calls.push(`migrate:${deviceId}`);
-				return Promise.resolve();
-			},
 			loadPersistedNotifications: (phase) => {
 				calls.push(`load:${phase}`);
 				return Promise.resolve();
@@ -157,10 +144,6 @@ describe('bootstrapAppShell', () => {
 			attachServiceWorkerListeners: () => {
 				calls.push('attach');
 			},
-			migrateLegacyNotifications: (deviceId) => {
-				calls.push(`migrate:${deviceId}`);
-				return Promise.resolve();
-			},
 			loadPersistedNotifications: (phase) => {
 				calls.push(`load:${phase}`);
 				return Promise.resolve();
@@ -184,59 +167,9 @@ describe('bootstrapAppShell', () => {
 			'getDeviceId',
 			'activate:dev-a',
 			'attach',
-			'migrate:dev-a',
 			'load:initial',
 			'postChecks',
 			'load:final'
-		]);
-	});
-
-	it('propagates legacy notification migration failures before draining IndexedDB', async () => {
-		const calls: string[] = [];
-		const failure = new Error('migration failed');
-
-		await expect(
-			bootstrapAppShell({
-				registerServiceWorker: () => {
-					calls.push('register');
-					return Promise.resolve({ scope: '/' });
-				},
-				checkPaired: () => {
-					calls.push('checkPaired');
-					return Promise.resolve(true);
-				},
-				getDeviceId: () => {
-					calls.push('getDeviceId');
-					return Promise.resolve('dev-a');
-				},
-				activateNotifications: (deviceId) => {
-					calls.push(`activate:${deviceId}`);
-				},
-				attachServiceWorkerListeners: () => {
-					calls.push('attach');
-				},
-				migrateLegacyNotifications: (deviceId) => {
-					calls.push(`migrate:${deviceId}`);
-					return Promise.reject(failure);
-				},
-				loadPersistedNotifications: (phase) => {
-					calls.push(`load:${phase}`);
-					return Promise.resolve();
-				},
-				runPostPairingChecks: () => {
-					calls.push('postChecks');
-					return Promise.resolve();
-				}
-			})
-		).rejects.toBe(failure);
-
-		expect(calls).toEqual([
-			'register',
-			'checkPaired',
-			'getDeviceId',
-			'activate:dev-a',
-			'attach',
-			'migrate:dev-a'
 		]);
 	});
 });
