@@ -14,14 +14,8 @@ import (
 
 type trackingMailer struct {
 	*stubMailer
-	approvedCalled    bool
 	blockedCalled     bool
 	reactivatedCalled bool
-}
-
-func (s *trackingMailer) SendAccountApproved(_ context.Context, _ string) error {
-	s.approvedCalled = true
-	return s.stubMailer.SendAccountApproved(context.TODO(), "")
 }
 
 func (s *trackingMailer) SendAccountBlocked(_ context.Context, _ string) error {
@@ -40,41 +34,6 @@ type errSessionRevoker struct {
 
 func (s *errSessionRevoker) RevokeAllSessions(_ context.Context, _ string) error {
 	return s.err
-}
-
-func TestUpdateUserStatus_PendingToActive(t *testing.T) {
-	db := testutil.NewDB(t)
-	ctx := context.Background()
-	repo := NewRepository(db)
-	mailer := &trackingMailer{stubMailer: &stubMailer{}}
-	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-	svc := NewService(repo, &stubSessionRevoker{}, mailer, logger)
-
-	user, _, err := auth.NewRepository(db).GetOrCreateUser(ctx, "pending@example.com")
-	if err != nil {
-		t.Fatalf("GetOrCreateUser: %v", err)
-	}
-
-	if _, err := db.ExecContext(ctx,
-		`UPDATE users SET account_status = 'pending' WHERE id = ?`,
-		user.ID,
-	); err != nil {
-		t.Fatalf("set pending status: %v", err)
-	}
-
-	updated, err := svc.UpdateUserStatus(ctx, user.ID, core.AccountStatusActive, "admin-1")
-	if err != nil {
-		t.Fatalf("UpdateUserStatus: %v", err)
-	}
-	if updated == nil {
-		t.Fatal("UpdateUserStatus returned nil")
-	}
-	if updated.AccountStatus != core.AccountStatusActive {
-		t.Errorf("account_status = %q, want %q", updated.AccountStatus, core.AccountStatusActive)
-	}
-	if !mailer.approvedCalled {
-		t.Error("SendAccountApproved was not called")
-	}
 }
 
 func TestUpdateUserStatus_ActiveToBlocked(t *testing.T) {
@@ -193,7 +152,7 @@ func TestUpdateUserStatus_RevokeSessionsFails_ContinuesBlock(t *testing.T) {
 	}
 }
 
-func TestUpdateUserStatus_InvalidTransition_PendingToBlocked(t *testing.T) {
+func TestUpdateUserStatus_InvalidTransition_ActiveToActive(t *testing.T) {
 	db := testutil.NewDB(t)
 	ctx := context.Background()
 	repo := NewRepository(db)
@@ -205,14 +164,7 @@ func TestUpdateUserStatus_InvalidTransition_PendingToBlocked(t *testing.T) {
 		t.Fatalf("GetOrCreateUser: %v", err)
 	}
 
-	if _, err := db.ExecContext(ctx,
-		`UPDATE users SET account_status = 'pending' WHERE id = ?`,
-		user.ID,
-	); err != nil {
-		t.Fatalf("set pending status: %v", err)
-	}
-
-	_, err = svc.UpdateUserStatus(ctx, user.ID, core.AccountStatusBlocked, "admin-1")
+	_, err = svc.UpdateUserStatus(ctx, user.ID, core.AccountStatusActive, "admin-1")
 	if !errors.Is(err, ErrInvalidTransition) {
 		t.Fatalf("UpdateUserStatus error = %v, want %v", err, ErrInvalidTransition)
 	}

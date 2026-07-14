@@ -39,9 +39,40 @@ func TestSendRequestAuth(t *testing.T) {
 	})
 }
 
+func TestSendHostedProductNotices(t *testing.T) {
+	m, err := New(testConfig())
+	if err != nil {
+		t.Fatalf("New(): %v", err)
+	}
+
+	ctx := context.Background()
+	if err := m.SendHostedActivated(ctx, "test@example.com"); err != nil {
+		t.Fatalf("SendHostedActivated(): %v", err)
+	}
+	if err := m.SendHostedEnded(ctx, "test@example.com"); err != nil {
+		t.Fatalf("SendHostedEnded(): %v", err)
+	}
+}
+
+func TestSendAccountNotices(t *testing.T) {
+	m, err := New(testConfig())
+	if err != nil {
+		t.Fatalf("New(): %v", err)
+	}
+
+	ctx := context.Background()
+	if err := m.SendAccountBlocked(ctx, "test@example.com"); err != nil {
+		t.Fatalf("SendAccountBlocked(): %v", err)
+	}
+	if err := m.SendAccountReactivated(ctx, "test@example.com"); err != nil {
+		t.Fatalf("SendAccountReactivated(): %v", err)
+	}
+}
+
 func testConfig() *config.Mailer {
 	return &config.Mailer{
 		Sender:  "test@example.com",
 		ReplyTo: "reply@example.com",
+		SiteURL: "https://dashboard.example.com",
 	}
 }

@@ -17,6 +17,7 @@ tags:
   - name: Tokens
   - name: Push
   - name: Webhooks
+  - name: Billing
   - name: Admin
   - name: Attachments
 paths:
@@ -216,6 +217,26 @@ paths:
                 $ref: "#/components/schemas/AccountUsageResponse"
         "400":
           $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /v1/me/plan-usage:
+    get:
+      tags: [Usage]
+      operationId: getPlanUsage
+      summary: Get current plan quota usage
+      x-audience: [site]
+      x-stability: stable
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Current plan quota usage
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlanUsageResponse"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "500":
@@ -480,6 +501,7 @@ paths:
       tags: [Devices]
       operationId: pairDevice
       summary: Pair a device with a push subscription
+      description: An account can have at most 10 active paired devices. The pairing code remains usable if this limit is reached.
       x-audience: [hive]
       x-stability: stable
       requestBody:
@@ -499,6 +521,8 @@ paths:
           $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "409":
+          $ref: "#/components/responses/Conflict"
         "422":
           $ref: "#/components/responses/UnprocessableEntity"
         "429":
@@ -1211,6 +1235,85 @@ paths:
           $ref: "#/components/responses/TooManyRequests"
         "500":
           $ref: "#/components/responses/InternalError"
+  /v1/billing/checkout:
+    post:
+      tags: [Billing]
+      operationId: createBillingCheckout
+      summary: Create a Hosted plan checkout
+      description: Creates a Merchant-of-Record checkout session for the current user. BeeBuzz does not send the user's account email to the provider. Existing Hosted subscriptions must be managed in the provider portal.
+      x-audience: [site]
+      x-stability: experimental
+      security:
+        - cookieAuth: []
+      responses:
+        "201":
+          description: Checkout created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BillingCheckoutResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /v1/billing/portal:
+    post:
+      tags: [Billing]
+      operationId: createBillingPortal
+      summary: Create a customer billing portal link
+      description: Creates a Merchant-of-Record customer portal link for the current user.
+      x-audience: [site]
+      x-stability: experimental
+      security:
+        - cookieAuth: []
+      responses:
+        "201":
+          description: Billing portal link created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BillingPortalResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /v1/billing/webhooks/creem:
+    post:
+      tags: [Billing]
+      operationId: receiveCreemBillingWebhook
+      summary: Receive Creem billing webhook
+      description: Receives signed Creem webhook events and synchronizes BeeBuzz hosted plan state.
+      x-audience: [provider]
+      x-stability: experimental
+      parameters:
+        - in: header
+          name: creem-signature
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "204":
+          description: Webhook processed
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "500":
+          $ref: "#/components/responses/InternalError"
   /v1/attachments/{token}:
     get:
       tags: [Attachments]
@@ -1297,7 +1400,7 @@ paths:
                 invalid_status:
                   value:
                     code: invalid_status
-                    message: "account_status must be one of: pending, active, blocked"
+                    message: "account_status must be one of: active, blocked"
                 invalid_transition:
                   value:
                     code: invalid_transition
@@ -1502,11 +1605,20 @@ components:
           schema:
             $ref: "#/components/schemas/ErrorResponse"
     TooManyRequests:
-      description: Too many requests
+      description: Rate limit or hosted plan quota exceeded
       content:
         application/json:
           schema:
             $ref: "#/components/schemas/ErrorResponse"
+          examples:
+            rate_limit:
+              value:
+                code: rate_limit_exceeded
+                message: rate limit exceeded, try again later
+            quota_exceeded:
+              value:
+                code: quota_exceeded
+                message: message quota exceeded
     PayloadTooLarge:
       description: Payload too large
       content:
@@ -1574,9 +1686,24 @@ components:
       properties:
         message:
           type: string
+    BillingCheckoutResponse:
+      type: object
+      required: [checkout_url]
+      properties:
+        checkout_url:
+          type: string
+          format: uri
+    BillingPortalResponse:
+      type: object
+      required: [portal_url]
+      properties:
+        portal_url:
+          type: string
+          format: uri
     UserResponse:
       type: object
-      required: [id, email, is_admin, account_status, created_at, updated_at]
+      required:
+        [id, email, is_admin, account_status, plan, subscription_status, created_at, updated_at]
       properties:
         id:
           type: string
@@ -1587,12 +1714,20 @@ components:
           type: boolean
         account_status:
           type: string
-          enum: [pending, active, blocked]
-        trial_started_at:
+          enum: [active, blocked]
+        plan:
+          type: string
+          enum: [free, hosted]
+        plan_expires_at:
           type:
             - string
             - "null"
           format: date-time
+        subscription_status:
+          type:
+            - string
+            - "null"
+          enum: [incomplete, active, scheduled_cancel, past_due, canceled, expired, null]
         created_at:
           type: string
           format: date-time
@@ -1608,10 +1743,6 @@ components:
           format: email
         state:
           type: string
-        reason:
-          type:
-            - string
-            - "null"
     VerifyOTPRequest:
       type: object
       required: [otp, state]
@@ -2420,6 +2551,36 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/AccountUsageDayResponse"
+    PlanLimitUsage:
+      type: object
+      required: [used, limit, resets_at]
+      properties:
+        used:
+          type: integer
+          minimum: 0
+        limit:
+          type: integer
+          minimum: 0
+        resets_at:
+          type: string
+          format: date-time
+    PlanUsageResponse:
+      type: object
+      required: [plan, daily, monthly]
+      properties:
+        plan:
+          type: string
+          enum: [free, hosted]
+        daily:
+          oneOf:
+            - $ref: "#/components/schemas/PlanLimitUsage"
+            - type: "null"
+          description: Free plan daily usage. Null for Hosted because Hosted has no daily limit.
+        monthly:
+          oneOf:
+            - $ref: "#/components/schemas/PlanLimitUsage"
+            - type: "null"
+          description: Monthly hard quota for Free or fair-use threshold for Hosted.
     DailyUsageSummaryResponse:
       type: object
       required:
@@ -2532,7 +2693,17 @@ components:
             $ref: "#/components/schemas/DailyUsageSummaryResponse"
     AdminUserResponse:
       type: object
-      required: [id, email, is_admin, account_status, created_at, updated_at]
+      required:
+        [
+          id,
+          email,
+          is_admin,
+          account_status,
+          plan,
+          usage_this_month,
+          created_at,
+          updated_at
+        ]
       properties:
         id:
           type: string
@@ -2543,16 +2714,23 @@ components:
           type: boolean
         account_status:
           type: string
-          enum: [pending, active, blocked]
-        signup_reason:
-          type:
-            - string
-            - "null"
-        trial_started_at:
+          enum: [active, blocked]
+        plan:
+          type: string
+          enum: [free, hosted]
+        plan_expires_at:
           type:
             - string
             - "null"
           format: date-time
+        subscription_status:
+          type:
+            - string
+            - "null"
+          enum: [incomplete, active, scheduled_cancel, past_due, canceled, expired, null]
+        usage_this_month:
+          type: integer
+          minimum: 0
         created_at:
           type: string
           format: date-time
@@ -2565,7 +2743,7 @@ components:
       properties:
         account_status:
           type: string
-          enum: [pending, active, blocked]
+          enum: [active, blocked]
     AdminUsersListResponse:
       type: object
       required: [data]
@@ -2577,7 +2755,13 @@ components:
     SystemNotificationSettingsResponse:
       type: object
       required:
-        [enabled, signup_created_enabled, recipient_has_active_device_for_topic]
+        [
+          enabled,
+          signup_created_enabled,
+          hosted_subscription_started_enabled,
+          billing_webhook_failed_enabled,
+          recipient_has_active_device_for_topic
+        ]
       properties:
         enabled:
           type: boolean
@@ -2586,6 +2770,10 @@ components:
         topic_id:
           type: string
         signup_created_enabled:
+          type: boolean
+        hosted_subscription_started_enabled:
+          type: boolean
+        billing_webhook_failed_enabled:
           type: boolean
         recipient_has_active_device_for_topic:
           type: boolean
@@ -2602,13 +2790,24 @@ components:
           format: date-time
     UpdateSystemNotificationSettingsRequest:
       type: object
-      required: [enabled, topic_id, signup_created_enabled]
+      required:
+        [
+          enabled,
+          topic_id,
+          signup_created_enabled,
+          hosted_subscription_started_enabled,
+          billing_webhook_failed_enabled
+        ]
       properties:
         enabled:
           type: boolean
         topic_id:
           type: string
         signup_created_enabled:
+          type: boolean
+        hosted_subscription_started_enabled:
+          type: boolean
+        billing_webhook_failed_enabled:
           type: boolean
     PushStubEvent:
       type: object

@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"go.beebuzz.app/beebuzz/internal/auth"
+	"go.beebuzz.app/beebuzz/internal/plan"
 	"go.beebuzz.app/beebuzz/internal/push"
 	"go.beebuzz.app/beebuzz/internal/secure"
 	"go.beebuzz.app/beebuzz/internal/testutil"
@@ -935,6 +936,54 @@ func TestReceiveReturnsErrorWhenAllDispatchesFail(t *testing.T) {
 	}
 	if response.SentCount != 0 {
 		t.Fatalf("Receive() sent_count = %d, want 0", response.SentCount)
+	}
+}
+
+func TestReceiveReturnsQuotaExceededWhenAllDispatchesHitQuota(t *testing.T) {
+	db := testutil.NewDB(t)
+	ctx := context.Background()
+
+	authRepo := auth.NewRepository(db)
+	topicRepo := topic.NewRepository(db)
+	repo := NewRepository(db)
+	topicSvc := topic.NewService(topicRepo, slog.New(slog.NewTextHandler(io.Discard, nil)))
+
+	user, _, err := authRepo.GetOrCreateUser(ctx, "webhook-quota@example.com")
+	if err != nil {
+		t.Fatalf("GetOrCreateUser: %v", err)
+	}
+
+	firstTopic, err := topicRepo.Create(ctx, user.ID, "alpha", "")
+	if err != nil {
+		t.Fatalf("topic.Create firstTopic: %v", err)
+	}
+	secondTopic, err := topicRepo.Create(ctx, user.ID, "beta", "")
+	if err != nil {
+		t.Fatalf("topic.Create secondTopic: %v", err)
+	}
+
+	dispatcher := topicResultDispatcher{
+		results: map[string]dispatchResult{
+			firstTopic.ID:  {err: plan.ErrQuotaExceeded},
+			secondTopic.ID: {err: plan.ErrQuotaExceeded},
+		},
+	}
+	svc := newTestServiceWithDeps(repo, dispatcher, topicSvc)
+
+	rawToken, _, err := svc.CreateWebhook(ctx, user.ID, "hook", "", PayloadTypeBeebuzz, "", "", "normal", TitleSourcePath, "", []string{firstTopic.ID, secondTopic.ID})
+	if err != nil {
+		t.Fatalf("CreateWebhook: %v", err)
+	}
+
+	response, err := svc.Receive(ctx, rawToken, []byte(`{"title":"Test","body":"Hello"}`), slog.Default())
+	if !errors.Is(err, plan.ErrQuotaExceeded) {
+		t.Fatalf("Receive() error = %v, want %v", err, plan.ErrQuotaExceeded)
+	}
+	if response == nil {
+		t.Fatal("Receive() response is nil")
+	}
+	if response.Status != ReceiveStatusFailed {
+		t.Fatalf("Receive() status = %q, want %q", response.Status, ReceiveStatusFailed)
 	}
 }
 

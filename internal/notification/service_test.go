@@ -12,6 +12,7 @@ import (
 	webpush "github.com/SherClockHolmes/webpush-go"
 	"github.com/jmoiron/sqlx"
 
+	"go.beebuzz.app/beebuzz/internal/plan"
 	"go.beebuzz.app/beebuzz/internal/testutil"
 )
 
@@ -88,6 +89,48 @@ type failingAttachmentStorer struct{}
 
 func (s *failingAttachmentStorer) Store(_ context.Context, _, _ string, _ int, _ []byte) (string, error) {
 	return "", errors.New("store failed")
+}
+
+type blockingPlanEnforcer struct{}
+
+func (e *blockingPlanEnforcer) Allow(context.Context, string, plan.Action) error {
+	return plan.ErrQuotaExceeded
+}
+
+func TestSendStopsWhenPlanQuotaExceeded(t *testing.T) {
+	svc := NewService(
+		&stubDeviceProvider{
+			subs: []PushSub{
+				{
+					DeviceID:     "device-1",
+					Endpoint:     "https://fcm.googleapis.com/fcm/send/quota",
+					P256dh:       "p256dh",
+					Auth:         "auth",
+					AgeRecipient: testAgeRecipient,
+				},
+			},
+		},
+		&failingAttachmentStorer{},
+		nil,
+		&VAPIDKeys{PublicKey: "public", PrivateKey: "private"},
+		"mailto:test@example.com",
+		slog.New(slog.NewTextHandler(io.Discard, nil)),
+	)
+	svc.SetPlanEnforcer(&blockingPlanEnforcer{})
+
+	_, err := svc.Send(context.Background(), "user-1", "topic-1", SendInput{
+		TopicName: "alerts",
+		Title:     "Title",
+		Body:      "Body",
+		Attachment: &AttachmentInput{
+			Data:     strings.NewReader("hello"),
+			MimeType: "text/plain",
+			Filename: "hello.txt",
+		},
+	}, slog.Default())
+	if !errors.Is(err, plan.ErrQuotaExceeded) {
+		t.Fatalf("Send() error = %v, want %v", err, plan.ErrQuotaExceeded)
+	}
 }
 
 func TestSendFailsWhenAttachmentProcessingFails(t *testing.T) {

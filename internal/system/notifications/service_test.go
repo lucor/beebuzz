@@ -29,6 +29,15 @@ func (c *testDeviceSubscriptions) HasActiveDeviceForTopic(_ context.Context, use
 	return c.withDevice[userID+"|"+topicName], nil
 }
 
+type testDelivery struct {
+	inputs []DeliveryInput
+}
+
+func (d *testDelivery) SendSystemNotification(_ context.Context, input DeliveryInput) error {
+	d.inputs = append(d.inputs, input)
+	return nil
+}
+
 func newTestService(t *testing.T) (*Service, *topic.Service, context.Context) {
 	t.Helper()
 	return newTestServiceWith(t, nil)
@@ -36,13 +45,18 @@ func newTestService(t *testing.T) (*Service, *topic.Service, context.Context) {
 
 func newTestServiceWith(t *testing.T, subs DeviceSubscriptionChecker) (*Service, *topic.Service, context.Context) {
 	t.Helper()
+	return newTestServiceWithDelivery(t, subs, nil)
+}
+
+func newTestServiceWithDelivery(t *testing.T, subs DeviceSubscriptionChecker, delivery Delivery) (*Service, *topic.Service, context.Context) {
+	t.Helper()
 
 	db := testutil.NewDBWithUsers(t, "admin-1", "other-1")
 	topicSvc := topic.NewService(topic.NewRepository(db), slog.Default())
 	svc := NewService(
 		NewRepository(db),
 		&testTopicProvider{svc: topicSvc},
-		nil,
+		delivery,
 		subs,
 		slog.Default(),
 	)
@@ -83,8 +97,90 @@ func TestUpdateSettingsStoresCurrentAdminAsRecipient(t *testing.T) {
 	if settings.TopicID != topicRow.ID {
 		t.Fatalf("TopicID = %q, want %q", settings.TopicID, topicRow.ID)
 	}
-	if !settings.Enabled || !settings.SignupCreatedEnabled {
-		t.Fatalf("settings flags = enabled:%v signup:%v, want both true", settings.Enabled, settings.SignupCreatedEnabled)
+	if !settings.Enabled || !settings.EventFlags.Has(EventSignupCreated) {
+		t.Fatalf("settings flags = enabled:%v signup:%v, want both true", settings.Enabled, settings.EventFlags.Has(EventSignupCreated))
+	}
+}
+
+func TestUpdateSettingsStoresEventFlags(t *testing.T) {
+	svc, topicSvc, ctx := newTestService(t)
+	topicRow, err := topicSvc.CreateTopic(ctx, "admin-1", "ops", "Operational alerts")
+	if err != nil {
+		t.Fatalf("CreateTopic() error = %v", err)
+	}
+
+	settings, err := svc.UpdateSettings(ctx, "admin-1", UpdateSettingsRequest{
+		Enabled:                          true,
+		TopicID:                          topicRow.ID,
+		SignupCreatedEnabled:             true,
+		HostedSubscriptionStartedEnabled: true,
+		BillingWebhookFailedEnabled:      true,
+	})
+	if err != nil {
+		t.Fatalf("UpdateSettings() error = %v", err)
+	}
+
+	if !settings.EventFlags.Has(EventSignupCreated) {
+		t.Fatal("signup event flag is disabled, want enabled")
+	}
+	if !settings.EventFlags.Has(EventHostedSubscriptionStarted) {
+		t.Fatal("hosted subscription started event flag is disabled, want enabled")
+	}
+	if !settings.EventFlags.Has(EventBillingWebhookFailed) {
+		t.Fatal("billing webhook failed event flag is disabled, want enabled")
+	}
+}
+
+func TestNotifyHostedSubscriptionStartedUsesConfiguredEvent(t *testing.T) {
+	delivery := &testDelivery{}
+	svc, topicSvc, ctx := newTestServiceWithDelivery(t, nil, delivery)
+	topicRow, err := topicSvc.CreateTopic(ctx, "admin-1", "ops", "Operational alerts")
+	if err != nil {
+		t.Fatalf("CreateTopic() error = %v", err)
+	}
+	if _, err := svc.UpdateSettings(ctx, "admin-1", UpdateSettingsRequest{
+		Enabled:                          true,
+		TopicID:                          topicRow.ID,
+		HostedSubscriptionStartedEnabled: true,
+	}); err != nil {
+		t.Fatalf("UpdateSettings() error = %v", err)
+	}
+
+	svc.NotifyHostedSubscriptionStarted(ctx, "user_1")
+
+	if len(delivery.inputs) != 1 {
+		t.Fatalf("delivery inputs = %#v, want one", delivery.inputs)
+	}
+	if delivery.inputs[0].Title != hostedSubscriptionStartedTitle {
+		t.Fatalf("delivery title = %q, want %q", delivery.inputs[0].Title, hostedSubscriptionStartedTitle)
+	}
+}
+
+func TestNotifyBillingWebhookFailedUsesConfiguredEvent(t *testing.T) {
+	delivery := &testDelivery{}
+	svc, topicSvc, ctx := newTestServiceWithDelivery(t, nil, delivery)
+	topicRow, err := topicSvc.CreateTopic(ctx, "admin-1", "ops", "Operational alerts")
+	if err != nil {
+		t.Fatalf("CreateTopic() error = %v", err)
+	}
+	if _, err := svc.UpdateSettings(ctx, "admin-1", UpdateSettingsRequest{
+		Enabled:                     true,
+		TopicID:                     topicRow.ID,
+		BillingWebhookFailedEnabled: true,
+	}); err != nil {
+		t.Fatalf("UpdateSettings() error = %v", err)
+	}
+
+	svc.NotifyBillingWebhookFailed(ctx, "subscription.paid")
+
+	if len(delivery.inputs) != 1 {
+		t.Fatalf("delivery inputs = %#v, want one", delivery.inputs)
+	}
+	if delivery.inputs[0].Title != billingWebhookFailedTitle {
+		t.Fatalf("delivery title = %q, want %q", delivery.inputs[0].Title, billingWebhookFailedTitle)
+	}
+	if delivery.inputs[0].Body != "A billing webhook failed to process. Event type: subscription.paid." {
+		t.Fatalf("delivery body = %q, want event type detail", delivery.inputs[0].Body)
 	}
 }
 

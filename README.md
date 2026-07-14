@@ -14,7 +14,7 @@ Use end-to-end encryption when possible, or trusted delivery when needed.
 
 ## Quickstart Demo
 
-Hosted beta flow, showing setup in BeeBuzz and delivery in Hive side by side.
+Hosted flow, showing setup in BeeBuzz and delivery in Hive side by side.
 
 <a href="https://codeberg.org/beebuzz/beebuzz/raw/branch/main/docs/assets/readme/demo.mp4" target="_blank" rel="noreferrer"><img src="docs/assets/readme/demo-poster-play.png" alt="Quickstart demo" width="720"></a>
 
@@ -55,7 +55,7 @@ In both modes, Web Push transport is encrypted in transit between BeeBuzz and th
 
 [BeeBuzz.app](https://beebuzz.app) is the hosted BeeBuzz SaaS.
 
-Hosted access is currently a beta for approved users and is free during beta. After beta, the hosted service is expected to move to a single paid plan so the project can stay sustainable. Self-hosting remains free, open source, and available under the AGPL license.
+Hosted access has Free and Hosted plans. Self-hosting remains free, open source, and available under the AGPL license.
 
 Start here: [BeeBuzz quickstart](https://docs.beebuzz.app/quickstart/).
 
@@ -116,7 +116,7 @@ receiving device.
 
 BeeBuzz is currently optimized for two workflows:
 
-1. get approved for the hosted beta and send your first notification quickly
+1. use the hosted service and send your first notification quickly
 2. run the stack locally with a fast development loop
 
 Detailed production self-hosting docs will come later.

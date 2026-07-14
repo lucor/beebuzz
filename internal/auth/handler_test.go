@@ -27,15 +27,19 @@ func (m *countingMailer) SendRequestAuth(_ context.Context, _, _ string) error {
 	return nil
 }
 
-func (m *countingMailer) SendAccountApproved(context.Context, string) error {
-	return nil
-}
-
 func (m *countingMailer) SendAccountBlocked(context.Context, string) error {
 	return nil
 }
 
 func (m *countingMailer) SendAccountReactivated(context.Context, string) error {
+	return nil
+}
+
+func (m *countingMailer) SendHostedActivated(context.Context, string) error {
+	return nil
+}
+
+func (m *countingMailer) SendHostedEnded(context.Context, string) error {
 	return nil
 }
 
@@ -134,10 +138,10 @@ func TestLoginReturnsNoContentForFilledHoneypotWithoutAuthSideEffects(t *testing
 	}
 }
 
-func TestLoginReturnsNoContentForApprovedUser(t *testing.T) {
-	handler := newAuthFlowTestHandler(t, false)
+func TestLoginReturnsNoContentForExistingUser(t *testing.T) {
+	handler := newAuthFlowTestHandler(t)
 
-	req := httptest.NewRequest(http.MethodPost, "/auth/login", bytes.NewBufferString(`{"email":"approved@example.com","state":"abc"}`))
+	req := httptest.NewRequest(http.MethodPost, "/auth/login", bytes.NewBufferString(`{"email":"existing@example.com","state":"abc"}`))
 	w := httptest.NewRecorder()
 
 	handler.Login(w, req)
@@ -150,10 +154,10 @@ func TestLoginReturnsNoContentForApprovedUser(t *testing.T) {
 	}
 }
 
-func TestLoginReturnsNoContentForWaitlistUser(t *testing.T) {
-	handler := newAuthFlowTestHandler(t, true)
+func TestLoginReturnsNoContentForNewUser(t *testing.T) {
+	handler := newAuthFlowTestHandler(t)
 
-	req := httptest.NewRequest(http.MethodPost, "/auth/login", bytes.NewBufferString(`{"email":"waitlist@example.com","state":"abc"}`))
+	req := httptest.NewRequest(http.MethodPost, "/auth/login", bytes.NewBufferString(`{"email":"new-user@example.com","state":"abc"}`))
 	w := httptest.NewRecorder()
 
 	handler.Login(w, req)
@@ -247,7 +251,7 @@ func TestLogoutReturnsNoContentAndClearsCookies(t *testing.T) {
 	}
 }
 
-func newAuthFlowTestHandler(t *testing.T, privateBeta bool) *Handler {
+func newAuthFlowTestHandler(t *testing.T) *Handler {
 	t.Helper()
 
 	db := testutil.NewDB(t)
@@ -264,7 +268,6 @@ func newAuthFlowTestHandler(t *testing.T, privateBeta bool) *Handler {
 	}
 
 	svc := NewService(authRepo, testMailer, "", topicSvc, logger)
-	svc.UsePrivateBeta(privateBeta)
 
 	return NewHandler(svc, "", logger)
 }

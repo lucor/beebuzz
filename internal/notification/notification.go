@@ -9,6 +9,7 @@ import (
 	"log/slog"
 
 	"go.beebuzz.app/beebuzz/internal/device"
+	"go.beebuzz.app/beebuzz/internal/plan"
 	"go.beebuzz.app/beebuzz/internal/push"
 	"go.beebuzz.app/beebuzz/internal/validator"
 )
@@ -172,6 +173,11 @@ type EventTracker interface {
 	DeviceDelivered(ctx context.Context, userID, deviceID string)
 	// DeviceFailed is called for each failed push delivery.
 	DeviceFailed(ctx context.Context, userID string, result DeviceResult)
+}
+
+// PlanEnforcer checks hosted plan quotas before a notification is sent.
+type PlanEnforcer interface {
+	Allow(ctx context.Context, userID string, action plan.Action) error
 }
 
 // PushAuthorizer validates API tokens for push operations.

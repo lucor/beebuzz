@@ -5,27 +5,21 @@ import (
 )
 
 const (
-	accountApprovedTmplName    = "account_approved"
-	accountApprovedSubject     = "Your BeeBuzz account has been approved"
 	accountBlockedTmplName     = "account_blocked"
-	accountBlockedSubject      = "Your BeeBuzz account has been restricted"
+	accountBlockedSubject      = "Your BeeBuzz account has been suspended"
 	accountReactivatedTmplName = "account_reactivated"
-	accountReactivatedSubject  = "Your BeeBuzz account has been reactivated"
+	accountReactivatedSubject  = "Your BeeBuzz account is active again"
 )
 
-// SendAccountApproved sends an account approval notification email.
-func (m *mailer) SendAccountApproved(ctx context.Context, to string) error {
-	data := struct {
-		LoginURL string
-	}{
-		LoginURL: m.siteURL + "/auth",
-	}
-	return m.sendTemplate(ctx, to, accountApprovedTmplName, accountApprovedSubject, data)
+type accountBlockedTemplateData struct {
+	SupportEmail string
 }
 
-// SendAccountBlocked sends an account blocked notification email.
+// SendAccountBlocked sends an account suspension notification email.
 func (m *mailer) SendAccountBlocked(ctx context.Context, to string) error {
-	return m.sendTemplate(ctx, to, accountBlockedTmplName, accountBlockedSubject, nil)
+	return m.sendTemplate(ctx, to, accountBlockedTmplName, accountBlockedSubject, accountBlockedTemplateData{
+		SupportEmail: m.replyTo,
+	})
 }
 
 // SendAccountReactivated sends an account reactivation notification email.

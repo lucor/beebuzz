@@ -44,7 +44,7 @@ Shared engineering rules for contributors and coding agents.
 - Do not manually parse bearer auth headers in handlers. Use shared middleware to extract transport credentials and read them from request context.
 - Handlers map typed service errors with `errors.Is`.
 - If an endpoint path, request shape, response shape, or HTTP status behavior changes, update `docs/openapi.yaml` in the same task.
-- Annotate every OpenAPI operation in `docs/openapi.yaml` with `x-audience` to identify its intended consumer. Allowed values are `public`, `hive`, `site`, and `admin`. Use an array so operations can belong to multiple audiences when needed.
+- Annotate every OpenAPI operation in `docs/openapi.yaml` with `x-audience` to identify its intended consumer. Allowed values are `public`, `hive`, `site`, `provider`, `admin`, and `internal`. Use an array so operations can belong to multiple audiences when needed.
 - Annotate every OpenAPI operation in `docs/openapi.yaml` with `x-stability`. Allowed values are `stable`, `experimental`, and `deprecated`.
 
 ### Logging

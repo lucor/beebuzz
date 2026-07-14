@@ -6,7 +6,6 @@
 	import { login } from '@beebuzz/shared/services/auth';
 	import { ApiError, isInlineError } from '@beebuzz/shared/errors';
 	import { BeeBuzzLogo } from '@beebuzz/shared/components';
-	import { Info } from '@lucide/svelte';
 	import { PUBLIC_SITE_URL } from '@beebuzz/shared/config';
 
 	interface Props {
@@ -16,7 +15,6 @@
 	let { redirectAfterSubmit = '/auth/verify' }: Props = $props();
 
 	let email = $state('');
-	let reason = $state('');
 	let referralCode = $state('');
 	let isLoading = $state(false);
 	let error = $state<string | undefined>(undefined);
@@ -28,7 +26,7 @@
 		error = undefined;
 
 		try {
-			await login(email, reason.trim() || undefined, referralCode || undefined);
+			await login(email, referralCode || undefined);
 			await goto(resolve(redirectAfterSubmit));
 		} catch (err) {
 			if (err instanceof ApiError && isInlineError(err.code)) {
@@ -65,17 +63,6 @@
 				</div>
 			{/if}
 
-			<div class="mb-6 p-4 bg-info/10 border border-info/30 rounded-lg">
-				<div class="flex items-center gap-2 mb-2">
-					<Info class="w-4 h-4 text-info" />
-					<p class="text-sm text-base-content font-semibold">BeeBuzz is in private beta</p>
-				</div>
-				<p class="text-sm text-base-content/70">
-					If your email is approved, we'll send a 6-digit sign-in code. Otherwise, this serves as
-					your beta access request and you'll receive an email when approved.
-				</p>
-			</div>
-
 			<form class="space-y-4" onsubmit={handleRequest}>
 				<!-- Honeypot field to reduce bot signups -->
 				<div class="contents" aria-hidden="true">
@@ -105,24 +92,8 @@
 						aria-label="Email address"
 					/>
 					<p class="text-xs text-base-content/50 mt-1">
-						We only use your email for sign-in and beta updates.
+						We only use your email for sign-in and account notifications.
 					</p>
-				</div>
-
-				<div>
-					<label for="reason" class="block text-sm font-semibold text-base-content mb-2">
-						Requesting beta access? Tell us what you'd use BeeBuzz for
-						<span class="font-normal text-base-content/50">(optional)</span>
-					</label>
-					<textarea
-						id="reason"
-						placeholder="e.g. I want to get alerts from my home server, monitor my CI pipelines..."
-						class="textarea textarea-bordered w-full"
-						rows="3"
-						bind:value={reason}
-						disabled={isLoading}
-						aria-label="Reason for wanting to use BeeBuzz"
-					></textarea>
 				</div>
 
 				<button type="submit" class="btn btn-primary w-full" disabled={isLoading || !email.trim()}>

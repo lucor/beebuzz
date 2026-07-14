@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"time"
 
+	"go.beebuzz.app/beebuzz/internal/billing"
 	"go.beebuzz.app/beebuzz/internal/core"
 )
 
@@ -20,21 +21,22 @@ type SessionRevoker interface {
 }
 
 type Mailer interface {
-	SendAccountApproved(ctx context.Context, to string) error
 	SendAccountBlocked(ctx context.Context, to string) error
 	SendAccountReactivated(ctx context.Context, to string) error
 }
 
 // User represents a user in the admin domain.
 type User struct {
-	ID             string
-	Email          string
-	IsAdmin        bool
-	AccountStatus  core.AccountStatus
-	SignupReason   *string
-	TrialStartedAt *time.Time
-	CreatedAt      time.Time
-	UpdatedAt      time.Time
+	ID                 string
+	Email              string
+	IsAdmin            bool
+	AccountStatus      core.AccountStatus
+	Plan               core.Plan
+	PlanExpiresAt      *time.Time
+	SubscriptionStatus *billing.SubscriptionStatus
+	UsageThisMonth     int
+	CreatedAt          time.Time
+	UpdatedAt          time.Time
 }
 
 // Service provides admin business logic.
@@ -64,20 +66,22 @@ func (s *Service) ListUsers(ctx context.Context) ([]User, error) {
 
 	result := make([]User, len(users))
 	for i, u := range users {
-		var trialStartedAt *time.Time
-		if u.TrialStartedAt != nil {
-			t := time.UnixMilli(*u.TrialStartedAt)
-			trialStartedAt = &t
+		var planExpiresAt *time.Time
+		if u.PlanExpiresAt != nil {
+			t := time.UnixMilli(*u.PlanExpiresAt)
+			planExpiresAt = &t
 		}
 		result[i] = User{
-			ID:             u.ID,
-			Email:          u.Email,
-			IsAdmin:        u.IsAdmin,
-			AccountStatus:  u.AccountStatus,
-			SignupReason:   u.SignupReason,
-			TrialStartedAt: trialStartedAt,
-			CreatedAt:      time.UnixMilli(u.CreatedAt),
-			UpdatedAt:      time.UnixMilli(u.UpdatedAt),
+			ID:                 u.ID,
+			Email:              u.Email,
+			IsAdmin:            u.IsAdmin,
+			AccountStatus:      u.AccountStatus,
+			Plan:               u.Plan,
+			PlanExpiresAt:      planExpiresAt,
+			SubscriptionStatus: u.SubscriptionStatus,
+			UsageThisMonth:     u.UsageThisMonth,
+			CreatedAt:          time.UnixMilli(u.CreatedAt),
+			UpdatedAt:          time.UnixMilli(u.UpdatedAt),
 		}
 	}
 	return result, nil
@@ -85,7 +89,7 @@ func (s *Service) ListUsers(ctx context.Context) ([]User, error) {
 
 // UpdateUserStatus updates a user's account status.
 func (s *Service) UpdateUserStatus(ctx context.Context, userID string, targetStatus core.AccountStatus, adminID string) (*User, error) {
-	validStatuses := map[core.AccountStatus]bool{core.AccountStatusPending: true, core.AccountStatusActive: true, core.AccountStatusBlocked: true}
+	validStatuses := map[core.AccountStatus]bool{core.AccountStatusActive: true, core.AccountStatusBlocked: true}
 	if !validStatuses[targetStatus] {
 		return nil, ErrInvalidAccountStatus
 	}
@@ -101,7 +105,6 @@ func (s *Service) UpdateUserStatus(ctx context.Context, userID string, targetSta
 	fromStatus := user.AccountStatus
 
 	validTransitions := map[core.AccountStatus]map[core.AccountStatus]bool{
-		core.AccountStatusPending: {core.AccountStatusActive: true},
 		core.AccountStatusActive:  {core.AccountStatusBlocked: true},
 		core.AccountStatusBlocked: {core.AccountStatusActive: true},
 	}
@@ -126,14 +129,8 @@ func (s *Service) UpdateUserStatus(ctx context.Context, userID string, targetSta
 
 	switch targetStatus {
 	case core.AccountStatusActive:
-		if fromStatus == core.AccountStatusPending {
-			if err := s.mailer.SendAccountApproved(ctx, user.Email); err != nil {
-				s.log.Error("failed to send account approved email", "user_id", userID, "error", err)
-			}
-		} else {
-			if err := s.mailer.SendAccountReactivated(ctx, user.Email); err != nil {
-				s.log.Error("failed to send account reactivated email", "user_id", userID, "error", err)
-			}
+		if err := s.mailer.SendAccountReactivated(ctx, user.Email); err != nil {
+			s.log.Error("failed to send account reactivated email", "user_id", userID, "error", err)
 		}
 	case core.AccountStatusBlocked:
 		if err := s.mailer.SendAccountBlocked(ctx, user.Email); err != nil {
@@ -153,20 +150,22 @@ func (s *Service) UpdateUserStatus(ctx context.Context, userID string, targetSta
 		return nil, err
 	}
 
-	var trialStartedAt *time.Time
-	if updatedUser.TrialStartedAt != nil {
-		t := time.UnixMilli(*updatedUser.TrialStartedAt)
-		trialStartedAt = &t
+	var planExpiresAt *time.Time
+	if updatedUser.PlanExpiresAt != nil {
+		t := time.UnixMilli(*updatedUser.PlanExpiresAt)
+		planExpiresAt = &t
 	}
 
 	return &User{
-		ID:             updatedUser.ID,
-		Email:          updatedUser.Email,
-		IsAdmin:        updatedUser.IsAdmin,
-		AccountStatus:  updatedUser.AccountStatus,
-		SignupReason:   updatedUser.SignupReason,
-		TrialStartedAt: trialStartedAt,
-		CreatedAt:      time.UnixMilli(updatedUser.CreatedAt),
-		UpdatedAt:      time.UnixMilli(updatedUser.UpdatedAt),
+		ID:                 updatedUser.ID,
+		Email:              updatedUser.Email,
+		IsAdmin:            updatedUser.IsAdmin,
+		AccountStatus:      updatedUser.AccountStatus,
+		Plan:               updatedUser.Plan,
+		PlanExpiresAt:      planExpiresAt,
+		SubscriptionStatus: updatedUser.SubscriptionStatus,
+		UsageThisMonth:     updatedUser.UsageThisMonth,
+		CreatedAt:          time.UnixMilli(updatedUser.CreatedAt),
+		UpdatedAt:          time.UnixMilli(updatedUser.UpdatedAt),
 	}, nil
 }

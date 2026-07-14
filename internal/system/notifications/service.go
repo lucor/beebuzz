@@ -9,6 +9,8 @@ import (
 )
 
 const signupCreatedTitle = "New BeeBuzz signup"
+const hostedSubscriptionStartedTitle = "Hosted subscription started"
+const billingWebhookFailedTitle = "Billing webhook failed"
 
 // Service owns system notification policy and dispatch decisions.
 type Service struct {
@@ -58,10 +60,10 @@ func (s *Service) UpdateSettings(ctx context.Context, adminUserID string, input 
 	}
 
 	settings, err := s.repo.UpsertSettings(ctx, Settings{
-		Enabled:              input.Enabled,
-		RecipientUserID:      adminUserID,
-		TopicID:              input.TopicID,
-		SignupCreatedEnabled: input.SignupCreatedEnabled,
+		Enabled:         input.Enabled,
+		RecipientUserID: adminUserID,
+		TopicID:         input.TopicID,
+		EventFlags:      EventsFromUpdateRequest(input),
 	})
 	if err != nil {
 		return nil, err
@@ -101,36 +103,52 @@ func (s *Service) fillRecipientDeviceFlag(ctx context.Context, settings *Setting
 
 // NotifySignupCreated sends the configured notification for a newly created account.
 func (s *Service) NotifySignupCreated(ctx context.Context, createdUserID string, accountStatus core.AccountStatus) {
+	body := fmt.Sprintf("A BeeBuzz account was created with status %q.", accountStatus)
+	s.notifyConfiguredEvent(ctx, EventSignupCreated, signupCreatedTitle, body)
+}
+
+func (s *Service) NotifyHostedSubscriptionStarted(ctx context.Context, userID string) {
+	s.notifyConfiguredEvent(ctx, EventHostedSubscriptionStarted, hostedSubscriptionStartedTitle, fmt.Sprintf("User %s upgraded to Hosted.", userID))
+}
+
+func (s *Service) NotifyBillingWebhookFailed(ctx context.Context, eventType string) {
+	body := "A billing webhook failed to process."
+	if eventType != "" {
+		body = fmt.Sprintf("A billing webhook failed to process. Event type: %s.", eventType)
+	}
+	s.notifyConfiguredEvent(ctx, EventBillingWebhookFailed, billingWebhookFailedTitle, body)
+}
+
+func (s *Service) notifyConfiguredEvent(ctx context.Context, event Events, title string, body string) {
 	settings, err := s.repo.GetSettings(ctx)
 	if err != nil {
-		s.log.Error("failed to read system notification settings", "error", err)
+		s.log.Error("failed to read system notification settings", "event", event.String(), "error", err)
 		return
 	}
-	if settings == nil || !settings.Enabled || !settings.SignupCreatedEnabled {
+	if settings == nil || !settings.Enabled || !settings.EventFlags.Has(event) {
 		return
 	}
 
 	topic, err := s.topics.GetTopicByID(ctx, settings.RecipientUserID, settings.TopicID)
 	if err != nil {
-		s.log.Error("failed to resolve system notification topic", "error", err)
+		s.log.Error("failed to resolve system notification topic", "event", event.String(), "error", err)
 		return
 	}
 	if topic == nil {
-		s.log.Warn("system notification topic no longer exists")
+		s.log.Warn("system notification topic no longer exists", "event", event.String())
 		return
 	}
 
-	body := fmt.Sprintf("A new account was created with status %q.", accountStatus)
 	if err := s.delivery.SendSystemNotification(ctx, DeliveryInput{
 		RecipientUserID: settings.RecipientUserID,
 		TopicID:         topic.ID,
 		TopicName:       topic.Name,
-		Title:           signupCreatedTitle,
+		Title:           title,
 		Body:            body,
 	}); err != nil {
-		s.log.Error("failed to send signup system notification", "created_user_id", createdUserID, "error", err)
+		s.log.Error("failed to send system notification", "event", event.String(), "error", err)
 		return
 	}
 
-	s.log.Info("signup system notification sent", "created_user_id", createdUserID)
+	s.log.Info("system notification sent", "event", event.String())
 }

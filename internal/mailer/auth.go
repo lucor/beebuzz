@@ -6,7 +6,7 @@ import (
 
 const (
 	sendRequestAuthTmplName = "send_request_auth"
-	sendRequestAuthSubject  = "Your BeeBuzz verification code"
+	sendRequestAuthSubject  = "Your BeeBuzz sign-in code"
 )
 
 // SendRequestAuth sends an authentication request email with an OTP code.

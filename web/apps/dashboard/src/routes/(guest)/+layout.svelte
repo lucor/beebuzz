@@ -3,16 +3,27 @@
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { isLoggedIn } from '@beebuzz/shared/utils/cookie';
+	import { me } from '@beebuzz/shared/services/account';
 
 	let { children }: { children: import('svelte').Snippet } = $props();
 	let ready = $state(false);
 
 	onMount(() => {
-		if (isLoggedIn()) {
-			void goto(resolve('/account'));
-			return;
-		}
-		ready = true;
+		const checkAuth = async () => {
+			if (!isLoggedIn()) {
+				ready = true;
+				return;
+			}
+
+			try {
+				await me();
+				await goto(resolve('/account'));
+			} catch {
+				ready = true;
+			}
+		};
+
+		void checkAuth();
 	});
 </script>
 

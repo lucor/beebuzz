@@ -14,6 +14,7 @@ import (
 
 	"go.beebuzz.app/beebuzz/internal/core"
 	"go.beebuzz.app/beebuzz/internal/middleware"
+	"go.beebuzz.app/beebuzz/internal/plan"
 	"go.beebuzz.app/beebuzz/internal/push"
 	"go.beebuzz.app/beebuzz/internal/validator"
 )
@@ -129,6 +130,10 @@ func (h *Handler) Send(w http.ResponseWriter, r *http.Request) {
 		}
 		if errors.Is(err, ErrAttachmentProcessingFailed) {
 			core.WriteError(w, http.StatusUnprocessableEntity, "attachment_processing_failed", "Failed to process attachment")
+			return
+		}
+		if errors.Is(err, plan.ErrQuotaExceeded) {
+			core.WriteTooManyRequests(w, "quota_exceeded", "message quota exceeded")
 			return
 		}
 		log.Error("failed to send notification", "error", err, "topic", topicName)

@@ -254,6 +254,10 @@ func (h *Handler) Pair(w http.ResponseWriter, r *http.Request) {
 			core.WriteError(w, http.StatusUnprocessableEntity, "invalid_age_recipient", "age_recipient must be a valid age X25519 recipient")
 			return
 		}
+		if errors.Is(err, ErrDeviceLimitReached) {
+			core.WriteConflict(w, "device_limit_reached", "This account has reached the paired device limit")
+			return
+		}
 		h.log.Error("failed to pair device", "error", err)
 		core.WriteInternalError(w, r, err)
 		return

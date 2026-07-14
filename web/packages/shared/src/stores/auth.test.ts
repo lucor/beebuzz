@@ -6,6 +6,9 @@ const buildUser = (): AuthUser => ({
 	id: 'user_1',
 	email: 'user@example.com',
 	is_admin: false,
+	account_status: 'active',
+	plan: 'free',
+	subscription_status: null,
 	created_at: '2026-01-01T00:00:00Z',
 	updated_at: '2026-01-01T00:00:00Z'
 });

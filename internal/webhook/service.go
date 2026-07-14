@@ -10,6 +10,7 @@ import (
 
 	"github.com/tidwall/gjson"
 
+	"go.beebuzz.app/beebuzz/internal/plan"
 	"go.beebuzz.app/beebuzz/internal/secure"
 	"go.beebuzz.app/beebuzz/internal/validator"
 )
@@ -160,11 +161,15 @@ func (s *Service) Receive(ctx context.Context, tokenStr string, body []byte, log
 	response := &ReceiveResponse{
 		TotalCount: len(topics),
 	}
+	quotaFailedCount := 0
 
 	for _, topic := range topics {
 		report, err := s.dispatcher.Dispatch(ctx, wh.UserID, topic.ID, topic.Name, title, message, wh.Priority, log)
 		if err != nil {
 			response.FailedCount++
+			if errors.Is(err, plan.ErrQuotaExceeded) {
+				quotaFailedCount++
+			}
 			log.Error("dispatch failed", "webhook_id", wh.ID, "topic_id", topic.ID, "error", err)
 			continue
 		}
@@ -178,6 +183,9 @@ func (s *Service) Receive(ctx context.Context, tokenStr string, body []byte, log
 
 	if response.FailedCount == response.TotalCount {
 		response.Status = ReceiveStatusFailed
+		if quotaFailedCount == response.TotalCount {
+			return response, plan.ErrQuotaExceeded
+		}
 		return response, ErrWebhookDeliveryFailed
 	}
 

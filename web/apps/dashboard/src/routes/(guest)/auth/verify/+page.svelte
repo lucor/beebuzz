@@ -101,9 +101,7 @@
 			<h1 class="text-xl font-bold text-base-content mt-4">Check your email</h1>
 			{#if email}
 				<p class="text-sm text-base-content/70 mt-2">
-					For privacy, we can't confirm approval status. If approved, we sent a 6-digit code to <strong
-						>{email}</strong
-					>.
+					If the address can sign in, we sent a 6-digit code to <strong>{email}</strong>.
 				</p>
 			{/if}
 		</div>
@@ -186,11 +184,8 @@
 				<ul class="text-xs text-base-content/70 space-y-1 list-disc list-inside">
 					<li>Codes usually arrive within 1–2 minutes.</li>
 					<li>Check your spam or promotions folder.</li>
-					<li>During private beta, codes are only sent to approved emails.</li>
-					<li>
-						If nothing arrives, your access may still be pending — you'll receive an email when
-						approved.
-					</li>
+					<li>Codes expire quickly and can only be used once.</li>
+					<li>Use a different email if the code does not arrive.</li>
 				</ul>
 			</div>
 

@@ -35,7 +35,6 @@ type Service struct {
 	repo                *Repository
 	mailer              mailer.Mailer
 	baseURL             string
-	privateBeta         bool
 	bootstrapAdminEmail string
 	globalThrottle      *GlobalAuthThrottle
 	emailThrottle       *EmailThrottle
@@ -50,15 +49,9 @@ func NewService(repo *Repository, m mailer.Mailer, baseURL string, topicInit Top
 		repo:             repo,
 		mailer:           m,
 		baseURL:          baseURL,
-		privateBeta:      false,
 		topicInitializer: topicInit,
 		log:              logger,
 	}
-}
-
-// UsePrivateBeta toggles waitlist gating for the auth flow.
-func (s *Service) UsePrivateBeta(enabled bool) {
-	s.privateBeta = enabled
 }
 
 // SetBootstrapAdminEmail configures the email identity allowed to bootstrap admin access.
@@ -83,7 +76,7 @@ func (s *Service) SetSignupNotifier(notifier SignupNotifier) {
 }
 
 // RequestAuth initiates authentication for the given email.
-func (s *Service) RequestAuth(ctx context.Context, email string, state string, reason *string) (bool, error) {
+func (s *Service) RequestAuth(ctx context.Context, email string, state string) (bool, error) {
 	email = normalizeEmail(email)
 
 	if s.globalThrottle != nil && !s.globalThrottle.Allow() {
@@ -97,12 +90,6 @@ func (s *Service) RequestAuth(ctx context.Context, email string, state string, r
 	}
 
 	opts := CreateUserOptions{AccountStatus: core.AccountStatusActive}
-	if s.privateBeta && !s.isBootstrapAdminEmail(email) {
-		opts.AccountStatus = core.AccountStatusPending
-		opts.SignupReason = reason
-	} else if !s.privateBeta {
-		opts.StartTrialOnCreate = true
-	}
 
 	user, created, err := s.repo.GetOrCreateUser(ctx, email, opts)
 	if err != nil {
@@ -127,9 +114,6 @@ func (s *Service) RequestAuth(ctx context.Context, email string, state string, r
 	switch user.AccountStatus {
 	case core.AccountStatusBlocked:
 		logger.Info("account blocked, ignoring auth request")
-		return false, nil
-	case core.AccountStatusPending:
-		logger.Info("account pending approval, ignoring auth request")
 		return false, nil
 	case core.AccountStatusActive:
 	}

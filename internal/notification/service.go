@@ -21,6 +21,7 @@ import (
 
 	"go.beebuzz.app/beebuzz/internal/core"
 	"go.beebuzz.app/beebuzz/internal/httpfetch"
+	"go.beebuzz.app/beebuzz/internal/plan"
 	"go.beebuzz.app/beebuzz/internal/push"
 )
 
@@ -44,6 +45,7 @@ type Service struct {
 	device     DeviceProvider
 	attachment AttachmentStorer
 	tracker    EventTracker // optional; nil disables analytics tracking
+	enforcer   PlanEnforcer // optional; nil disables hosted plan enforcement
 	outbox     *OutboxRepository
 	vapidKeys  *VAPIDKeys
 	subject    string // VAPID subject per RFC 8292 (https://... or mailto:...)
@@ -61,6 +63,11 @@ type Service struct {
 // SetOutbox enables short-lived notification recovery storage.
 func (s *Service) SetOutbox(outbox *OutboxRepository) {
 	s.outbox = outbox
+}
+
+// SetPlanEnforcer enables hosted plan quota checks before push delivery.
+func (s *Service) SetPlanEnforcer(enforcer PlanEnforcer) {
+	s.enforcer = enforcer
 }
 
 // SetPushStubBroker enables push-stub capture. Pass nil to disable.
@@ -90,6 +97,12 @@ func (s *Service) Send(ctx context.Context, userID, topicID string, input SendIn
 	subscriptions, err := s.device.GetSubscribedDevices(ctx, userID, input.TopicName)
 	if err != nil {
 		return nil, err
+	}
+
+	if s.enforcer != nil {
+		if err := s.enforcer.Allow(ctx, userID, plan.Action{Messages: 1}); err != nil {
+			return nil, err
+		}
 	}
 
 	if input.DeliveryMode == DeliveryModeE2E {

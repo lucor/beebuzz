@@ -10,24 +10,19 @@ import (
 )
 
 type User struct {
-	ID             string             `db:"id"`
-	Email          string             `db:"email"`
-	IsAdmin        bool               `db:"is_admin"`
-	AccountStatus  core.AccountStatus `db:"account_status"`
-	TrialStartedAt *int64             `db:"trial_started_at"`
-	CreatedAt      int64              `db:"created_at"`
-	UpdatedAt      int64              `db:"updated_at"`
+	ID            string             `db:"id"`
+	Email         string             `db:"email"`
+	IsAdmin       bool               `db:"is_admin"`
+	AccountStatus core.AccountStatus `db:"account_status"`
+	Plan          core.Plan          `db:"plan"`
+	PlanExpiresAt *int64             `db:"plan_expires_at"`
+	CreatedAt     int64              `db:"created_at"`
+	UpdatedAt     int64              `db:"updated_at"`
 }
 
 type CreateUserOptions struct {
-	AccountStatus      core.AccountStatus
-	SignupReason       *string
-	StartTrialOnCreate bool
+	AccountStatus core.AccountStatus
 }
-
-const (
-	TrialDuration = 14 * 24 * time.Hour
-)
 
 type Session struct {
 	Token     string
@@ -35,9 +30,8 @@ type Session struct {
 }
 
 type LoginRequest struct {
-	Email  string  `json:"email"`
-	State  string  `json:"state"`
-	Reason *string `json:"reason,omitempty"`
+	Email string `json:"email"`
+	State string `json:"state"`
 	// Keep in sync with web/packages/shared/src/constants/auth.ts.
 	ReferralCode string `json:"referral_code,omitempty"`
 }

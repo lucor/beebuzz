@@ -1,14 +1,16 @@
 // Admin API endpoints.
 import { api } from './client';
-import type { AccountStatus } from './account';
+import type { AccountPlan, AccountStatus, SubscriptionStatus } from './account';
 
 export interface AdminUser {
 	id: string;
 	email: string;
 	is_admin: boolean;
 	account_status: AccountStatus;
-	signup_reason?: string | null;
-	trial_started_at?: string | null;
+	plan: AccountPlan;
+	plan_expires_at?: string | null;
+	subscription_status?: SubscriptionStatus | null;
+	usage_this_month: number;
 	created_at: string;
 	updated_at: string;
 }
@@ -59,6 +61,8 @@ export interface SystemNotificationSettings {
 	recipient_user_id?: string;
 	topic_id?: string;
 	signup_created_enabled: boolean;
+	hosted_subscription_started_enabled: boolean;
+	billing_webhook_failed_enabled: boolean;
 	/**
 	 * Best-effort flag computed at read time: true when the recipient admin
 	 * has at least one paired device subscribed to the configured topic.
@@ -74,6 +78,8 @@ export interface UpdateSystemNotificationSettings {
 	enabled: boolean;
 	topic_id: string;
 	signup_created_enabled: boolean;
+	hosted_subscription_started_enabled: boolean;
+	billing_webhook_failed_enabled: boolean;
 }
 
 /**

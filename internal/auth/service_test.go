@@ -268,22 +268,22 @@ func TestRequestAuthNormalizesEmailBeforeLookup(t *testing.T) {
 	db := testutil.NewDB(t)
 	ctx := context.Background()
 
-	svc := newRequestAuthService(t, db, false)
+	svc := newRequestAuthService(t, db)
 
-	approved, err := svc.RequestAuth(ctx, "  USER@Example.com  ", "state-1", nil)
+	accepted, err := svc.RequestAuth(ctx, "  USER@Example.com  ", "state-1")
 	if err != nil {
 		t.Fatalf("RequestAuth first call: %v", err)
 	}
-	if !approved {
-		t.Fatal("RequestAuth first call approved = false, want true")
+	if !accepted {
+		t.Fatal("RequestAuth first call accepted = false, want true")
 	}
 
-	approved, err = svc.RequestAuth(ctx, "user@example.com", "state-2", nil)
+	accepted, err = svc.RequestAuth(ctx, "user@example.com", "state-2")
 	if err != nil {
 		t.Fatalf("RequestAuth second call: %v", err)
 	}
-	if !approved {
-		t.Fatal("RequestAuth second call approved = false, want true")
+	if !accepted {
+		t.Fatal("RequestAuth second call accepted = false, want true")
 	}
 
 	var userCount int
@@ -303,48 +303,48 @@ func TestRequestAuthNormalizesEmailBeforeLookup(t *testing.T) {
 	}
 }
 
-func TestRequestAuthPrivateBetaWaitlistsNewUser(t *testing.T) {
+func TestRequestAuthCreatesActiveUser(t *testing.T) {
 	db := testutil.NewDB(t)
 	ctx := context.Background()
-	svc := newRequestAuthService(t, db, true)
+	svc := newRequestAuthService(t, db)
 
-	approved, err := svc.RequestAuth(ctx, "beta-user@example.com", "state-beta", nil)
+	accepted, err := svc.RequestAuth(ctx, "new-user@example.com", "state-new")
 	if err != nil {
 		t.Fatalf("RequestAuth() error = %v", err)
 	}
-	if approved {
-		t.Fatal("RequestAuth() approved = true, want false")
+	if !accepted {
+		t.Fatal("RequestAuth() accepted = false, want true")
 	}
 
 	var accountStatus string
-	if err := db.GetContext(ctx, &accountStatus, `SELECT account_status FROM users WHERE email = ?`, "beta-user@example.com"); err != nil {
+	if err := db.GetContext(ctx, &accountStatus, `SELECT account_status FROM users WHERE email = ?`, "new-user@example.com"); err != nil {
 		t.Fatalf("select account_status: %v", err)
 	}
-	if accountStatus != "pending" {
-		t.Fatalf("account_status = %q, want %q", accountStatus, "pending")
+	if accountStatus != "active" {
+		t.Fatalf("account_status = %q, want %q", accountStatus, "active")
 	}
 
 	var challengeCount int
 	if err := db.GetContext(ctx, &challengeCount, `SELECT COUNT(*) FROM auth_challenges`); err != nil {
 		t.Fatalf("count auth_challenges: %v", err)
 	}
-	if challengeCount != 0 {
-		t.Fatalf("auth challenge count = %d, want 0", challengeCount)
+	if challengeCount != 1 {
+		t.Fatalf("auth challenge count = %d, want 1", challengeCount)
 	}
 }
 
-func TestRequestAuthPrivateBetaBypassesWaitlistForBootstrapAdminEmail(t *testing.T) {
+func TestRequestAuthBootstrapAdminEmailCreatesChallenge(t *testing.T) {
 	db := testutil.NewDB(t)
 	ctx := context.Background()
-	svc := newRequestAuthService(t, db, true)
+	svc := newRequestAuthService(t, db)
 	svc.SetBootstrapAdminEmail("BOOTSTRAP@example.com")
 
-	approved, err := svc.RequestAuth(ctx, "bootstrap@example.com", "state-bootstrap", nil)
+	accepted, err := svc.RequestAuth(ctx, "bootstrap@example.com", "state-bootstrap")
 	if err != nil {
 		t.Fatalf("RequestAuth() error = %v", err)
 	}
-	if !approved {
-		t.Fatal("RequestAuth() approved = false, want true")
+	if !accepted {
+		t.Fatal("RequestAuth() accepted = false, want true")
 	}
 
 	var accountStatus string
@@ -364,17 +364,17 @@ func TestRequestAuthPrivateBetaBypassesWaitlistForBootstrapAdminEmail(t *testing
 	}
 }
 
-func TestRequestAuthPublicModeSkipsWaitlist(t *testing.T) {
+func TestRequestAuthCreatesActiveUserWithChallenge(t *testing.T) {
 	db := testutil.NewDB(t)
 	ctx := context.Background()
-	svc := newRequestAuthService(t, db, false)
+	svc := newRequestAuthService(t, db)
 
-	approved, err := svc.RequestAuth(ctx, "public-user@example.com", "state-public", nil)
+	accepted, err := svc.RequestAuth(ctx, "public-user@example.com", "state-public")
 	if err != nil {
 		t.Fatalf("RequestAuth() error = %v", err)
 	}
-	if !approved {
-		t.Fatal("RequestAuth() approved = false, want true")
+	if !accepted {
+		t.Fatal("RequestAuth() accepted = false, want true")
 	}
 
 	var accountStatus string
@@ -397,7 +397,7 @@ func TestRequestAuthPublicModeSkipsWaitlist(t *testing.T) {
 func TestRequestAuthSilentlyThrottlesEmail(t *testing.T) {
 	db := testutil.NewDB(t)
 	ctx := context.Background()
-	svc := newRequestAuthService(t, db, false)
+	svc := newRequestAuthService(t, db)
 	now := time.Date(2026, 4, 7, 12, 0, 0, 0, time.UTC)
 	current := now
 
@@ -407,21 +407,21 @@ func TestRequestAuthSilentlyThrottlesEmail(t *testing.T) {
 	}
 	svc.SetEmailThrottle(throttle)
 
-	approved, err := svc.RequestAuth(ctx, "throttle@example.com", "state-1", nil)
+	accepted, err := svc.RequestAuth(ctx, "throttle@example.com", "state-1")
 	if err != nil {
 		t.Fatalf("RequestAuth first call: %v", err)
 	}
-	if !approved {
-		t.Fatal("RequestAuth first call approved = false, want true")
+	if !accepted {
+		t.Fatal("RequestAuth first call accepted = false, want true")
 	}
 
 	current = now.Add(30 * time.Second)
-	approved, err = svc.RequestAuth(ctx, "throttle@example.com", "state-2", nil)
+	accepted, err = svc.RequestAuth(ctx, "throttle@example.com", "state-2")
 	if err != nil {
 		t.Fatalf("RequestAuth second call: %v", err)
 	}
-	if !approved {
-		t.Fatal("RequestAuth second call approved = false, want true")
+	if !accepted {
+		t.Fatal("RequestAuth second call accepted = false, want true")
 	}
 
 	var challengeCount int
@@ -436,7 +436,7 @@ func TestRequestAuthSilentlyThrottlesEmail(t *testing.T) {
 func TestRequestAuthReturnsGlobalRateLimit(t *testing.T) {
 	db := testutil.NewDB(t)
 	ctx := context.Background()
-	svc := newRequestAuthService(t, db, false)
+	svc := newRequestAuthService(t, db)
 	now := time.Date(2026, 4, 7, 12, 0, 0, 0, time.UTC)
 	current := now
 
@@ -446,21 +446,21 @@ func TestRequestAuthReturnsGlobalRateLimit(t *testing.T) {
 	}
 	svc.SetGlobalThrottle(globalThrottle)
 
-	approved, err := svc.RequestAuth(ctx, "global@example.com", "state-1", nil)
+	accepted, err := svc.RequestAuth(ctx, "global@example.com", "state-1")
 	if err != nil {
 		t.Fatalf("RequestAuth first call: %v", err)
 	}
-	if !approved {
-		t.Fatal("RequestAuth first call approved = false, want true")
+	if !accepted {
+		t.Fatal("RequestAuth first call accepted = false, want true")
 	}
 
 	current = now.Add(30 * time.Second)
-	approved, err = svc.RequestAuth(ctx, "other@example.com", "state-2", nil)
+	accepted, err = svc.RequestAuth(ctx, "other@example.com", "state-2")
 	if !errors.Is(err, ErrGlobalRateLimit) {
 		t.Fatalf("RequestAuth second call error = %v, want ErrGlobalRateLimit", err)
 	}
-	if approved {
-		t.Fatal("RequestAuth second call approved = true, want false")
+	if accepted {
+		t.Fatal("RequestAuth second call accepted = true, want false")
 	}
 
 	var challengeCount int
@@ -476,7 +476,7 @@ func TestCreateSessionBootstrapAdmin(t *testing.T) {
 	t.Run("promotes configured bootstrap email", func(t *testing.T) {
 		db := testutil.NewDB(t)
 		ctx := context.Background()
-		svc := newRequestAuthService(t, db, false)
+		svc := newRequestAuthService(t, db)
 		svc.SetBootstrapAdminEmail("bootstrap@example.com")
 
 		userID := insertTestUser(t, ctx, db, "bootstrap@example.com")
@@ -496,7 +496,7 @@ func TestCreateSessionBootstrapAdmin(t *testing.T) {
 	t.Run("does not promote when bootstrap email is not configured", func(t *testing.T) {
 		db := testutil.NewDB(t)
 		ctx := context.Background()
-		svc := newRequestAuthService(t, db, false)
+		svc := newRequestAuthService(t, db)
 
 		userID := insertTestUser(t, ctx, db, "bootstrap@example.com")
 		session, err := svc.CreateSession(ctx, userID)
@@ -515,7 +515,7 @@ func TestCreateSessionBootstrapAdmin(t *testing.T) {
 	t.Run("does not promote a different email", func(t *testing.T) {
 		db := testutil.NewDB(t)
 		ctx := context.Background()
-		svc := newRequestAuthService(t, db, false)
+		svc := newRequestAuthService(t, db)
 		svc.SetBootstrapAdminEmail("bootstrap@example.com")
 
 		userID := insertTestUser(t, ctx, db, "other@example.com")
@@ -535,7 +535,7 @@ func TestCreateSessionBootstrapAdmin(t *testing.T) {
 	t.Run("leaves existing admin unchanged", func(t *testing.T) {
 		db := testutil.NewDB(t)
 		ctx := context.Background()
-		svc := newRequestAuthService(t, db, false)
+		svc := newRequestAuthService(t, db)
 		svc.SetBootstrapAdminEmail("bootstrap@example.com")
 
 		userID := insertTestUser(t, ctx, db, "bootstrap@example.com")
@@ -568,7 +568,7 @@ func userIsAdmin(t *testing.T, ctx context.Context, db *sqlx.DB, userID string) 
 	return isAdmin
 }
 
-func newRequestAuthService(t *testing.T, db *sqlx.DB, privateBeta bool) *Service {
+func newRequestAuthService(t *testing.T, db *sqlx.DB) *Service {
 	t.Helper()
 
 	authRepo := NewRepository(db)
@@ -584,6 +584,5 @@ func newRequestAuthService(t *testing.T, db *sqlx.DB, privateBeta bool) *Service
 	}
 
 	svc := NewService(authRepo, testMailer, "", topicSvc, logger)
-	svc.UsePrivateBeta(privateBeta)
 	return svc
 }

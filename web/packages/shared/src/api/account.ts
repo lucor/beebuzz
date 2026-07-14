@@ -23,10 +23,17 @@ export interface AccountUsage {
 	data: AccountUsageDay[];
 }
 
-export type AccountStatus = 'pending' | 'active' | 'blocked';
+export type AccountStatus = 'active' | 'blocked';
+export type AccountPlan = 'free' | 'hosted';
+export type SubscriptionStatus =
+	| 'incomplete'
+	| 'active'
+	| 'scheduled_cancel'
+	| 'past_due'
+	| 'canceled'
+	| 'expired';
 
 const ACCOUNT_STATUS = {
-	PENDING: 'pending',
 	ACTIVE: 'active',
 	BLOCKED: 'blocked'
 } as const;
@@ -37,12 +44,10 @@ export interface AccountStatusAware {
 
 export function userStatusLabel(u: AccountStatusAware): string {
 	switch (u.account_status) {
-		case ACCOUNT_STATUS.PENDING:
-			return 'Pending';
 		case ACCOUNT_STATUS.ACTIVE:
 			return 'Active';
 		case ACCOUNT_STATUS.BLOCKED:
-			return 'Blocked';
+			return 'Suspended';
 		default:
 			return u.account_status;
 	}
@@ -50,8 +55,6 @@ export function userStatusLabel(u: AccountStatusAware): string {
 
 export function userStatusBadgeClass(u: AccountStatusAware): string {
 	switch (u.account_status) {
-		case ACCOUNT_STATUS.PENDING:
-			return 'badge-warning';
 		case ACCOUNT_STATUS.ACTIVE:
 			return 'badge-success';
 		case ACCOUNT_STATUS.BLOCKED:
@@ -63,15 +66,13 @@ export function userStatusBadgeClass(u: AccountStatusAware): string {
 
 export function userActionInfo(u: AccountStatusAware & { is_admin: boolean }): {
 	label: string;
-	action: 'approve' | 'block' | 'reactivate' | null;
+	action: 'suspend' | 'reactivate' | null;
 	class: string;
 } {
 	if (u.is_admin) return { label: 'Admin', action: null, class: '' };
 	switch (u.account_status) {
-		case ACCOUNT_STATUS.PENDING:
-			return { label: 'Approve', action: 'approve', class: 'btn-success' };
 		case ACCOUNT_STATUS.ACTIVE:
-			return { label: 'Block', action: 'block', class: 'btn-error' };
+			return { label: 'Suspend', action: 'suspend', class: 'btn-error' };
 		case ACCOUNT_STATUS.BLOCKED:
 			return { label: 'Reactivate', action: 'reactivate', class: 'btn-warning' };
 		default:
@@ -79,13 +80,11 @@ export function userActionInfo(u: AccountStatusAware & { is_admin: boolean }): {
 	}
 }
 
-export function userTargetStatusForAction(
-	action: 'approve' | 'block' | 'reactivate'
-): AccountStatus {
+export function userTargetStatusForAction(action: 'suspend' | 'reactivate'): AccountStatus {
 	switch (action) {
-		case 'block':
+		case 'suspend':
 			return ACCOUNT_STATUS.BLOCKED;
-		default:
+		case 'reactivate':
 			return ACCOUNT_STATUS.ACTIVE;
 	}
 }
@@ -95,9 +94,31 @@ export interface AuthUser {
 	email: string;
 	is_admin: boolean;
 	account_status: AccountStatus;
-	trial_started_at?: string | null;
+	plan: AccountPlan;
+	plan_expires_at?: string | null;
+	subscription_status: SubscriptionStatus | null;
 	created_at: string; // ISO8601 UTC
 	updated_at: string; // ISO8601 UTC
+}
+
+export interface BillingCheckoutResponse {
+	checkout_url: string;
+}
+
+export interface BillingPortalResponse {
+	portal_url: string;
+}
+
+export interface PlanLimitUsage {
+	used: number;
+	limit: number;
+	resets_at: string;
+}
+
+export interface PlanUsage {
+	plan: AccountPlan;
+	daily: PlanLimitUsage | null;
+	monthly: PlanLimitUsage | null;
 }
 
 export interface ApiToken {
@@ -254,6 +275,13 @@ export const accountApi = {
 
 	/** Fetch account usage stats for the selected range (`0` = all time, `1` = today). */
 	getUsage: (days: number = 30) => api.get<AccountUsage>(`/me/usage?days=${days}`),
+
+	/** Fetch current plan quota state. */
+	getPlanUsage: () => api.get<PlanUsage>('/me/plan-usage'),
+
+	createBillingCheckout: () => api.post<BillingCheckoutResponse>('/billing/checkout'),
+
+	createBillingPortal: () => api.post<BillingPortalResponse>('/billing/portal'),
 
 	// API Tokens
 	listApiTokens: async () => {

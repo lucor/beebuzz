@@ -9,6 +9,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	"go.beebuzz.app/beebuzz/internal/billing"
 	"go.beebuzz.app/beebuzz/internal/core"
 	"go.beebuzz.app/beebuzz/internal/middleware"
 )
@@ -19,14 +20,16 @@ type Handler struct {
 }
 
 type AdminUserResponse struct {
-	ID             string             `json:"id"`
-	Email          string             `json:"email"`
-	IsAdmin        bool               `json:"is_admin"`
-	AccountStatus  core.AccountStatus `json:"account_status"`
-	SignupReason   *string            `json:"signup_reason,omitempty"`
-	TrialStartedAt *time.Time         `json:"trial_started_at,omitempty"`
-	CreatedAt      time.Time          `json:"created_at"`
-	UpdatedAt      time.Time          `json:"updated_at"`
+	ID                 string                      `json:"id"`
+	Email              string                      `json:"email"`
+	IsAdmin            bool                        `json:"is_admin"`
+	AccountStatus      core.AccountStatus          `json:"account_status"`
+	Plan               core.Plan                   `json:"plan"`
+	PlanExpiresAt      *time.Time                  `json:"plan_expires_at,omitempty"`
+	SubscriptionStatus *billing.SubscriptionStatus `json:"subscription_status,omitempty"`
+	UsageThisMonth     int                         `json:"usage_this_month"`
+	CreatedAt          time.Time                   `json:"created_at"`
+	UpdatedAt          time.Time                   `json:"updated_at"`
 }
 
 type AdminUsersListResponse struct {
@@ -64,9 +67,9 @@ func (h *Handler) UpdateUserStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	validStatuses := map[core.AccountStatus]bool{core.AccountStatusPending: true, core.AccountStatusActive: true, core.AccountStatusBlocked: true}
+	validStatuses := map[core.AccountStatus]bool{core.AccountStatusActive: true, core.AccountStatusBlocked: true}
 	if !validStatuses[req.AccountStatus] {
-		core.WriteBadRequest(w, "invalid_status", "account_status must be one of: pending, active, blocked")
+		core.WriteBadRequest(w, "invalid_status", "account_status must be one of: active, blocked")
 		return
 	}
 

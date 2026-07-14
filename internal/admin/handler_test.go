@@ -20,7 +20,6 @@ func (s *stubSessionRevoker) RevokeAllSessions(_ context.Context, _ string) erro
 // stubMailer satisfies the admin.Mailer interface for handler tests.
 type stubMailer struct{}
 
-func (s *stubMailer) SendAccountApproved(_ context.Context, _ string) error    { return nil }
 func (s *stubMailer) SendAccountBlocked(_ context.Context, _ string) error     { return nil }
 func (s *stubMailer) SendAccountReactivated(_ context.Context, _ string) error { return nil }
 
@@ -38,10 +37,9 @@ func seedAdminUser(t *testing.T, ctx context.Context, handler *Handler) {
 	t.Helper()
 
 	db := handler.adminService.repo.db
-	reason := "Need access"
 	if _, err := db.ExecContext(ctx,
-		`INSERT INTO users (id, email, is_admin, account_status, signup_reason, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-		"admin-user-1", "admin@example.com", 1, "active", reason, 1700000000000, 1700000000000,
+		`INSERT INTO users (id, email, is_admin, account_status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`,
+		"admin-user-1", "admin@example.com", 1, "active", 1700000000000, 1700000000000,
 	); err != nil {
 		t.Fatalf("insert admin user: %v", err)
 	}

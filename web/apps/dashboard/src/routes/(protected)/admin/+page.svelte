@@ -168,7 +168,7 @@
 	<div>
 		<h2 class="text-2xl font-bold text-base-content">Platform Dashboard</h2>
 		<p class="mt-1 text-sm text-base-content/70">
-			Platform-wide notification activity over the last 7 days by default.
+			Platform-wide message activity over the last 7 days by default.
 		</p>
 	</div>
 
@@ -223,7 +223,7 @@
 						<p class="mt-1 text-2xl font-bold text-base-content">
 							{formatNumber(dashboard.notifications_created)}
 						</p>
-						<p class="mt-1 text-xs text-base-content/60">Notifications created in this range</p>
+						<p class="mt-1 text-xs text-base-content/60">Messages sent in this range</p>
 					</div>
 				</div>
 
@@ -280,7 +280,7 @@
 					<div class="card-body p-4">
 						<div class="mb-4">
 							<h3 class="text-lg font-semibold text-base-content">Source breakdown</h3>
-							<p class="text-sm text-base-content/60">How notifications were triggered.</p>
+								<p class="text-sm text-base-content/60">How messages were sent.</p>
 						</div>
 						{#if sourceBreakdown.length > 0}
 							<div class="space-y-4">
@@ -308,7 +308,7 @@
 							</div>
 						{:else}
 							<p class="py-6 text-center text-sm text-base-content/50">
-								No notifications sent in this range yet.
+										No messages sent in this range yet.
 							</p>
 						{/if}
 					</div>
@@ -381,7 +381,7 @@
 								</span>
 							</div>
 							<div class="flex items-center justify-between gap-4">
-								<span class="text-sm text-base-content/70">With attachment</span>
+								<span class="text-sm text-base-content/70">Messages with attachment</span>
 								<span class="text-sm font-semibold text-base-content">
 									{formatNumber(dashboard.notifications_with_attachment)}
 								</span>

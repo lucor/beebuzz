@@ -48,6 +48,39 @@ type DeliveryInput struct {
 	Body            string
 }
 
+type Events int64
+
+const (
+	EventSignupCreated Events = 1 << iota
+	EventHostedSubscriptionStarted
+	EventBillingWebhookFailed
+)
+
+func (e *Events) Enable(event Events) {
+	*e |= event
+}
+
+func (e *Events) Disable(event Events) {
+	*e &^= event
+}
+
+func (e Events) Has(event Events) bool {
+	return e&event != 0
+}
+
+func (e Events) String() string {
+	switch e {
+	case EventSignupCreated:
+		return "signup_created"
+	case EventHostedSubscriptionStarted:
+		return "hosted_subscription_started"
+	case EventBillingWebhookFailed:
+		return "billing_webhook_failed"
+	default:
+		return "unknown"
+	}
+}
+
 // Settings is the persisted system notifications configuration.
 //
 // RecipientHasActiveDeviceForTopic is a derived (non-persisted) flag computed
@@ -55,12 +88,12 @@ type DeliveryInput struct {
 // destination. It is best-effort: callers may leave it false when the check
 // is not applicable or fails.
 type Settings struct {
-	Enabled              bool   `db:"enabled"`
-	RecipientUserID      string `db:"recipient_user_id"`
-	TopicID              string `db:"topic_id"`
-	SignupCreatedEnabled bool   `db:"signup_created_enabled"`
-	CreatedAt            int64  `db:"created_at"`
-	UpdatedAt            int64  `db:"updated_at"`
+	Enabled         bool   `db:"enabled"`
+	RecipientUserID string `db:"recipient_user_id"`
+	TopicID         string `db:"topic_id"`
+	EventFlags      Events `db:"event_flags"`
+	CreatedAt       int64  `db:"created_at"`
+	UpdatedAt       int64  `db:"updated_at"`
 
 	RecipientHasActiveDeviceForTopic bool `db:"-"`
 }
@@ -71,6 +104,8 @@ type SettingsResponse struct {
 	RecipientUserID                  string    `json:"recipient_user_id,omitempty"`
 	TopicID                          string    `json:"topic_id,omitempty"`
 	SignupCreatedEnabled             bool      `json:"signup_created_enabled"`
+	HostedSubscriptionStartedEnabled bool      `json:"hosted_subscription_started_enabled"`
+	BillingWebhookFailedEnabled      bool      `json:"billing_webhook_failed_enabled"`
 	RecipientHasActiveDeviceForTopic bool      `json:"recipient_has_active_device_for_topic"`
 	CreatedAt                        time.Time `json:"created_at,omitempty"`
 	UpdatedAt                        time.Time `json:"updated_at,omitempty"`
@@ -78,9 +113,25 @@ type SettingsResponse struct {
 
 // UpdateSettingsRequest is the admin API request for system notification settings.
 type UpdateSettingsRequest struct {
-	Enabled              bool   `json:"enabled"`
-	TopicID              string `json:"topic_id"`
-	SignupCreatedEnabled bool   `json:"signup_created_enabled"`
+	Enabled                          bool   `json:"enabled"`
+	TopicID                          string `json:"topic_id"`
+	SignupCreatedEnabled             bool   `json:"signup_created_enabled"`
+	HostedSubscriptionStartedEnabled bool   `json:"hosted_subscription_started_enabled"`
+	BillingWebhookFailedEnabled      bool   `json:"billing_webhook_failed_enabled"`
+}
+
+func EventsFromUpdateRequest(input UpdateSettingsRequest) Events {
+	var events Events
+	if input.SignupCreatedEnabled {
+		events.Enable(EventSignupCreated)
+	}
+	if input.HostedSubscriptionStartedEnabled {
+		events.Enable(EventHostedSubscriptionStarted)
+	}
+	if input.BillingWebhookFailedEnabled {
+		events.Enable(EventBillingWebhookFailed)
+	}
+	return events
 }
 
 // ToSettingsResponse converts persisted settings to the admin API shape.
@@ -93,7 +144,9 @@ func ToSettingsResponse(settings *Settings) SettingsResponse {
 		Enabled:                          settings.Enabled,
 		RecipientUserID:                  settings.RecipientUserID,
 		TopicID:                          settings.TopicID,
-		SignupCreatedEnabled:             settings.SignupCreatedEnabled,
+		SignupCreatedEnabled:             settings.EventFlags.Has(EventSignupCreated),
+		HostedSubscriptionStartedEnabled: settings.EventFlags.Has(EventHostedSubscriptionStarted),
+		BillingWebhookFailedEnabled:      settings.EventFlags.Has(EventBillingWebhookFailed),
 		RecipientHasActiveDeviceForTopic: settings.RecipientHasActiveDeviceForTopic,
 		CreatedAt:                        time.UnixMilli(settings.CreatedAt).UTC(),
 		UpdatedAt:                        time.UnixMilli(settings.UpdatedAt).UTC(),

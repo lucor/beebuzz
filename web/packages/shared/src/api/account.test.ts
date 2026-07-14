@@ -23,6 +23,11 @@ const requestBody = (fetchMock: ReturnType<typeof stubFetch>) => {
 	return JSON.parse(String(init?.body)) as Record<string, unknown>;
 };
 
+const requestUrl = (fetchMock: ReturnType<typeof stubFetch>) => {
+	const [url] = fetchMock.mock.calls[0];
+	return String(url);
+};
+
 describe('accountApi webhook payloads', () => {
 	beforeEach(() => {
 		vi.unstubAllEnvs();
@@ -123,5 +128,33 @@ describe('accountApi webhook payloads', () => {
 			body_path: 'data.body',
 			title_value: 'Fixed title'
 		});
+	});
+});
+
+describe('accountApi billing', () => {
+	beforeEach(() => {
+		vi.unstubAllEnvs();
+		vi.restoreAllMocks();
+		vi.unstubAllGlobals();
+	});
+
+	it('creates a hosted checkout session without sending billing email', async () => {
+		const { accountApi } = await loadAccountApi();
+		const fetchMock = stubFetch();
+
+		await accountApi.createBillingCheckout();
+
+		expect(requestUrl(fetchMock)).toBe('https://api.example.test/v1/billing/checkout');
+		expect(fetchMock.mock.calls[0][1]?.body).toBeUndefined();
+	});
+
+	it('creates a billing portal session without sending billing email', async () => {
+		const { accountApi } = await loadAccountApi();
+		const fetchMock = stubFetch();
+
+		await accountApi.createBillingPortal();
+
+		expect(requestUrl(fetchMock)).toBe('https://api.example.test/v1/billing/portal');
+		expect(fetchMock.mock.calls[0][1]?.body).toBeUndefined();
 	});
 });

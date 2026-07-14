@@ -10,6 +10,8 @@
 	let topics: Topic[] = $state([]);
 	let enabled = $state(false);
 	let signupCreatedEnabled = $state(false);
+	let hostedSubscriptionStartedEnabled = $state(false);
+	let billingWebhookFailedEnabled = $state(false);
 	let selectedTopicID = $state('');
 	let recipientUserID = $state('');
 	let recipientHasActiveDeviceForTopic = $state(false);
@@ -34,6 +36,8 @@
 			topics = loadedTopics;
 			enabled = settings.enabled;
 			signupCreatedEnabled = settings.signup_created_enabled;
+			hostedSubscriptionStartedEnabled = settings.hosted_subscription_started_enabled;
+			billingWebhookFailedEnabled = settings.billing_webhook_failed_enabled;
 			selectedTopicID = settings.topic_id ?? '';
 			recipientUserID = settings.recipient_user_id ?? '';
 			recipientHasActiveDeviceForTopic = settings.recipient_has_active_device_for_topic;
@@ -59,7 +63,9 @@
 			const settings = await adminApi.updateSystemNotificationSettings({
 				enabled,
 				topic_id: selectedTopicID,
-				signup_created_enabled: signupCreatedEnabled
+				signup_created_enabled: signupCreatedEnabled,
+				hosted_subscription_started_enabled: hostedSubscriptionStartedEnabled,
+				billing_webhook_failed_enabled: billingWebhookFailedEnabled
 			});
 			recipientUserID = settings.recipient_user_id ?? '';
 			recipientHasActiveDeviceForTopic = settings.recipient_has_active_device_for_topic;
@@ -144,6 +150,32 @@
 							<span class="block font-medium text-base-content">New signup</span>
 							<span class="block text-sm text-base-content/70">
 								Send a notification when BeeBuzz creates a new account.
+							</span>
+						</span>
+					</label>
+					<label class="label cursor-pointer justify-start gap-3">
+						<input
+							type="checkbox"
+							class="checkbox checkbox-primary"
+							bind:checked={hostedSubscriptionStartedEnabled}
+						/>
+						<span>
+							<span class="block font-medium text-base-content">Hosted started</span>
+							<span class="block text-sm text-base-content/70">
+								Send a notification when an account upgrades to Hosted.
+							</span>
+						</span>
+					</label>
+					<label class="label cursor-pointer justify-start gap-3">
+						<input
+							type="checkbox"
+							class="checkbox checkbox-primary"
+							bind:checked={billingWebhookFailedEnabled}
+						/>
+						<span>
+							<span class="block font-medium text-base-content">Billing webhook failed</span>
+							<span class="block text-sm text-base-content/70">
+								Send a notification when a provider billing webhook fails to process.
 							</span>
 						</span>
 					</label>

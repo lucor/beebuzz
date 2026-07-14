@@ -26,9 +26,10 @@ type Transport interface {
 // Mailer defines the interface for sending templated emails.
 type Mailer interface {
 	SendRequestAuth(ctx context.Context, to, otp string) error
-	SendAccountApproved(ctx context.Context, to string) error
 	SendAccountBlocked(ctx context.Context, to string) error
 	SendAccountReactivated(ctx context.Context, to string) error
+	SendHostedActivated(ctx context.Context, to string) error
+	SendHostedEnded(ctx context.Context, to string) error
 }
 
 // mailer sends emails using a configured transport backend.
@@ -36,6 +37,7 @@ type mailer struct {
 	transport Transport
 	templates *template.Template
 	siteURL   string
+	replyTo   string
 }
 
 // New creates a new Mailer instance based on the provided config.
@@ -68,6 +70,7 @@ func New(cfg *config.Mailer) (Mailer, error) {
 		transport: transport,
 		templates: tmpl,
 		siteURL:   cfg.SiteURL,
+		replyTo:   cfg.ReplyTo,
 	}, nil
 }
 

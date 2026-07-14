@@ -8,7 +8,9 @@ import (
 	"syscall"
 	"testing"
 
+	"go.beebuzz.app/beebuzz/internal/billing"
 	"go.beebuzz.app/beebuzz/internal/config"
+	"go.beebuzz.app/beebuzz/internal/testutil"
 )
 
 func TestRunHTTPServerReturnsStartupError(t *testing.T) {
@@ -71,4 +73,46 @@ func TestLoadVAPIDKeysRequiresBothKeys(t *testing.T) {
 			t.Fatal("loadVAPIDKeys() error = nil, want missing key error")
 		}
 	})
+}
+
+func TestBuildBillingServiceRequiresHostedMode(t *testing.T) {
+	ctx := context.Background()
+	db := testutil.NewDBWithUsers(t, "user_1")
+	repo := billing.NewRepository(db)
+	cfg := &config.Config{
+		DeploymentMode:         config.DeploymentModeSelfHosted,
+		BillingProvider:        config.BillingProviderCreem,
+		BillingSuccessURL:      "https://dashboard.example.com/account/billing?checkout=success",
+		BillingGracePeriodDays: 7,
+		CreemAPIKey:            "creem_test_key",
+		CreemProductID:         "prod_123",
+		CreemWebhookSecret:     "secret",
+		CreemAPIBaseURL:        "https://test-api.creem.io",
+	}
+
+	service, err := buildBillingService(repo, cfg, nil)
+	if err != nil {
+		t.Fatalf("buildBillingService() error = %v", err)
+	}
+	if _, err := service.CreateCheckout(ctx, "user_1"); !errors.Is(err, billing.ErrBillingDisabled) {
+		t.Fatalf("CreateCheckout() error = %v, want %v", err, billing.ErrBillingDisabled)
+	}
+}
+
+func TestBuildBillingServiceRequiresCreemWebhookSecret(t *testing.T) {
+	db := testutil.NewDB(t)
+	repo := billing.NewRepository(db)
+	cfg := &config.Config{
+		DeploymentMode:         config.DeploymentModeHosted,
+		BillingProvider:        config.BillingProviderCreem,
+		BillingSuccessURL:      "https://dashboard.example.com/account/billing?checkout=success",
+		BillingGracePeriodDays: 7,
+		CreemAPIKey:            "creem_test_key",
+		CreemProductID:         "prod_123",
+		CreemAPIBaseURL:        "https://test-api.creem.io",
+	}
+
+	if _, err := buildBillingService(repo, cfg, nil); err == nil {
+		t.Fatal("buildBillingService() error = nil, want missing webhook secret")
+	}
 }

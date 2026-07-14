@@ -11,7 +11,7 @@
 
 	const DOCS_QUICKSTART_URL = 'https://docs.beebuzz.app/quickstart/';
 
-	const TEST_NOTIFICATION_TITLE = 'BeeBuzz test notification';
+	const TEST_NOTIFICATION_TITLE = 'BeeBuzz test message';
 	const TEST_NOTIFICATION_BODY = 'This is a test message sent with your API token.';
 
 	let tokens = $state<ApiToken[]>([]);
@@ -215,17 +215,17 @@
 				testNotificationError =
 					responseBody && 'message' in responseBody && responseBody.message
 						? responseBody.message
-						: 'Failed to send test notification';
+						: 'Failed to send test message';
 				return;
 			}
 
 			testNotificationSuccess =
 				responseBody && 'sent_count' in responseBody
 					? `Test sent to ${responseBody.sent_count} of ${responseBody.total_count} device(s).`
-					: 'Test notification sent.';
+					: 'Test message sent.';
 			await loadUsage();
 		} catch {
-			testNotificationError = 'Network error while sending test notification';
+			testNotificationError = 'Network error while sending test message';
 		} finally {
 			isSendingTestNotification = false;
 		}
@@ -546,7 +546,7 @@
 								Sending...
 							{:else}
 								<Send size={16} />
-								Send test notification now
+								Send test message now
 							{/if}
 						</button>
 					</div>

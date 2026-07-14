@@ -17,6 +17,7 @@
 		Key,
 		Webhook,
 		Shield,
+		CreditCard,
 		LayoutDashboard
 	} from '@lucide/svelte';
 	import type { Icon } from '@lucide/svelte';
@@ -32,13 +33,16 @@
 
 	let currentPath = $derived(page.url.pathname);
 
-	const navItems: NavItem[] = [
+	const navItems: NavItem[] = $derived([
 		{ label: 'Overview', href: resolve('/account/overview'), icon: LayoutDashboard },
 		{ label: 'Topics', href: resolve('/account/topics'), icon: Tag },
 		{ label: 'Devices', href: resolve('/account/devices'), icon: Smartphone },
 		{ label: 'API Tokens', href: resolve('/account/api-tokens'), icon: Key },
-		{ label: 'Webhooks', href: resolve('/account/webhooks'), icon: Webhook }
-	];
+		{ label: 'Webhooks', href: resolve('/account/webhooks'), icon: Webhook },
+		...(auth.user?.is_admin
+			? []
+			: [{ label: 'Plan & Billing', href: resolve('/account/billing'), icon: CreditCard }])
+	]);
 
 	const profileHref = resolve('/account/profile');
 	let accountMenuOpen = $state(false);

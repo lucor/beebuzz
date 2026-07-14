@@ -12,6 +12,7 @@ import (
 	"go.beebuzz.app/beebuzz/internal/admin"
 	"go.beebuzz.app/beebuzz/internal/attachment"
 	"go.beebuzz.app/beebuzz/internal/auth"
+	"go.beebuzz.app/beebuzz/internal/billing"
 	"go.beebuzz.app/beebuzz/internal/config"
 	"go.beebuzz.app/beebuzz/internal/core"
 	"go.beebuzz.app/beebuzz/internal/debugreport"
@@ -20,6 +21,7 @@ import (
 	"go.beebuzz.app/beebuzz/internal/health"
 	"go.beebuzz.app/beebuzz/internal/middleware"
 	"go.beebuzz.app/beebuzz/internal/notification"
+	"go.beebuzz.app/beebuzz/internal/plan"
 	systemnotifications "go.beebuzz.app/beebuzz/internal/system/notifications"
 	"go.beebuzz.app/beebuzz/internal/token"
 	"go.beebuzz.app/beebuzz/internal/topic"
@@ -62,9 +64,11 @@ func NewRouter(
 	adminHandler *admin.Handler,
 	systemNotificationsHandler *systemnotifications.Handler,
 	eventHandler *event.Handler,
+	planHandler *plan.Handler,
 	notificationHandler *notification.Handler,
 	deviceHandler *device.Handler,
 	webhookHandler *webhook.Handler,
+	billingHandler *billing.Handler,
 	attachmentHandler *attachment.Handler,
 	tokenHandler *token.Handler,
 	debugReportHandler *debugreport.Handler,
@@ -84,6 +88,7 @@ func NewRouter(
 		v1.Use(middleware.APISecurity)
 
 		v1.With(rateLimitWebhookToken).Post("/webhooks/{token}", webhookHandler.Receive)
+		v1.Post("/billing/webhooks/creem", billingHandler.ReceiveWebhook)
 
 		// Public
 		v1.Get("/health", healthHandler.Health)
@@ -122,6 +127,9 @@ func NewRouter(
 			// Me
 			authenticated.Get("/me", userHandler.Me)
 			authenticated.Get("/me/usage", eventHandler.AccountUsage)
+			authenticated.Get("/me/plan-usage", planHandler.AccountUsage)
+			authenticated.Post("/billing/checkout", billingHandler.CreateCheckout)
+			authenticated.Post("/billing/portal", billingHandler.CreateCustomerPortal)
 
 			// Topics
 			authenticated.Get("/topics", topicHandler.GetTopics)

@@ -11,6 +11,8 @@ import (
 )
 
 const (
+	// MaxPairedDevices is the maximum number of active paired devices per user.
+	MaxPairedDevices = 10
 	// PairingOTPTTL is the time-to-live for pairing OTPs.
 	PairingOTPTTL = 5 * time.Minute
 	// maxPairingAttempts is the maximum number of OTP verification attempts.
@@ -26,6 +28,7 @@ var (
 	ErrInvalidPushEndpoint   = fmt.Errorf("invalid push endpoint")
 	ErrInvalidAgeRecipient   = fmt.Errorf("invalid age recipient")
 	ErrInvalidDeviceToken    = fmt.Errorf("invalid device token")
+	ErrDeviceLimitReached    = fmt.Errorf("paired device limit reached")
 )
 
 // TopicValidator verifies that topic IDs belong to the given user.

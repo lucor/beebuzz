@@ -45,7 +45,7 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err := h.authService.RequestAuth(r.Context(), req.Email, req.State, req.Reason)
+	_, err := h.authService.RequestAuth(r.Context(), req.Email, req.State)
 	if err != nil {
 		if errors.Is(err, ErrGlobalRateLimit) {
 			// Retry-After makes the global safety valve explicit without leaking account state.

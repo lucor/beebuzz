@@ -284,14 +284,30 @@ func (r *Repository) ConsumePairingCode(ctx context.Context, codeHash string, su
 		return "", nil
 	}
 
-	// Get the device_id
-	var deviceID string
+	// Get the device and owning user.
+	var deviceID, userID string
 	err = tx.QueryRowxContext(ctx,
-		`SELECT device_id FROM device_pairing_codes WHERE code_hash = ?`,
+		`SELECT pc.device_id, d.user_id
+		 FROM device_pairing_codes pc
+		 JOIN devices d ON d.id = pc.device_id
+		 WHERE pc.code_hash = ?`,
 		codeHash,
-	).Scan(&deviceID)
+	).Scan(&deviceID, &userID)
 	if err != nil {
 		return "", err
+	}
+
+	// A re-pair of an existing device does not consume another device slot.
+	var pairedCount int
+	if err := tx.GetContext(ctx, &pairedCount,
+		`SELECT COUNT(*) FROM devices
+		 WHERE user_id = ? AND is_active = 1 AND pairing_status = ? AND id != ?`,
+		userID, PairingStatusPaired, deviceID,
+	); err != nil {
+		return "", err
+	}
+	if pairedCount >= MaxPairedDevices {
+		return "", ErrDeviceLimitReached
 	}
 
 	// Delete any existing subscription for this device (handles reinstall/repair case)

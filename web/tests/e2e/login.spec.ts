@@ -4,7 +4,7 @@ test.describe('login page', () => {
 	test('should display login form', async ({ page }) => {
 		await page.goto('/auth');
 
-		await expect(page.getByText(/private beta/i)).toBeVisible();
+		await expect(page.getByRole('heading', { name: /continue with your email/i })).toBeVisible();
 		await expect(page.getByLabel('Email address')).toBeVisible();
 		await expect(page.getByRole('button', { name: /continue/i })).toBeVisible();
 	});

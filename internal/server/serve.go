@@ -17,6 +17,8 @@ import (
 	"go.beebuzz.app/beebuzz/internal/admin"
 	"go.beebuzz.app/beebuzz/internal/attachment"
 	"go.beebuzz.app/beebuzz/internal/auth"
+	"go.beebuzz.app/beebuzz/internal/billing"
+	billingcreem "go.beebuzz.app/beebuzz/internal/billing/creem"
 	"go.beebuzz.app/beebuzz/internal/config"
 	"go.beebuzz.app/beebuzz/internal/database"
 	"go.beebuzz.app/beebuzz/internal/debugreport"
@@ -29,6 +31,7 @@ import (
 	"go.beebuzz.app/beebuzz/internal/migrations"
 	"go.beebuzz.app/beebuzz/internal/monitoring"
 	"go.beebuzz.app/beebuzz/internal/notification"
+	"go.beebuzz.app/beebuzz/internal/plan"
 	systemnotifications "go.beebuzz.app/beebuzz/internal/system/notifications"
 	"go.beebuzz.app/beebuzz/internal/token"
 	"go.beebuzz.app/beebuzz/internal/topic"
@@ -57,10 +60,12 @@ type appServices struct {
 	adminSvc       *admin.Service
 	attachmentSvc  *attachment.Service
 	authSvc        *auth.Service
+	billingSvc     *billing.Service
 	debugReportSvc *debugreport.Service
 	deviceSvc      *device.Service
 	eventSvc       *event.Service
 	notifSvc       *notification.Service
+	planSvc        *plan.Service
 	systemNotifSvc *systemnotifications.Service
 	tokenSvc       *token.Service
 	topicSvc       *topic.Service
@@ -130,7 +135,6 @@ func buildServices(db *sqlx.DB, cfg *config.Config, log *slog.Logger, m mailer.M
 	authRepo := auth.NewRepository(db)
 	authTopicInit := &authTopicInitializerAdapter{topicSvc: topicSvc}
 	authSvc := auth.NewService(authRepo, m, cfg.URL, authTopicInit, log)
-	authSvc.UsePrivateBeta(cfg.PrivateBeta)
 	authSvc.SetBootstrapAdminEmail(cfg.BootstrapAdminEmail)
 	authSvc.SetGlobalThrottle(auth.NewGlobalAuthThrottle(
 		authGlobalThrottleLimit,
@@ -144,6 +148,12 @@ func buildServices(db *sqlx.DB, cfg *config.Config, log *slog.Logger, m mailer.M
 
 	userRepo := user.NewRepository(db)
 	userSvc := user.NewService(userRepo)
+
+	billingRepo := billing.NewRepository(db)
+	billingSvc, err := buildBillingService(billingRepo, cfg, log)
+	if err != nil {
+		return nil, err
+	}
 
 	adminRepo := admin.NewRepository(db)
 	adminSessionRevoker := &adminSessionRevokerAdapter{svc: authSvc}
@@ -171,8 +181,12 @@ func buildServices(db *sqlx.DB, cfg *config.Config, log *slog.Logger, m mailer.M
 	notifDeviceAdapter := &notificationDeviceAdapter{deviceSvc: deviceSvc}
 	notifAttachmentAdapter := &notificationAttachmentAdapter{attachmentSvc: attachmentSvc}
 	notifEventTracker := &notificationEventTrackerAdapter{eventSvc: eventSvc}
+	planRepo := plan.NewRepository(db)
+	planEnforcer := plan.NewEnforcer(plan.ConfigFromApp(cfg), planRepo, log)
+	planSvc := plan.NewService(plan.ConfigFromApp(cfg), planRepo)
 	notifOutboxRepo := notification.NewOutboxRepository(db)
 	notifSvc := notification.NewService(notifDeviceAdapter, notifAttachmentAdapter, notifEventTracker, vapidKeys, cfg.VAPIDSubject, log)
+	notifSvc.SetPlanEnforcer(planEnforcer)
 	notifSvc.SetOutbox(notifOutboxRepo)
 
 	var pushStubBroker *notification.PushStubBroker
@@ -187,6 +201,11 @@ func buildServices(db *sqlx.DB, cfg *config.Config, log *slog.Logger, m mailer.M
 	systemNotifSubscriptions := &systemNotificationDeviceSubscriptionAdapter{deviceSvc: deviceSvc}
 	systemNotifSvc := systemnotifications.NewService(systemNotifRepo, systemNotifTopics, systemNotifDelivery, systemNotifSubscriptions, log)
 	authSvc.SetSignupNotifier(systemNotifSvc)
+	billingSvc.SetProductNotifier(&billingProductNotifierAdapter{
+		users:               userRepo,
+		mailer:              m,
+		systemNotifications: systemNotifSvc,
+	})
 
 	webhookRepo := webhook.NewRepository(db)
 	webhookInspectStore := webhook.NewInspectStore()
@@ -202,10 +221,12 @@ func buildServices(db *sqlx.DB, cfg *config.Config, log *slog.Logger, m mailer.M
 		adminSvc:       adminSvc,
 		attachmentSvc:  attachmentSvc,
 		authSvc:        authSvc,
+		billingSvc:     billingSvc,
 		debugReportSvc: debugReportSvc,
 		deviceSvc:      deviceSvc,
 		eventSvc:       eventSvc,
 		notifSvc:       notifSvc,
+		planSvc:        planSvc,
 		systemNotifSvc: systemNotifSvc,
 		tokenSvc:       tokenSvc,
 		topicSvc:       topicSvc,
@@ -213,6 +234,34 @@ func buildServices(db *sqlx.DB, cfg *config.Config, log *slog.Logger, m mailer.M
 		webhookSvc:     webhookSvc,
 		pushStubBroker: pushStubBroker,
 	}, nil
+}
+
+func buildBillingService(repo *billing.Repository, cfg *config.Config, log *slog.Logger) (*billing.Service, error) {
+	var checkoutCreator billing.CheckoutCreator
+	var customerPortalCreator billing.CustomerPortalCreator
+	var webhookVerifier billing.WebhookVerifier
+	if cfg.IsHosted() && cfg.BillingProvider == config.BillingProviderCreem {
+		if cfg.CreemWebhookSecret == "" {
+			return nil, fmt.Errorf("initialize creem billing client: webhook secret is required")
+		}
+		client, err := billingcreem.NewClient(billingcreem.Config{
+			APIKey:    cfg.CreemAPIKey,
+			BaseURL:   cfg.CreemAPIBaseURL,
+			ProductID: cfg.CreemProductID,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("initialize creem billing client: %w", err)
+		}
+		adapter := billingcreem.NewBillingAdapter(client, cfg.CreemWebhookSecret, cfg.CreemProductID)
+		checkoutCreator = adapter
+		customerPortalCreator = adapter
+		webhookVerifier = adapter
+	}
+
+	return billing.NewService(repo, checkoutCreator, customerPortalCreator, webhookVerifier, billing.ServiceConfig{
+		SuccessURL:      cfg.BillingSuccessURL,
+		GracePeriodDays: cfg.BillingGracePeriodDays,
+	}, log), nil
 }
 
 // loadVAPIDKeys requires explicit env-backed keys so the server never treats
@@ -231,12 +280,14 @@ func loadVAPIDKeys(cfg *config.Config) (*notification.VAPIDKeys, error) {
 // buildHTTPHandler creates the router and wraps it with global middleware.
 func buildHTTPHandler(services *appServices, cfg *config.Config, log *slog.Logger, version string, commitHash string) http.Handler {
 	authHandler := auth.NewHandler(services.authSvc, cfg.CookieDomain, log)
+	billingHandler := billing.NewHandler(services.billingSvc, log)
 	healthHandler := health.NewHandler(version, commitHash, services.db)
 	userHandler := user.NewHandler(services.userSvc, log)
 	topicHandler := topic.NewHandler(services.topicSvc, log)
 	adminHandler := admin.NewHandler(services.adminSvc, log)
 	systemNotificationsHandler := systemnotifications.NewHandler(services.systemNotifSvc, log)
 	eventHandler := event.NewHandler(services.eventSvc, log)
+	planHandler := plan.NewHandler(services.planSvc, log)
 	pushAuth := &pushAuthorizerAdapter{tokenSvc: services.tokenSvc}
 	keyProvider := &keyProviderAdapter{deviceSvc: services.deviceSvc}
 	deviceAuthenticator := &deviceAuthenticatorAdapter{deviceSvc: services.deviceSvc}
@@ -268,9 +319,11 @@ func buildHTTPHandler(services *appServices, cfg *config.Config, log *slog.Logge
 		adminHandler,
 		systemNotificationsHandler,
 		eventHandler,
+		planHandler,
 		notificationHandler,
 		deviceHandler,
 		webhookHandler,
+		billingHandler,
 		attachmentHandler,
 		tokenHandler,
 		debugReportHandler,

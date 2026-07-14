@@ -3,6 +3,7 @@ package device
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 	"testing"
@@ -315,6 +316,43 @@ func TestServiceListDevicesReturnsAllActive(t *testing.T) {
 	}
 	if got := deviceMap[device2.ID].PairingStatus; got != PairingStatusPending {
 		t.Fatalf("device2 pairing_status = %q, want %q", got, PairingStatusPending)
+	}
+}
+
+func TestPairRejectsWhenPairedDeviceLimitReached(t *testing.T) {
+	db := testutil.NewDB(t)
+	ctx := context.Background()
+
+	authRepo := auth.NewRepository(db)
+	topicRepo := topic.NewRepository(db)
+	deviceRepo := NewRepository(db)
+	deviceSvc := newTestDeviceService(deviceRepo)
+
+	user, _, err := authRepo.GetOrCreateUser(ctx, "device-pair-limit@example.com")
+	if err != nil {
+		t.Fatalf("GetOrCreateUser: %v", err)
+	}
+	topicRow, err := topicRepo.Create(ctx, user.ID, "alerts", "")
+	if err != nil {
+		t.Fatalf("topic.Create: %v", err)
+	}
+
+	for i := 0; i < MaxPairedDevices; i++ {
+		_, otp, _, err := deviceSvc.CreateDevice(ctx, user.ID, fmt.Sprintf("device-%d", i), "", []string{topicRow.ID})
+		if err != nil {
+			t.Fatalf("CreateDevice(%d): %v", i, err)
+		}
+		if _, _, err := deviceSvc.Pair(ctx, otp, fmt.Sprintf("https://fcm.googleapis.com/fcm/send/%d", i), "p256dh", "auth", testAgeRecipient); err != nil {
+			t.Fatalf("Pair(%d): %v", i, err)
+		}
+	}
+
+	_, otp, _, err := deviceSvc.CreateDevice(ctx, user.ID, "device-limit", "", []string{topicRow.ID})
+	if err != nil {
+		t.Fatalf("CreateDevice(limit): %v", err)
+	}
+	if _, _, err := deviceSvc.Pair(ctx, otp, "https://fcm.googleapis.com/fcm/send/limit", "p256dh", "auth", testAgeRecipient); !errors.Is(err, ErrDeviceLimitReached) {
+		t.Fatalf("Pair(limit) error = %v, want %v", err, ErrDeviceLimitReached)
 	}
 }
 

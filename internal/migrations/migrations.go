@@ -14,7 +14,21 @@ import (
 //go:embed *.sql
 var migrationFiles embed.FS
 
-// Run executes all pending migrations
+// Run executes all pending migrations.
+//
+// NoTxWrap is required because migration 010 changes the users table CHECK
+// constraint, which needs a table rebuild. SQLite's DROP TABLE on a parent
+// table with FK references fails even with PRAGMA defer_foreign_keys = ON.
+// The solution is PRAGMA foreign_keys = OFF outside a transaction — which
+// is impossible when the driver wraps migrations in a transaction (as
+// PRAGMA foreign_keys is a no-op inside a transaction).
+//
+// With NoTxWrap=true the driver runs each migration's SQL directly,
+// so migration 010 can manage its own transaction control:
+//
+//	PRAGMA foreign_keys = OFF;  -- outside tx
+//	BEGIN; ... rebuild ... COMMIT;
+//	PRAGMA foreign_keys = ON;   -- outside tx
 func Run(db *sqlx.DB) error {
 	// Get underlying SQL database from sqlx
 	sqlDB := db.DB
@@ -22,8 +36,9 @@ func Run(db *sqlx.DB) error {
 		return fmt.Errorf("failed to get underlying database connection")
 	}
 
-	// Create driver instance
-	driver, err := sqlite.WithInstance(sqlDB, &sqlite.Config{})
+	driver, err := sqlite.WithInstance(sqlDB, &sqlite.Config{
+		NoTxWrap: true,
+	})
 	if err != nil {
 		return fmt.Errorf("failed to create migration driver: %w", err)
 	}

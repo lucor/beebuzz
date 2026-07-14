@@ -263,15 +263,10 @@ func (r *Repository) GetOrCreateUser(ctx context.Context, email string, opts ...
 
 	now := time.Now().UnixMilli()
 
-	var trialStartedAt *int64
-	if opt.StartTrialOnCreate {
-		trialStartedAt = &now
-	}
-
 	result, err := tx.ExecContext(ctx, `
-        INSERT OR IGNORE INTO users (id, email, account_status, signup_reason, trial_started_at, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-    `, id.String(), email, opt.AccountStatus, opt.SignupReason, trialStartedAt, now, now)
+        INSERT OR IGNORE INTO users (id, email, account_status, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?)
+    `, id.String(), email, opt.AccountStatus, now, now)
 	if err != nil {
 		return nil, false, err
 	}
@@ -284,7 +279,7 @@ func (r *Repository) GetOrCreateUser(ctx context.Context, email string, opts ...
 
 	var user User
 	err = tx.GetContext(ctx, &user, `
-    SELECT id, email, is_admin, account_status, trial_started_at, created_at, updated_at
+    SELECT id, email, is_admin, account_status, plan, plan_expires_at, created_at, updated_at
     FROM users WHERE email = ?
 		`, email)
 	if err != nil {
@@ -317,7 +312,7 @@ func (r *Repository) EnsureUserAdmin(ctx context.Context, userID string) (bool, 
 // GetUserByID retrieves a user by ID.
 func (r *Repository) GetUserByID(ctx context.Context, userID string) (*User, error) {
 	var user User
-	err := r.db.GetContext(ctx, &user, "SELECT id, email, is_admin, account_status, trial_started_at, created_at, updated_at FROM users WHERE id = ?", userID)
+	err := r.db.GetContext(ctx, &user, "SELECT id, email, is_admin, account_status, plan, plan_expires_at, created_at, updated_at FROM users WHERE id = ?", userID)
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}
@@ -325,25 +320,4 @@ func (r *Repository) GetUserByID(ctx context.Context, userID string) (*User, err
 		return nil, fmt.Errorf("failed to get user: %w", err)
 	}
 	return &user, nil
-}
-
-// SetTrialStartedAt sets the trial_started_at timestamp for a user if not already set.
-// Returns nil if RowsAffected == 0 (already set - idempotent).
-func (r *Repository) SetTrialStartedAt(ctx context.Context, userID string, trialStart int64) error {
-	result, err := r.db.ExecContext(ctx,
-		"UPDATE users SET trial_started_at = ?, updated_at = ? WHERE id = ? AND trial_started_at IS NULL",
-		trialStart, time.Now().UnixMilli(), userID,
-	)
-	if err != nil {
-		return fmt.Errorf("failed to set trial started at: %w", err)
-	}
-
-	rowsAffected, err := result.RowsAffected()
-	if err != nil {
-		return fmt.Errorf("failed to read rows affected: %w", err)
-	}
-	if rowsAffected == 0 {
-		return nil
-	}
-	return nil
 }

@@ -4,7 +4,6 @@ package core
 type AccountStatus string
 
 const (
-	AccountStatusPending AccountStatus = "pending"
 	AccountStatusActive  AccountStatus = "active"
 	AccountStatusBlocked AccountStatus = "blocked"
 )
@@ -12,7 +11,7 @@ const (
 // IsValid reports whether s is a recognised account status value.
 func (s AccountStatus) IsValid() bool {
 	switch s {
-	case AccountStatusPending, AccountStatusActive, AccountStatusBlocked:
+	case AccountStatusActive, AccountStatusBlocked:
 		return true
 	}
 	return false

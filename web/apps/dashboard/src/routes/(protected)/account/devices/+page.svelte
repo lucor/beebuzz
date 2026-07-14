@@ -29,6 +29,7 @@
 	import { MAX_DISPLAY_NAME_LEN, MAX_DESCRIPTION_LEN } from '@beebuzz/shared';
 
 	const DOCS_QUICKSTART_URL = 'https://docs.beebuzz.app/quickstart/';
+	const MAX_PAIRED_DEVICES = 10;
 
 	let devices = $state<Device[]>([]);
 	let tokens = $state<ApiToken[]>([]);
@@ -52,6 +53,8 @@
 	let isExpired = $derived(secondsRemaining <= 0);
 	let isExpiringSoon = $derived(secondsRemaining > 0 && secondsRemaining < 60);
 	let hasPairedDevice = $derived(devices.some(deviceIsPaired));
+	let pairedDeviceCount = $derived(devices.filter(deviceIsPaired).length);
+	let hasReachedDeviceLimit = $derived(pairedDeviceCount >= MAX_PAIRED_DEVICES);
 	let shouldShowTokenStep = $derived(hasPairedDevice && tokens.length === 0);
 
 	let editingDeviceId = $state<string | null>(null);
@@ -108,6 +111,11 @@
 	}
 
 	async function handleCreate() {
+		if (hasReachedDeviceLimit) {
+			toast.error('You have reached the paired device limit');
+			return;
+		}
+
 		if (!newDeviceName.trim()) {
 			toast.error('Device name is required');
 			return;
@@ -392,7 +400,7 @@
 			onclick={() => {
 				showCreateModal = true;
 			}}
-			disabled={isLoading}
+			disabled={isLoading || hasReachedDeviceLimit}
 			class="btn btn-primary"
 		>
 			<Plus size={20} />
@@ -403,6 +411,16 @@
 	<div class="divider my-4"></div>
 
 	<p class="text-sm text-base-content/70 mb-6">Manage your paired devices for push notifications</p>
+
+	{#if hasReachedDeviceLimit}
+		<div class="mb-6 rounded-xl border border-warning/30 bg-warning/10 p-4" role="alert">
+			<p class="font-semibold text-base-content">Device limit reached</p>
+			<p class="mt-1 text-sm text-base-content/70">
+				You have paired {pairedDeviceCount} of {MAX_PAIRED_DEVICES} devices. Remove an existing device
+				before adding another one.
+			</p>
+		</div>
+	{/if}
 
 	{#if shouldShowTokenStep}
 		<div class="card bg-primary/5 border border-primary/20 mb-6">

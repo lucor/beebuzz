@@ -14,7 +14,8 @@ Each business domain lives in its own package under `internal/<domain>/`. **Doma
 
 ```
 internal/
-├── auth/          # Authentication: OTP, sessions, beta signup
+├── auth/          # Authentication: OTP, sessions
+├── billing/       # Provider-neutral billing and MoR adapters
 ├── user/          # User management
 ├── topic/         # Topic CRUD
 ├── device/        # Device registration, push subscriptions

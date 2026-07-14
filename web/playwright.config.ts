@@ -1,6 +1,6 @@
 import { defineConfig, devices } from '@playwright/test';
 
-const baseURL = process.env.PLAYWRIGHT_BASE_URL || 'https://192-168-0-9.lancert.dev';
+const baseURL = process.env.PLAYWRIGHT_BASE_URL || 'https://dashboard.192-168-0-9.lancert.dev';
 
 export default defineConfig({
 	testDir: './tests/e2e',

@@ -9,15 +9,18 @@ import (
 	"go.beebuzz.app/beebuzz/internal/admin"
 	"go.beebuzz.app/beebuzz/internal/attachment"
 	"go.beebuzz.app/beebuzz/internal/auth"
+	"go.beebuzz.app/beebuzz/internal/billing"
 	"go.beebuzz.app/beebuzz/internal/core"
 	"go.beebuzz.app/beebuzz/internal/debugreport"
 	"go.beebuzz.app/beebuzz/internal/device"
 	"go.beebuzz.app/beebuzz/internal/event"
+	"go.beebuzz.app/beebuzz/internal/mailer"
 	"go.beebuzz.app/beebuzz/internal/middleware"
 	"go.beebuzz.app/beebuzz/internal/notification"
 	systemnotifications "go.beebuzz.app/beebuzz/internal/system/notifications"
 	"go.beebuzz.app/beebuzz/internal/token"
 	"go.beebuzz.app/beebuzz/internal/topic"
+	"go.beebuzz.app/beebuzz/internal/user"
 	"go.beebuzz.app/beebuzz/internal/webhook"
 )
 
@@ -335,6 +338,49 @@ func (a *webhookDispatcherAdapter) Dispatch(ctx context.Context, userID, topicID
 
 // Ensure webhookDispatcherAdapter satisfies webhook.Dispatcher at compile time.
 var _ webhook.Dispatcher = (*webhookDispatcherAdapter)(nil)
+
+// billingProductNotifierAdapter sends BeeBuzz product notices for billing entitlement changes.
+type billingProductNotifierAdapter struct {
+	users               *user.Repository
+	mailer              mailer.Mailer
+	systemNotifications *systemnotifications.Service
+}
+
+func (a *billingProductNotifierAdapter) NotifyHostedActivated(ctx context.Context, userID string) error {
+	u, err := a.users.GetByID(ctx, userID)
+	if err != nil || u == nil {
+		return err
+	}
+	var emailErr error
+	if a.mailer != nil {
+		emailErr = a.mailer.SendHostedActivated(ctx, u.Email)
+	}
+	if a.systemNotifications != nil {
+		a.systemNotifications.NotifyHostedSubscriptionStarted(ctx, userID)
+	}
+	return emailErr
+}
+
+func (a *billingProductNotifierAdapter) NotifyHostedEnded(ctx context.Context, userID string) error {
+	u, err := a.users.GetByID(ctx, userID)
+	if err != nil || u == nil {
+		return err
+	}
+	if a.mailer == nil {
+		return nil
+	}
+	return a.mailer.SendHostedEnded(ctx, u.Email)
+}
+
+func (a *billingProductNotifierAdapter) NotifyBillingWebhookFailed(ctx context.Context, eventType string) error {
+	if a.systemNotifications == nil {
+		return nil
+	}
+	a.systemNotifications.NotifyBillingWebhookFailed(ctx, eventType)
+	return nil
+}
+
+var _ billing.ProductNotifier = (*billingProductNotifierAdapter)(nil)
 
 // adminSessionRevokerAdapter adapts auth.Service to admin.SessionRevoker.
 type adminSessionRevokerAdapter struct {

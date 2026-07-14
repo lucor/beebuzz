@@ -8,6 +8,7 @@ import (
 
 	"go.beebuzz.app/beebuzz/internal/core"
 	"go.beebuzz.app/beebuzz/internal/middleware"
+	"go.beebuzz.app/beebuzz/internal/plan"
 )
 
 const maxWebhookBodyBytes = 64 * 1024 // 64 KB
@@ -54,6 +55,10 @@ func (h *Handler) Receive(w http.ResponseWriter, r *http.Request) {
 		}
 		if errors.Is(err, ErrPayloadExtraction) {
 			core.WriteError(w, http.StatusUnprocessableEntity, "payload_extraction_failed", err.Error())
+			return
+		}
+		if errors.Is(err, plan.ErrQuotaExceeded) {
+			core.WriteTooManyRequests(w, "quota_exceeded", "message quota exceeded")
 			return
 		}
 		if errors.Is(err, ErrWebhookDeliveryFailed) {

@@ -20,6 +20,7 @@ import (
 	"go.beebuzz.app/beebuzz/internal/core"
 	"go.beebuzz.app/beebuzz/internal/device"
 	"go.beebuzz.app/beebuzz/internal/middleware"
+	"go.beebuzz.app/beebuzz/internal/plan"
 	"go.beebuzz.app/beebuzz/internal/secure"
 	"go.beebuzz.app/beebuzz/internal/testutil"
 	"go.beebuzz.app/beebuzz/internal/token"
@@ -718,6 +719,33 @@ func TestSendHandler_ReturnsUnprocessableEntityWhenAttachmentProcessingFails(t *
 	}
 	if resp["code"] != "attachment_processing_failed" {
 		t.Fatalf("code: got %q, want %q", resp["code"], "attachment_processing_failed")
+	}
+}
+
+func TestSendHandler_ReturnsTooManyRequestsWhenQuotaExceeded(t *testing.T) {
+	handler, rawToken, topicName := buildHandlerWithSender(t, &stubSender{
+		err: plan.ErrQuotaExceeded,
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/push/"+topicName, bytes.NewBufferString(`{"title":"Test","body":"Hello"}`))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+rawToken)
+	req = withBearer(req)
+	req = withTopic(req, topicName)
+	w := httptest.NewRecorder()
+
+	handler.Send(w, req)
+
+	if w.Code != http.StatusTooManyRequests {
+		t.Fatalf("status: got %d, want %d — body: %s", w.Code, http.StatusTooManyRequests, w.Body.String())
+	}
+
+	var resp map[string]string
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if resp["code"] != "quota_exceeded" {
+		t.Fatalf("code: got %q, want %q", resp["code"], "quota_exceeded")
 	}
 }
 
