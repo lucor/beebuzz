@@ -280,7 +280,7 @@
 					<div class="card-body p-4">
 						<div class="mb-4">
 							<h3 class="text-lg font-semibold text-base-content">Source breakdown</h3>
-								<p class="text-sm text-base-content/60">How messages were sent.</p>
+							<p class="text-sm text-base-content/60">How messages were sent.</p>
 						</div>
 						{#if sourceBreakdown.length > 0}
 							<div class="space-y-4">
@@ -308,7 +308,7 @@
 							</div>
 						{:else}
 							<p class="py-6 text-center text-sm text-base-content/50">
-										No messages sent in this range yet.
+								No messages sent in this range yet.
 							</p>
 						{/if}
 					</div>

@@ -337,7 +337,11 @@
 								</span>
 							</td>
 							<td>
-								<span class="badge badge-sm whitespace-nowrap {subscriptionBadgeClass(user.subscription_status)}">
+								<span
+									class="badge badge-sm whitespace-nowrap {subscriptionBadgeClass(
+										user.subscription_status
+									)}"
+								>
 									{subscriptionLabel(user.subscription_status)}
 								</span>
 							</td>

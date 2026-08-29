@@ -130,7 +130,7 @@
 						</p>
 						<p class="mt-1 text-sm text-base-content/65">
 							{formatQuotaNumber(planUsage.daily.used)} / {formatQuotaNumber(planUsage.daily.limit)}
-													messages sent
+							messages sent
 						</p>
 					</div>
 					<div

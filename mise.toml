@@ -9,12 +9,12 @@
 
 [tools]
 # Go toolchain
-go = "1.26.4"
+go = "1.26.7"
 "go:github.com/air-verse/air" = "latest"
 
 # Node toolchain (frontend workspace lives in web/)
 node = "24.14"
-pnpm = "11.8.0"
+pnpm = "11.25.0"
 
 # Local dev orchestration
 "github:caddyserver/caddy" = "latest"

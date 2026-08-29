@@ -200,7 +200,7 @@
 			<div>
 				<div class="font-semibold">Confirming payment</div>
 				<div class="text-sm">
-						Checkout completed. Waiting for Creem to confirm your subscription.
+					Checkout completed. Waiting for Creem to confirm your subscription.
 				</div>
 			</div>
 		</div>
@@ -296,11 +296,7 @@
 
 					{#if user.plan === 'hosted'}
 						<div class="mt-6 flex flex-col gap-3 sm:flex-row">
-							<button
-								type="button"
-								class="btn btn-primary"
-								onclick={handleManageBilling}
-							>
+							<button type="button" class="btn btn-primary" onclick={handleManageBilling}>
 								<ExternalLink size={18} />
 								{billingActionLabel}
 							</button>
@@ -314,7 +310,7 @@
 					<div class="card-body">
 						<div>
 							<p class="text-sm font-semibold uppercase tracking-wide text-primary">Hosted</p>
-						<h2 class="mt-2 text-2xl font-bold text-base-content">BeeBuzz, managed for you.</h2>
+							<h2 class="mt-2 text-2xl font-bold text-base-content">BeeBuzz, managed for you.</h2>
 							<p class="mt-2 text-sm text-base-content/65">
 								Everything included, without running your own server.
 							</p>

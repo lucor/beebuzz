@@ -193,7 +193,7 @@
 					? `You can send messages again ${formatDailyReset(currentPlanUsage.daily.resets_at)}.`
 					: `${formatQuotaNumber(currentPlanUsage.daily.used)} / ${formatQuotaNumber(
 							currentPlanUsage.daily.limit
-							)} messages sent | ${formatQuotaNumber(remaining)} remaining | resets ${formatDailyReset(
+						)} messages sent | ${formatQuotaNumber(remaining)} remaining | resets ${formatDailyReset(
 							currentPlanUsage.daily.resets_at
 						)}`,
 				tone: reached ? 'alert-error' : 'alert-warning',
