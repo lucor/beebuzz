@@ -109,6 +109,7 @@ async function sendSubscriptionWebhook(
 	customerID: string,
 	eventType:
 		| 'subscription.past_due'
+		| 'subscription.unpaid'
 		| 'subscription.expired'
 		| 'subscription.canceled'
 		| 'subscription.active'
@@ -140,7 +141,7 @@ async function sendSubscriptionWebhook(
 			'creem-signature': signature
 		}
 	});
-	expect(response.status()).toBe(204);
+	expect(response.status()).toBe(200);
 }
 
 async function readCustomerID(subscriptionID: string): Promise<string> {
@@ -252,6 +253,15 @@ test.describe('Creem billing checkout', () => {
 					subscriptionID,
 					userID,
 					customerID,
+					'subscription.unpaid'
+				);
+				await waitForBillingText(page, /grace period/i);
+
+				await sendSubscriptionWebhook(
+					page,
+					subscriptionID,
+					userID,
+					customerID,
 					'subscription.expired'
 				);
 				await waitForBillingText(page, /grace period/i);
@@ -284,7 +294,9 @@ test.describe('Creem billing checkout', () => {
 			await waitForBillingText(page, /until the current billing period ends/i);
 			await expect(page.getByText(/active until/i)).toBeVisible();
 		}
+		const portalPagePromise = page.waitForEvent('popup');
 		await page.getByRole('button', { name: /manage billing/i }).click();
-		await page.waitForURL(/creem\.io\/test/, { timeout: 20_000 });
+		const portalPage = await portalPagePromise;
+		await expect(portalPage).toHaveURL(/creem\.io\/test/, { timeout: 20_000 });
 	});
 });

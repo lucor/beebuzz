@@ -97,6 +97,8 @@ func normalizeStatus(eventType string, providerStatus string) (billing.Subscript
 		return billing.SubscriptionStatusScheduled, true, nil
 	case eventTypeSubscriptionPastDue:
 		return billing.SubscriptionStatusPastDue, false, nil
+	case eventTypeSubscriptionUnpaid:
+		return billing.SubscriptionStatusPastDue, false, nil
 	case eventTypeSubscriptionCanceled:
 		return billing.SubscriptionStatusCanceled, false, nil
 	case eventTypeSubscriptionPaused:
@@ -121,6 +123,7 @@ func handlesEventType(eventType string) bool {
 		eventTypeSubscriptionPaid,
 		eventTypeSubscriptionScheduled,
 		eventTypeSubscriptionPastDue,
+		eventTypeSubscriptionUnpaid,
 		eventTypeSubscriptionExpired,
 		eventTypeSubscriptionCanceled,
 		eventTypeSubscriptionPaused,
@@ -137,6 +140,8 @@ func normalizeProviderStatus(status string) (billing.SubscriptionStatus, bool, e
 	case providerStatusScheduled:
 		return billing.SubscriptionStatusScheduled, true, nil
 	case providerStatusPastDue:
+		return billing.SubscriptionStatusPastDue, false, nil
+	case providerStatusUnpaid:
 		return billing.SubscriptionStatusPastDue, false, nil
 	case providerStatusCanceled:
 		return billing.SubscriptionStatusCanceled, false, nil

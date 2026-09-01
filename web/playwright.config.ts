@@ -1,6 +1,11 @@
 import { defineConfig, devices } from '@playwright/test';
 
-const baseURL = process.env.PLAYWRIGHT_BASE_URL || 'https://dashboard.192-168-0-9.lancert.dev';
+const domain = process.env.BEEBUZZ_DOMAIN;
+const baseURL = process.env.PLAYWRIGHT_BASE_URL || (domain && `https://dashboard.${domain}`);
+
+if (!baseURL) {
+	throw new Error('Set PLAYWRIGHT_BASE_URL or BEEBUZZ_DOMAIN before running Playwright.');
+}
 
 export default defineConfig({
 	testDir: './tests/e2e',

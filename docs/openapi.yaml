@@ -1304,8 +1304,8 @@ paths:
             schema:
               type: object
       responses:
-        "204":
-          description: Webhook processed
+        "200":
+          description: Webhook accepted
         "401":
           $ref: "#/components/responses/Unauthorized"
         "404":

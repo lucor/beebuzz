@@ -98,5 +98,5 @@ func (h *Handler) ReceiveWebhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	core.WriteNoContent(w)
+	w.WriteHeader(http.StatusOK)
 }

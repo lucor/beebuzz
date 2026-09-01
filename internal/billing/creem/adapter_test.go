@@ -65,6 +65,11 @@ func TestNormalizeStatus(t *testing.T) {
 			providerStatus: "past_due",
 		},
 		{
+			eventType:      "subscription.unpaid",
+			wantStatus:     billing.SubscriptionStatusPastDue,
+			providerStatus: "unpaid",
+		},
+		{
 			eventType:      "subscription.expired",
 			wantStatus:     billing.SubscriptionStatusPastDue,
 			providerStatus: "expired",
@@ -78,6 +83,11 @@ func TestNormalizeStatus(t *testing.T) {
 			eventType:      "subscription.update",
 			wantStatus:     billing.SubscriptionStatusActive,
 			providerStatus: "active",
+		},
+		{
+			eventType:      "subscription.update",
+			wantStatus:     billing.SubscriptionStatusPastDue,
+			providerStatus: "unpaid",
 		},
 	}
 
@@ -111,6 +121,39 @@ func TestBillingAdapterParseIgnoresNonEntitlementEvent(t *testing.T) {
 	_, err = adapter.Parse([]byte(`{"id":"evt_refund","eventType":"refund.created","created_at":1782907200000,"object":{}}`))
 	if !errors.Is(err, billing.ErrWebhookEventIgnored) {
 		t.Fatalf("Parse() error = %v, want %v", err, billing.ErrWebhookEventIgnored)
+	}
+}
+
+func TestBillingAdapterParseNormalizesUnpaid(t *testing.T) {
+	client, err := NewClient(Config{
+		APIKey:    "creem_test_key",
+		BaseURL:   "https://api.example.test",
+		ProductID: "prod_hosted",
+	})
+	if err != nil {
+		t.Fatalf("NewClient() error = %v", err)
+	}
+
+	raw := []byte(`{
+		"id":"evt_unpaid",
+		"eventType":"subscription.unpaid",
+		"created_at":1782907200000,
+		"object":{
+			"id":"sub_123",
+			"status":"unpaid",
+			"product":{"id":"prod_hosted"},
+			"metadata":{"beebuzz_user_id":"user_1"},
+			"current_period_end_date":"2026-08-01T12:00:00Z"
+		}
+	}`)
+
+	adapter := NewBillingAdapter(client, "secret", "prod_hosted")
+	payload, err := adapter.Parse(raw)
+	if err != nil {
+		t.Fatalf("Parse() error = %v", err)
+	}
+	if payload.Status != billing.SubscriptionStatusPastDue {
+		t.Fatalf("status = %q, want %q", payload.Status, billing.SubscriptionStatusPastDue)
 	}
 }
 
