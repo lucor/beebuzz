@@ -66,9 +66,11 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
 		if (redirectOnAuthError && response.status === STATUS_UNAUTHORIZED) {
 			auth.clear();
 			await redirectToDashboard('/auth');
+			return undefined as T;
 		}
 		if (redirectOnAuthError && response.status === STATUS_FORBIDDEN) {
 			await redirectToDashboard('/account');
+			return undefined as T;
 		}
 
 		const body = (await response.json().catch(() => null)) as {
