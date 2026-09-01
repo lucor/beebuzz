@@ -86,7 +86,7 @@ run = "pnpm -C web/apps/hive dev"
 
 [tasks.dev-caddy]
 description = "Run Caddy reverse proxy with lancert.dev TLS"
-run = "caddy run --config ./.mise/Caddyfile"
+run = "source .mise/setup-dev.sh && caddy run --config ./.mise/Caddyfile"
 
 [tasks.dev-mailpit]
 description = "Run Mailpit for local email capture"
