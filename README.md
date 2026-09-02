@@ -2,15 +2,11 @@
     <img src="docs/assets/readme/beebuzz-logo.svg" alt="BeeBuzz logo" width="96">
 </div>
 
-<h1 align="center">Minimalist, privacy-first push notifications.</h1>
+<h1 align="center">Private alerts from your tools to you</h1>
+BeeBuzz brings alerts from your projects, smart home, and online services into one focused inbox on your devices.
 
-BeeBuzz sends notifications from your tools to your devices.
-
-No app stores, no native apps: just the Hive PWA in your browser.
-
-Use end-to-end encryption when possible, or trusted delivery when needed.
-
-**Your tools. Your notifications. Your keys.**
+Supported tools encrypt alerts before sending, so only your paired devices can read them.
+For services that connect directly, trusted delivery keeps setup simple.
 
 ## Quickstart Demo
 
@@ -91,8 +87,8 @@ receiving device.
 
 ## What's in this repo
 
-- **Server**: Go + SQLite API for accounts, topics, API tokens, devices, attachments, and Web Push dispatch.
-- **Site**: SvelteKit web app for sign-in, device pairing, API tokens, webhook setup, and administration.
+- **Server**: Go + SQLite API for accounts, plans and billing, topics, API tokens, devices, webhooks, attachments, and Web Push dispatch.
+- **Dashboard**: SvelteKit account and administration app for sign-in, plan usage and billing, device pairing, API tokens, and webhook setup.
 - **Hive**: PWA receiver that handles Web Push, stores pairing state locally, and decrypts E2E notifications on-device.
 
 ## Companion projects
