@@ -1,4 +1,5 @@
 import { createHmac } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
 import { test, expect, type Page } from '@playwright/test';
 
 const BILLING_E2E_ENABLED = process.env.BEEBUZZ_BILLING_E2E === '1';
@@ -8,16 +9,99 @@ const CREEM_API_BASE_URL =
 const CREEM_E2E_API_KEY = process.env.BEEBUZZ_BILLING_E2E_CREEM_API_KEY;
 const CREEM_WEBHOOK_SECRET = process.env.BEEBUZZ_BILLING_CREEM_WEBHOOK_SECRET;
 const CREEM_PRODUCT_ID = process.env.BEEBUZZ_BILLING_CREEM_PRODUCT_ID || 'prod_e2e';
+const BILLING_E2E_LOG_FILE = process.env.BEEBUZZ_BILLING_E2E_LOG_FILE;
 const BILLING_TEST_EMAIL = `billing-e2e-${Date.now()}@beebuzz.local`;
 const CARD_NUMBER = '4242424242424242';
 const CARD_EXPIRY = '12/30';
 const CARD_CVC = '123';
+// Yuno's cardholder input accepts letters/spaces only in the sandbox.
+const CARDHOLDER_NAME = 'BeeBuzz Test';
 
 type MailpitMessage = {
 	ID?: string;
 	To?: Array<{ Address?: string }>;
+	Subject?: string;
 	Text?: string;
 };
+
+async function waitForBillingEmail(subject: RegExp): Promise<void> {
+	await expect
+		.poll(
+			async () => {
+				const response = await fetch(`${MAILPIT_API}/messages`);
+				if (!response.ok) return false;
+				const payload = (await response.json()) as { messages?: MailpitMessage[] };
+				for (const message of payload.messages ?? []) {
+					if (!message.To?.some((recipient) => recipient.Address === BILLING_TEST_EMAIL)) continue;
+					if (message.Subject && subject.test(message.Subject)) return true;
+					if (!message.ID) continue;
+					const detailResponse = await fetch(`${MAILPIT_API}/message/${message.ID}`);
+					if (!detailResponse.ok) continue;
+					const detail = (await detailResponse.json()) as MailpitMessage;
+					if (detail.Subject && subject.test(detail.Subject)) return true;
+				}
+				return false;
+			},
+			{ timeout: 30_000, intervals: [2_000, 3_000, 5_000] }
+		)
+		.toBe(true);
+}
+
+async function waitForWebhookLog(eventType: string, subscriptionID: string): Promise<string> {
+	if (!BILLING_E2E_LOG_FILE) {
+		throw new Error('BEEBUZZ_BILLING_E2E_LOG_FILE is required for webhook log assertions');
+	}
+
+	let eventID = '';
+	await expect
+		.poll(
+			async () => {
+				try {
+					const contents = await readFile(BILLING_E2E_LOG_FILE, 'utf8');
+					for (const line of contents.split('\n').reverse()) {
+						if (
+							!line.includes(eventType) ||
+							!line.includes(subscriptionID) ||
+							(!line.includes('outcome=applied') && !line.includes('"outcome":"applied"'))
+						) {
+							continue;
+						}
+						const match = line.match(/event_id(?:=|":")([^,\s"]+)/);
+						if (match?.[1]) {
+							eventID = match[1];
+							return true;
+						}
+					}
+				} catch {
+					return false;
+				}
+				return false;
+			},
+			{ timeout: 30_000, intervals: [2_000, 3_000, 5_000] }
+		)
+		.toBe(true);
+	return eventID;
+}
+
+async function waitForPageText(page: Page, text: RegExp): Promise<void> {
+	await expect
+		.poll(
+			async () => {
+				const matches = page.getByText(text);
+				return (await matches.count()) > 0 && (await matches.first().isVisible());
+			},
+			{ timeout: 30_000 }
+		)
+		.toBe(true);
+}
+
+async function returnFromPortal(page: Page, portalPage: Page): Promise<void> {
+	await portalPage.close();
+	await page.bringToFront();
+	// Closing a popup does not consistently emit focus in headless Chromium.
+	// Dispatch the same browser event that the dashboard listens for in production.
+	await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+}
 
 async function readOTP(email: string): Promise<string> {
 	for (let attempt = 0; attempt < 30; attempt++) {
@@ -82,22 +166,22 @@ async function cancelSubscriptionAtPeriodEnd(subscriptionID: string): Promise<vo
 	});
 }
 
-async function waitForBillingText(page: Page, text: RegExp): Promise<void> {
+async function waitForBillingProjection(
+	page: Page,
+	predicate: (user: { plan?: string; subscription_status?: string }) => boolean
+): Promise<void> {
+	const dashboardURL = new URL(page.url());
+	dashboardURL.hostname = dashboardURL.hostname.replace(/^dashboard\./, 'api.');
 	await expect
 		.poll(
 			async () => {
-				await page.goto('/account/billing', { waitUntil: 'networkidle' });
-				try {
-					await expect(page.getByRole('heading', { name: /plan & billing/i })).toBeVisible({
-						timeout: 10_000
-					});
-					const matches = page.getByText(text);
-					return (await matches.count()) > 0 && (await matches.first().isVisible());
-				} catch {
-					return false;
-				}
+				const response = await page.request.get(`${dashboardURL.origin}/v1/me`);
+				if (!response.ok()) return false;
+				return predicate(
+					(await response.json()) as { plan?: string; subscription_status?: string }
+				);
 			},
-			{ timeout: 60_000, intervals: [2_000, 3_000, 5_000] }
+			{ timeout: 10_000 }
 		)
 		.toBe(true);
 }
@@ -199,14 +283,14 @@ test.describe('Creem billing checkout', () => {
 	test('upgrades through Creem, confirms Hosted, and opens the billing portal', async ({
 		page
 	}) => {
-		test.setTimeout(240_000);
+		test.setTimeout(180_000);
 		await login(page, BILLING_TEST_EMAIL);
 
 		await page.goto('/account/billing');
 		await expect(page.getByRole('heading', { name: /plan & billing/i })).toBeVisible();
 		await expect(page.getByText('Free', { exact: true })).toBeVisible();
 		await page.getByRole('button', { name: /upgrade to hosted/i }).click();
-		await page.waitForURL(/creem\.io\/test\/checkout/, { timeout: 20_000 });
+		await page.waitForURL(/creem\.io\/test\/checkout/, { timeout: 15_000 });
 		const checkoutID = new URL(page.url()).pathname.split('/').pop();
 		expect(checkoutID).toMatch(/^ch_/);
 
@@ -222,14 +306,31 @@ test.describe('Creem billing checkout', () => {
 			.toBe(true);
 		const cardFrame = page.frames().find((frame) => frame.url().includes('sdk-web-card'));
 		expect(cardFrame).toBeDefined();
-		await cardFrame!.locator('[autocomplete="cc-number"]').fill(CARD_NUMBER);
-		await cardFrame!.locator('[autocomplete="cc-exp"]').fill(CARD_EXPIRY);
-		await cardFrame!.locator('[autocomplete="cc-csc"]').fill(CARD_CVC);
-		await page.getByRole('textbox', { name: /cardholder name/i }).fill('BeeBuzz Billing E2E');
+		const cardNumber = cardFrame!.locator('[autocomplete="cc-number"]');
+		const cardExpiry = cardFrame!.locator('[autocomplete="cc-exp"]');
+		const cardCVC = cardFrame!.locator('[autocomplete="cc-csc"]');
+		await cardNumber.fill(CARD_NUMBER);
+		await cardExpiry.fill(CARD_EXPIRY);
+		await cardCVC.fill(CARD_CVC);
+		await expect(cardCVC).toHaveValue(CARD_CVC);
+		const cardholder = page.getByRole('textbox', { name: 'Cardholder Name', exact: true });
+		await expect(cardholder).toBeVisible({ timeout: 10_000 });
+		await cardholder.click();
+		await cardholder.pressSequentially(CARDHOLDER_NAME, { delay: 20 });
+		await expect(cardholder).toHaveValue(CARDHOLDER_NAME);
 		await page.getByRole('button', { name: /pay €29/i }).click();
 
-		await page.waitForURL(/\/account\/billing\?checkout=success/, { timeout: 45_000 });
-		await expect(page.getByText('Hosted is active')).toBeVisible({ timeout: 45_000 });
+		try {
+			await page.waitForURL(
+				(url) =>
+					url.pathname === '/account/billing' && url.searchParams.get('checkout') === 'success',
+				{ timeout: 30_000 }
+			);
+		} catch (error) {
+			console.error(`Creem payment did not return to BeeBuzz; current URL: ${page.url()}`);
+			throw error;
+		}
+		await expect(page.getByText('Hosted is active')).toBeVisible({ timeout: 30_000 });
 		await expect(page.getByText('Hosted', { exact: true })).toBeVisible();
 
 		// Subscription read/cancel requires a dedicated Creem API key with subscription scopes.
@@ -245,8 +346,10 @@ test.describe('Creem billing checkout', () => {
 					customerID,
 					'subscription.past_due'
 				);
-				await waitForBillingText(page, /payment issue/i);
-				await waitForBillingText(page, /grace period/i);
+				await waitForBillingProjection(
+					page,
+					(user) => user.plan === 'hosted' && user.subscription_status === 'past_due'
+				);
 
 				await sendSubscriptionWebhook(
 					page,
@@ -255,7 +358,10 @@ test.describe('Creem billing checkout', () => {
 					customerID,
 					'subscription.unpaid'
 				);
-				await waitForBillingText(page, /grace period/i);
+				await waitForBillingProjection(
+					page,
+					(user) => user.plan === 'hosted' && user.subscription_status === 'past_due'
+				);
 
 				await sendSubscriptionWebhook(
 					page,
@@ -264,7 +370,10 @@ test.describe('Creem billing checkout', () => {
 					customerID,
 					'subscription.expired'
 				);
-				await waitForBillingText(page, /grace period/i);
+				await waitForBillingProjection(
+					page,
+					(user) => user.plan === 'hosted' && user.subscription_status === 'past_due'
+				);
 
 				await sendSubscriptionWebhook(
 					page,
@@ -273,7 +382,10 @@ test.describe('Creem billing checkout', () => {
 					customerID,
 					'subscription.canceled'
 				);
-				await waitForBillingText(page, /your hosted plan has ended/i);
+				await waitForBillingProjection(
+					page,
+					(user) => user.plan === 'free' && user.subscription_status === 'canceled'
+				);
 
 				await sendSubscriptionWebhook(
 					page,
@@ -282,21 +394,47 @@ test.describe('Creem billing checkout', () => {
 					customerID,
 					'subscription.active'
 				);
-				await waitForBillingText(page, /100,000 messages\/month fair use/i);
+				await waitForBillingProjection(
+					page,
+					(user) => user.plan === 'hosted' && user.subscription_status === 'active'
+				);
 			}
-			await callSubscriptionAction(subscriptionID, 'pause');
-			await waitForBillingText(page, /your hosted plan has ended/i);
-
-			await callSubscriptionAction(subscriptionID, 'resume');
-			await waitForBillingText(page, /100,000 messages\/month fair use/i);
-
+			// Open the real Creem Customer Portal, change the subscription in the sandbox,
+			// then close it. Returning focus to this page must refresh billing state.
+			const scheduledPortalPromise = page.waitForEvent('popup');
+			await page.getByRole('button', { name: /manage billing/i }).click();
+			const scheduledPortal = await scheduledPortalPromise;
+			await expect(scheduledPortal).toHaveURL(/creem\.io\/test/, { timeout: 20_000 });
 			await cancelSubscriptionAtPeriodEnd(subscriptionID);
-			await waitForBillingText(page, /until the current billing period ends/i);
-			await expect(page.getByText(/active until/i)).toBeVisible();
+			const scheduledEventID = await waitForWebhookLog(
+				'subscription.scheduled_cancel',
+				subscriptionID
+			);
+			await returnFromPortal(page, scheduledPortal);
+			await waitForPageText(page, /^Active until$/i);
+			await expect(
+				page.getByText(/Hosted remains active until the end of your billing period/i)
+			).toBeVisible();
+			await expect(page.getByText('Hosted is active')).toHaveCount(0);
+			await waitForBillingEmail(/scheduled to end/i);
+			expect(scheduledEventID).toBeTruthy();
+
+			const resumedPortalPromise = page.waitForEvent('popup');
+			await page.getByRole('button', { name: /manage billing/i }).click();
+			const resumedPortal = await resumedPortalPromise;
+			await expect(resumedPortal).toHaveURL(/creem\.io\/test/, { timeout: 20_000 });
+			await callSubscriptionAction(subscriptionID, 'resume');
+			const resumedEventID = await waitForWebhookLog('subscription.active', subscriptionID);
+			await returnFromPortal(page, resumedPortal);
+			await waitForPageText(page, /^Renews or expires$/i);
+			await waitForBillingEmail(/active again/i);
+			expect(resumedEventID).toBeTruthy();
+			expect(resumedEventID).not.toBe(scheduledEventID);
+		} else {
+			const portalPagePromise = page.waitForEvent('popup');
+			await page.getByRole('button', { name: /manage billing/i }).click();
+			const portalPage = await portalPagePromise;
+			await expect(portalPage).toHaveURL(/creem\.io\/test/, { timeout: 20_000 });
 		}
-		const portalPagePromise = page.waitForEvent('popup');
-		await page.getByRole('button', { name: /manage billing/i }).click();
-		const portalPage = await portalPagePromise;
-		await expect(portalPage).toHaveURL(/creem\.io\/test/, { timeout: 20_000 });
 	});
 });

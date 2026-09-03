@@ -3,6 +3,7 @@ package mailer
 import (
 	"context"
 	"testing"
+	"time"
 
 	"go.beebuzz.app/beebuzz/internal/config"
 )
@@ -46,8 +47,18 @@ func TestSendHostedProductNotices(t *testing.T) {
 	}
 
 	ctx := context.Background()
+	periodEnd := time.Date(2027, 9, 3, 0, 0, 0, 0, time.UTC)
 	if err := m.SendHostedActivated(ctx, "test@example.com"); err != nil {
 		t.Fatalf("SendHostedActivated(): %v", err)
+	}
+	if err := m.SendHostedCancellationScheduled(ctx, "test@example.com", periodEnd); err != nil {
+		t.Fatalf("SendHostedCancellationScheduled(): %v", err)
+	}
+	if err := m.SendHostedResumed(ctx, "test@example.com", periodEnd); err != nil {
+		t.Fatalf("SendHostedResumed(): %v", err)
+	}
+	if err := m.SendHostedPaymentIssue(ctx, "test@example.com", periodEnd); err != nil {
+		t.Fatalf("SendHostedPaymentIssue(): %v", err)
 	}
 	if err := m.SendHostedEnded(ctx, "test@example.com"); err != nil {
 		t.Fatalf("SendHostedEnded(): %v", err)

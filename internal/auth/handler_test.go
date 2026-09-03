@@ -39,6 +39,18 @@ func (m *countingMailer) SendHostedActivated(context.Context, string) error {
 	return nil
 }
 
+func (m *countingMailer) SendHostedCancellationScheduled(context.Context, string, time.Time) error {
+	return nil
+}
+
+func (m *countingMailer) SendHostedResumed(context.Context, string, time.Time) error {
+	return nil
+}
+
+func (m *countingMailer) SendHostedPaymentIssue(context.Context, string, time.Time) error {
+	return nil
+}
+
 func (m *countingMailer) SendHostedEnded(context.Context, string) error {
 	return nil
 }

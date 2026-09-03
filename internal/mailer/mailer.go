@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"text/template"
+	"time"
 
 	"go.beebuzz.app/beebuzz/internal/config"
 	"go.beebuzz.app/beebuzz/internal/validator"
@@ -29,6 +30,9 @@ type Mailer interface {
 	SendAccountBlocked(ctx context.Context, to string) error
 	SendAccountReactivated(ctx context.Context, to string) error
 	SendHostedActivated(ctx context.Context, to string) error
+	SendHostedCancellationScheduled(ctx context.Context, to string, accessUntil time.Time) error
+	SendHostedResumed(ctx context.Context, to string, renewsAt time.Time) error
+	SendHostedPaymentIssue(ctx context.Context, to string, accessUntil time.Time) error
 	SendHostedEnded(ctx context.Context, to string) error
 }
 

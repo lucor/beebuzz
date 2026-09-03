@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Your BeeBuzz Hosted plan is active</title>
+    <title>Your BeeBuzz Hosted plan is active again</title>
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; background-color: #f5f5f5; color: #333333; line-height: 1.6; }
         .container { max-width: 600px; margin: 20px auto; background-color: #ffffff; padding: 40px; border: 1px solid #e5e7eb; border-radius: 8px; }
@@ -13,29 +13,24 @@
         h1 { font-size: 24px; font-weight: 600; color: #1a1a1a; margin-bottom: 16px; }
         p { color: #555555; margin-bottom: 16px; font-size: 14px; }
         .status-box { background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 24px; margin: 24px 0; }
-        .status-title { color: #16a34a; font-size: 18px; font-weight: 600; margin-bottom: 8px; }
+        .status-title { color: #166534; font-size: 18px; font-weight: 600; margin-bottom: 8px; }
         .footer { border-top: 1px solid #e5e7eb; padding-top: 24px; text-align: center; color: #888888; font-size: 12px; }
     </style>
 </head>
 <body>
-    <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f5f5f5;">
-        <tr>
-            <td align="center">
-                <div class="container">
-                    <div class="header"><div class="logo">BeeBuzz</div></div>
-                    <div class="content">
-                        <h1>Hosted plan active</h1>
-                        <div class="status-box">
-                            <div class="status-title">Your Hosted plan is now active</div>
-                            <p style="margin-bottom: 0;"><a href="{{.BillingURL}}">Manage billing</a></p>
-                        </div>
-                    </div>
-                    <div class="footer">
-                        <p style="margin-top: 8px; color: #aaaaaa;">Automated message. Please do not reply.</p>
-                    </div>
+    <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f5f5f5;"><tr><td align="center">
+        <div class="container">
+            <div class="header"><div class="logo">BeeBuzz</div></div>
+            <div class="content">
+                <h1>Hosted plan is active again</h1>
+                <div class="status-box">
+                    <div class="status-title">The scheduled cancellation has been removed</div>
+                    <p style="margin-bottom: 0;">Your Hosted plan will remain active and is due to renew on {{.Date}}.</p>
                 </div>
-            </td>
-        </tr>
-    </table>
+                <p><a href="{{.BillingURL}}">Manage subscription</a></p>
+            </div>
+            <div class="footer"><p style="margin-top: 8px; color: #aaaaaa;">Automated message. Please do not reply.</p></div>
+        </div>
+    </td></tr></table>
 </body>
 </html>

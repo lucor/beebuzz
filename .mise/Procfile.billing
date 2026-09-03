@@ -1,6 +1,7 @@
-api: cd .. && mise run dev-api
+api: cd .. && air -c ./.mise/.air.toml
 dashboard: cd .. && mise run dev-dashboard
 hive: cd .. && mise run dev-hive
 caddy: cd .. && mise run dev-caddy
 mailpit: cd .. && mise run dev-mailpit
 ngrok: cd .. && ngrok http --url="${BEEBUZZ_BILLING_NGROK_URL#https://}" "https://api.${BEEBUZZ_DOMAIN}" --host-header="api.${BEEBUZZ_DOMAIN}"
+e2e: cd .. && if [ "${BEEBUZZ_BILLING_E2E:-0}" = "1" ]; then exec bash .mise/billing-e2e.sh; else exec tail -f /dev/null; fi

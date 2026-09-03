@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"time"
 
 	"go.beebuzz.app/beebuzz/internal/admin"
 	"go.beebuzz.app/beebuzz/internal/attachment"
@@ -359,6 +360,39 @@ func (a *billingProductNotifierAdapter) NotifyHostedActivated(ctx context.Contex
 		a.systemNotifications.NotifyHostedSubscriptionStarted(ctx, userID)
 	}
 	return emailErr
+}
+
+func (a *billingProductNotifierAdapter) NotifyHostedCancellationScheduled(ctx context.Context, userID string, accessUntil time.Time) error {
+	u, err := a.users.GetByID(ctx, userID)
+	if err != nil || u == nil {
+		return err
+	}
+	if a.mailer == nil {
+		return nil
+	}
+	return a.mailer.SendHostedCancellationScheduled(ctx, u.Email, accessUntil)
+}
+
+func (a *billingProductNotifierAdapter) NotifyHostedResumed(ctx context.Context, userID string, renewsAt time.Time) error {
+	u, err := a.users.GetByID(ctx, userID)
+	if err != nil || u == nil {
+		return err
+	}
+	if a.mailer == nil {
+		return nil
+	}
+	return a.mailer.SendHostedResumed(ctx, u.Email, renewsAt)
+}
+
+func (a *billingProductNotifierAdapter) NotifyHostedPaymentIssue(ctx context.Context, userID string, accessUntil time.Time) error {
+	u, err := a.users.GetByID(ctx, userID)
+	if err != nil || u == nil {
+		return err
+	}
+	if a.mailer == nil {
+		return nil
+	}
+	return a.mailer.SendHostedPaymentIssue(ctx, u.Email, accessUntil)
 }
 
 func (a *billingProductNotifierAdapter) NotifyHostedEnded(ctx context.Context, userID string) error {

@@ -61,7 +61,7 @@
 		if (percent >= 1) return 'Fair-use threshold reached';
 		if (percent >= 0.95) return 'Almost at fair-use threshold';
 		if (percent >= PLAN_WARNING_THRESHOLD) return 'Approaching fair-use threshold';
-		return 'Fair use this month';
+		return 'Fair use this calendar month';
 	}
 
 	function monthlyUsedLabel(quota: PlanLimitUsage): string {

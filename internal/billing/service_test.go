@@ -1,8 +1,11 @@
 package billing
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"log/slog"
+	"strings"
 	"testing"
 	"time"
 
@@ -46,13 +49,31 @@ func (v *stubWebhookVerifier) Parse([]byte) (*WebhookPayload, error) {
 }
 
 type trackingProductNotifier struct {
-	activated []string
-	ended     []string
-	failed    []string
+	activated             []string
+	cancellationScheduled []time.Time
+	resumed               []time.Time
+	paymentIssues         []time.Time
+	ended                 []string
+	failed                []string
 }
 
 func (n *trackingProductNotifier) NotifyHostedActivated(_ context.Context, userID string) error {
 	n.activated = append(n.activated, userID)
+	return nil
+}
+
+func (n *trackingProductNotifier) NotifyHostedCancellationScheduled(_ context.Context, _ string, accessUntil time.Time) error {
+	n.cancellationScheduled = append(n.cancellationScheduled, accessUntil)
+	return nil
+}
+
+func (n *trackingProductNotifier) NotifyHostedResumed(_ context.Context, _ string, renewsAt time.Time) error {
+	n.resumed = append(n.resumed, renewsAt)
+	return nil
+}
+
+func (n *trackingProductNotifier) NotifyHostedPaymentIssue(_ context.Context, _ string, accessUntil time.Time) error {
+	n.paymentIssues = append(n.paymentIssues, accessUntil)
 	return nil
 }
 
@@ -280,6 +301,105 @@ func TestServiceHandleWebhookNotifiesHostedEnded(t *testing.T) {
 	}
 	if len(notifier.activated) != 0 {
 		t.Fatalf("activated notices = %#v, want none", notifier.activated)
+	}
+}
+
+func TestServiceHandleWebhookNotifiesHostedStatusTransitions(t *testing.T) {
+	ctx := context.Background()
+	db := testutil.NewDBWithUsers(t, "user_1")
+	repo := NewRepository(db)
+	periodEnd := time.Date(2027, 7, 1, 0, 0, 0, 0, time.UTC).UnixMilli()
+	if _, err := repo.UpsertSubscription(ctx, UpsertSubscriptionParams{
+		UserID:                 "user_1",
+		Provider:               ProviderCreem,
+		ProviderSubscriptionID: "sub_status",
+		Plan:                   core.PlanHosted,
+		Status:                 SubscriptionStatusActive,
+		CurrentPeriodEnd:       &periodEnd,
+		ProviderEventAt:        100,
+	}); err != nil {
+		t.Fatalf("UpsertSubscription() error = %v", err)
+	}
+
+	verifier := &stubWebhookVerifier{}
+	notifier := &trackingProductNotifier{}
+	service := NewService(repo, nil, nil, verifier, ServiceConfig{GracePeriodDays: 7}, nil)
+	service.SetProductNotifier(notifier)
+
+	verifier.payload = &WebhookPayload{
+		EventID: "evt_scheduled", EventType: "subscription.scheduled_cancel", UserID: "user_1",
+		SubscriptionID: "sub_status", Status: SubscriptionStatusScheduled,
+		CurrentPeriodEnd: &periodEnd, OccurredAt: 200,
+	}
+	if err := service.HandleWebhook(ctx, []byte(`{"id":"evt_scheduled"}`), "sig"); err != nil {
+		t.Fatalf("scheduled HandleWebhook() error = %v", err)
+	}
+
+	verifier.payload = &WebhookPayload{
+		EventID: "evt_resumed", EventType: "subscription.active", UserID: "user_1",
+		SubscriptionID: "sub_status", Status: SubscriptionStatusActive,
+		CurrentPeriodEnd: &periodEnd, OccurredAt: 300,
+	}
+	if err := service.HandleWebhook(ctx, []byte(`{"id":"evt_resumed"}`), "sig"); err != nil {
+		t.Fatalf("resumed HandleWebhook() error = %v", err)
+	}
+
+	verifier.payload = &WebhookPayload{
+		EventID: "evt_past_due", EventType: "subscription.past_due", UserID: "user_1",
+		SubscriptionID: "sub_status", Status: SubscriptionStatusPastDue,
+		CurrentPeriodEnd: &periodEnd, OccurredAt: 400,
+	}
+	if err := service.HandleWebhook(ctx, []byte(`{"id":"evt_past_due"}`), "sig"); err != nil {
+		t.Fatalf("past-due HandleWebhook() error = %v", err)
+	}
+
+	verifier.payload = &WebhookPayload{
+		EventID: "evt_expired", EventType: "subscription.expired", UserID: "user_1",
+		SubscriptionID: "sub_status", Status: SubscriptionStatusPastDue,
+		CurrentPeriodEnd: &periodEnd, OccurredAt: 500,
+	}
+	if err := service.HandleWebhook(ctx, []byte(`{"id":"evt_expired"}`), "sig"); err != nil {
+		t.Fatalf("expired HandleWebhook() error = %v", err)
+	}
+
+	periodEndTime := time.UnixMilli(periodEnd).UTC()
+	if len(notifier.cancellationScheduled) != 1 || !notifier.cancellationScheduled[0].Equal(periodEndTime) {
+		t.Fatalf("scheduled notices = %#v, want [%v]", notifier.cancellationScheduled, periodEndTime)
+	}
+	if len(notifier.resumed) != 1 || !notifier.resumed[0].Equal(periodEndTime) {
+		t.Fatalf("resumed notices = %#v, want [%v]", notifier.resumed, periodEndTime)
+	}
+	wantAccessUntil := periodEndTime.Add(7 * 24 * time.Hour)
+	if len(notifier.paymentIssues) != 1 || !notifier.paymentIssues[0].Equal(wantAccessUntil) {
+		t.Fatalf("payment issue notices = %#v, want [%v]", notifier.paymentIssues, wantAccessUntil)
+	}
+}
+
+func TestServiceHandleWebhookLogsOutcome(t *testing.T) {
+	ctx := context.Background()
+	db := testutil.NewDBWithUsers(t, "user_1")
+	repo := NewRepository(db)
+	periodEnd := time.Date(2027, 7, 1, 0, 0, 0, 0, time.UTC).UnixMilli()
+	var logOutput bytes.Buffer
+	log := slog.New(slog.NewTextHandler(&logOutput, nil))
+	service := NewService(repo, nil, nil, &stubWebhookVerifier{payload: &WebhookPayload{
+		EventID: "evt_logged", EventType: "subscription.paid", UserID: "user_1",
+		SubscriptionID: "sub_logged", Status: SubscriptionStatusActive,
+		CurrentPeriodEnd: &periodEnd, OccurredAt: 100,
+	}}, ServiceConfig{}, log)
+
+	if err := service.HandleWebhook(ctx, []byte(`{"id":"evt_logged"}`), "sig"); err != nil {
+		t.Fatalf("HandleWebhook() error = %v", err)
+	}
+	if err := service.HandleWebhook(ctx, []byte(`{"id":"evt_logged"}`), "sig"); err != nil {
+		t.Fatalf("duplicate HandleWebhook() error = %v", err)
+	}
+
+	got := logOutput.String()
+	for _, want := range []string{"billing webhook processed", "event_id=evt_logged", "event_type=subscription.paid", "subscription_id=sub_logged", "status=active", "outcome=applied", "outcome=duplicate"} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("log output missing %q: %s", want, got)
+		}
 	}
 }
 

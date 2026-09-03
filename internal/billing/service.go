@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"time"
 
 	"go.beebuzz.app/beebuzz/internal/core"
 )
@@ -56,6 +57,9 @@ type WebhookVerifier interface {
 // ProductNotifier sends BeeBuzz product notices for billing-derived entitlement changes.
 type ProductNotifier interface {
 	NotifyHostedActivated(ctx context.Context, userID string) error
+	NotifyHostedCancellationScheduled(ctx context.Context, userID string, accessUntil time.Time) error
+	NotifyHostedResumed(ctx context.Context, userID string, renewsAt time.Time) error
+	NotifyHostedPaymentIssue(ctx context.Context, userID string, accessUntil time.Time) error
 	NotifyHostedEnded(ctx context.Context, userID string) error
 	NotifyBillingWebhookFailed(ctx context.Context, eventType string) error
 }
@@ -179,16 +183,24 @@ func (s *Service) HandleWebhook(ctx context.Context, rawBody []byte, signature s
 
 	payload, err := s.webhookVerifier.Parse(rawBody)
 	if errors.Is(err, ErrWebhookEventIgnored) {
-		s.log.Info("ignored billing webhook event")
+		s.log.Info("billing webhook processed", "provider", ProviderCreem, "outcome", "ignored")
 		return nil
 	}
 	if err != nil {
+		s.log.Warn("billing webhook processed", "provider", ProviderCreem, "outcome", "invalid", "error", err)
 		s.notifyBillingWebhookFailed(ctx, "")
 		return fmt.Errorf("%w: %v", ErrInvalidWebhook, err)
 	}
 
 	previousPlan, err := s.repo.GetUserPlan(ctx, payload.UserID)
 	if err != nil {
+		s.logBillingWebhook(payload, "failed", err)
+		s.notifyBillingWebhookFailed(ctx, payload.EventType)
+		return err
+	}
+	previousSubscription, err := s.repo.GetSubscriptionByProviderID(ctx, ProviderCreem, payload.SubscriptionID)
+	if err != nil {
+		s.logBillingWebhook(payload, "failed", err)
 		s.notifyBillingWebhookFailed(ctx, payload.EventType)
 		return err
 	}
@@ -211,25 +223,46 @@ func (s *Service) HandleWebhook(ctx context.Context, rawBody []byte, signature s
 		ProviderEventAt:        payload.OccurredAt,
 	})
 	if errors.Is(err, ErrEventAlreadyProcessed) {
-		s.log.Info("billing webhook already processed", "event_type", payload.EventType)
+		s.logBillingWebhook(payload, "duplicate", nil)
 		return nil
 	}
 	if errors.Is(err, ErrStaleSubscriptionEvent) {
-		s.log.Info("ignored stale billing webhook", "event_type", payload.EventType)
+		s.logBillingWebhook(payload, "stale", nil)
 		return nil
 	}
 	if err != nil {
+		s.logBillingWebhook(payload, "failed", err)
 		s.notifyBillingWebhookFailed(ctx, payload.EventType)
 		return err
 	}
 
 	currentPlan, err := s.repo.GetUserPlan(ctx, payload.UserID)
 	if err != nil {
+		s.logBillingWebhook(payload, "failed", err)
 		s.notifyBillingWebhookFailed(ctx, payload.EventType)
 		return err
 	}
 	s.notifyHostedPlanTransition(ctx, payload.UserID, previousPlan, currentPlan)
+	s.notifyHostedStatusTransition(ctx, payload, previousSubscription)
+	s.logBillingWebhook(payload, "applied", nil)
 	return nil
+}
+
+func (s *Service) logBillingWebhook(payload *WebhookPayload, outcome string, processingErr error) {
+	attrs := []any{
+		"provider", ProviderCreem,
+		"event_id", payload.EventID,
+		"event_type", payload.EventType,
+		"subscription_id", payload.SubscriptionID,
+		"status", payload.Status,
+		"outcome", outcome,
+	}
+	if processingErr != nil {
+		attrs = append(attrs, "error", processingErr)
+		s.log.Error("billing webhook processed", attrs...)
+		return
+	}
+	s.log.Info("billing webhook processed", attrs...)
 }
 
 func sha256Hex(data []byte) string {
@@ -263,6 +296,34 @@ func (s *Service) notifyHostedPlanTransition(ctx context.Context, userID string,
 	if previousHosted && !currentHosted {
 		if err := s.productNotifier.NotifyHostedEnded(ctx, userID); err != nil {
 			s.log.Warn("failed to send hosted ended notice", "user_id", userID, "error", err)
+		}
+	}
+}
+
+func (s *Service) notifyHostedStatusTransition(ctx context.Context, payload *WebhookPayload, previous *Subscription) {
+	if s.productNotifier == nil || payload.CurrentPeriodEnd == nil {
+		return
+	}
+
+	previousStatus := SubscriptionStatus("")
+	if previous != nil {
+		previousStatus = previous.Status
+	}
+	periodEnd := time.UnixMilli(*payload.CurrentPeriodEnd).UTC()
+
+	switch {
+	case payload.Status == SubscriptionStatusScheduled && previousStatus != SubscriptionStatusScheduled:
+		if err := s.productNotifier.NotifyHostedCancellationScheduled(ctx, payload.UserID, periodEnd); err != nil {
+			s.log.Warn("failed to send hosted cancellation notice", "user_id", payload.UserID, "error", err)
+		}
+	case payload.Status == SubscriptionStatusActive && previousStatus == SubscriptionStatusScheduled:
+		if err := s.productNotifier.NotifyHostedResumed(ctx, payload.UserID, periodEnd); err != nil {
+			s.log.Warn("failed to send hosted resume notice", "user_id", payload.UserID, "error", err)
+		}
+	case payload.Status == SubscriptionStatusPastDue && previousStatus != SubscriptionStatusPastDue:
+		accessUntil := periodEnd.Add(time.Duration(s.gracePeriodDays) * 24 * time.Hour)
+		if err := s.productNotifier.NotifyHostedPaymentIssue(ctx, payload.UserID, accessUntil); err != nil {
+			s.log.Warn("failed to send hosted payment issue notice", "user_id", payload.UserID, "error", err)
 		}
 	}
 }

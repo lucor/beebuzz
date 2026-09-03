@@ -14,6 +14,8 @@
 	const CHECKOUT_SUCCESS_VALUE = 'success';
 	const CONFIRMATION_POLL_INTERVAL_MS = 3000;
 	const CONFIRMATION_MAX_ATTEMPTS = 20;
+	const PORTAL_REFRESH_INTERVAL_MS = 2000;
+	const PORTAL_REFRESH_MAX_ATTEMPTS = 10;
 
 	let user = $state<AuthUser | null>(null);
 	let planUsage = $state<PlanUsage | null>(null);
@@ -22,6 +24,9 @@
 	let refreshLoading = $state(false);
 	let confirmingCheckout = $state(false);
 	let confirmationTimedOut = $state(false);
+	let awaitingPortalReturn = false;
+	let portalStatusBeforeOpen: AuthUser['subscription_status'] | undefined;
+	let portalStatusNotice = $state<AuthUser['subscription_status'] | null>(null);
 
 	let planLabel = $derived(user?.plan === 'hosted' ? 'Hosted' : 'Free');
 	let planDescription = $derived(getPlanDescription(user));
@@ -33,7 +38,10 @@
 	let isCheckoutReturn = $derived(
 		page.url.searchParams.get(CHECKOUT_STATUS_PARAM) === CHECKOUT_SUCCESS_VALUE
 	);
-	let shouldShowCheckoutSuccess = $derived(isCheckoutReturn && user?.plan === 'hosted');
+	let shouldShowCheckoutSuccess = $derived(
+		isCheckoutReturn && user?.plan === 'hosted' && user.subscription_status === 'active'
+	);
+	let shouldShowScheduledCancelNotice = $derived(portalStatusNotice === 'scheduled_cancel');
 	let shouldShowPastDueNotice = $derived(
 		user?.plan === 'hosted' && user.subscription_status === 'past_due'
 	);
@@ -46,6 +54,8 @@
 
 		let stopped = false;
 		let timeout: ReturnType<typeof setTimeout> | undefined;
+		let portalRefreshTimeout: ReturnType<typeof setTimeout> | undefined;
+		let portalPollActive = false;
 
 		const pollConfirmation = async (attempt: number) => {
 			if (stopped) return;
@@ -86,11 +96,48 @@
 			}
 		};
 
+		const pollPortalStatus = async (attempt: number) => {
+			if (stopped || !awaitingPortalReturn) return;
+
+			try {
+				const [currentUser] = await Promise.all([loadBillingDetails(), loadPlanUsage()]);
+				if (currentUser.subscription_status !== portalStatusBeforeOpen) {
+					awaitingPortalReturn = false;
+					portalPollActive = false;
+					portalStatusNotice = currentUser.subscription_status;
+					toast.success(portalStatusMessage(currentUser.subscription_status));
+					return;
+				}
+			} catch {
+				// Keep polling briefly while the provider webhook updates the account.
+			}
+
+			if (attempt >= PORTAL_REFRESH_MAX_ATTEMPTS) {
+				awaitingPortalReturn = false;
+				portalPollActive = false;
+				return;
+			}
+
+			portalRefreshTimeout = setTimeout(() => {
+				void pollPortalStatus(attempt + 1);
+			}, PORTAL_REFRESH_INTERVAL_MS);
+		};
+
+		const handleWindowFocus = () => {
+			if (awaitingPortalReturn && !portalPollActive) {
+				portalPollActive = true;
+				void pollPortalStatus(1);
+			}
+		};
+
 		void loadInitialBillingDetails();
+		window.addEventListener('focus', handleWindowFocus);
 
 		return () => {
 			stopped = true;
 			if (timeout) clearTimeout(timeout);
+			if (portalRefreshTimeout) clearTimeout(portalRefreshTimeout);
+			window.removeEventListener('focus', handleWindowFocus);
 		};
 	});
 
@@ -134,11 +181,11 @@
 
 		switch (currentUser.subscription_status) {
 			case 'scheduled_cancel':
-				return '100,000 messages/month fair use until the current billing period ends.';
+				return '100,000 messages per calendar month (UTC) until the current billing period ends.';
 			case 'past_due':
-				return '100,000 messages/month fair use during the payment grace period.';
+				return '100,000 messages per calendar month (UTC) during the payment grace period.';
 			default:
-				return '100,000 messages/month fair use.';
+				return '100,000 messages per calendar month (UTC) under our fair-use policy.';
 		}
 	}
 
@@ -152,6 +199,19 @@
 				return 'Access until';
 			default:
 				return 'Renews or expires';
+		}
+	}
+
+	function portalStatusMessage(status: AuthUser['subscription_status']): string {
+		switch (status) {
+			case 'scheduled_cancel':
+				return 'Hosted will remain active until the end of your billing period.';
+			case 'active':
+				return 'Your Hosted subscription is active again.';
+			case 'past_due':
+				return 'Your billing status has been updated.';
+			default:
+				return 'Your subscription status has been updated.';
 		}
 	}
 
@@ -181,6 +241,8 @@
 	async function handleManageBilling() {
 		try {
 			const portal = await accountApi.createBillingPortal();
+			portalStatusBeforeOpen = user?.subscription_status;
+			awaitingPortalReturn = true;
 			window.open(portal.portal_url, '_blank', 'noopener,noreferrer');
 		} catch (err) {
 			toast.error(err instanceof ApiError ? err.userMessage : 'Failed to open billing portal');
@@ -235,6 +297,19 @@
 			<div>
 				<div class="font-semibold">Hosted is active</div>
 				<div class="text-sm">Your account plan has been updated.</div>
+			</div>
+		</div>
+	{/if}
+
+	{#if shouldShowScheduledCancelNotice}
+		<div class="alert alert-info">
+			<CircleCheck size={20} />
+			<div>
+				<div class="font-semibold">Hosted remains active until the end of your billing period</div>
+				<div class="text-sm">
+					Your subscription is scheduled to end then. You can reactivate it from the billing portal
+					before that date.
+				</div>
 			</div>
 		</div>
 	{/if}
@@ -328,7 +403,7 @@
 							</div>
 							<div class="flex gap-2">
 								<CircleCheck size={18} class="mt-0.5 shrink-0 text-primary" />
-								<span>Up to 100,000 messages sent per month</span>
+								<span>Up to 100,000 messages per calendar month (UTC)</span>
 							</div>
 							<div class="flex gap-2">
 								<CircleCheck size={18} class="mt-0.5 shrink-0 text-primary" />
