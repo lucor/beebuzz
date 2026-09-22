@@ -9,7 +9,7 @@
 
 [tools]
 # Go toolchain
-go = "1.26.7"
+go = "1.27.1"
 "go:github.com/air-verse/air" = "latest"
 
 # Node toolchain (frontend workspace lives in web/)
