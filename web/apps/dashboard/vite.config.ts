@@ -5,12 +5,12 @@ import type { Plugin } from 'vite';
 
 const BEEBUZZ_DOMAIN = process.env.BEEBUZZ_DOMAIN;
 
-if (!BEEBUZZ_DOMAIN) {
-	throw new Error('BEEBUZZ_DOMAIN is required to run the dashboard app.');
-}
 const runtimeConfig: Plugin = {
 	name: 'beebuzz-runtime-config',
 	configureServer(server) {
+		if (!BEEBUZZ_DOMAIN) {
+			throw new Error('BEEBUZZ_DOMAIN is required to run the dashboard dev server.');
+		}
 		server.middlewares.use('/config.js', (_req, res) => {
 			res.setHeader('Content-Type', 'application/javascript');
 			res.end(`window.__BEEBUZZ_CONFIG__ = { domain: '${BEEBUZZ_DOMAIN}' };`);
@@ -25,7 +25,7 @@ export default defineConfig({
 	},
 	server: {
 		port: 5173,
-		allowedHosts: [`dashboard.${BEEBUZZ_DOMAIN}`, 'localhost']
+		allowedHosts: BEEBUZZ_DOMAIN ? [`dashboard.${BEEBUZZ_DOMAIN}`] : []
 	},
 	ssr: {
 		noExternal: ['@lucide/svelte']

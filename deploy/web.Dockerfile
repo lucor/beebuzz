@@ -45,10 +45,6 @@ LABEL org.opencontainers.image.title="BeeBuzz Web" \
 COPY --from=web-builder /build/web/build /srv/build
 COPY deploy/Caddyfile /etc/caddy/Caddyfile
 
-# BEEBUZZ_DOMAIN is needed at runtime by Caddy for {$BEEBUZZ_DOMAIN} expansion.
-ARG BEEBUZZ_DOMAIN
-ENV BEEBUZZ_DOMAIN=$BEEBUZZ_DOMAIN
-
 COPY deploy/web-entrypoint.sh /usr/local/bin/web-entrypoint.sh
 RUN chmod +x /usr/local/bin/web-entrypoint.sh
 
