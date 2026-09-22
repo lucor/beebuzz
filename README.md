@@ -100,6 +100,7 @@ receiving device.
 ## Documentation
 
 - [Quickstart](https://docs.beebuzz.app/quickstart/)
+- [Self-host with Docker Compose](https://docs.beebuzz.app/self-host/)
 - [Browser support](https://docs.beebuzz.app/browser-support/)
 - [Local development](https://docs.beebuzz.app/local-dev/)
 - [Webhooks](https://docs.beebuzz.app/webhooks/)
@@ -108,14 +109,11 @@ receiving device.
 - [OpenAPI contract](docs/openapi.yaml)
 - [Development posts](https://lucor.dev/tags/beebuzz)
 
-## Project Status
+## Self-Hosting
 
-BeeBuzz is currently optimized for two workflows:
-
-1. use the hosted service and send your first notification quickly
-2. run the stack locally with a fast development loop
-
-Detailed production self-hosting docs will come later.
+BeeBuzz supports production self-hosting with Docker Compose. The supported
+minimal stack, DNS requirements, upgrades, and data-backup requirements are
+documented in the [self-hosting guide](https://docs.beebuzz.app/self-host/).
 
 ## License
 

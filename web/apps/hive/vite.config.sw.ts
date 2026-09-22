@@ -6,8 +6,7 @@ export default defineConfig({
 			process.env.VITE_BEEBUZZ_VERSION || 'dev'
 		),
 		'import.meta.env.VITE_BEEBUZZ_COMMIT': JSON.stringify(process.env.VITE_BEEBUZZ_COMMIT || 'dev'),
-		'import.meta.env.VITE_BEEBUZZ_DIRTY': JSON.stringify(process.env.VITE_BEEBUZZ_DIRTY === 'true'),
-		'import.meta.env.VITE_BEEBUZZ_DOMAIN': JSON.stringify(process.env.BEEBUZZ_DOMAIN)
+		'import.meta.env.VITE_BEEBUZZ_DIRTY': JSON.stringify(process.env.VITE_BEEBUZZ_DIRTY === 'true')
 	},
 	build: {
 		lib: {

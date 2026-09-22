@@ -48,6 +48,12 @@ func run(args []string, stdout, stderr io.Writer) error {
 		}
 		writeUsage(stderr)
 		return fmt.Errorf("unknown vapid subcommand")
+	case "salt":
+		if len(args) == 2 && args[1] == "generate" {
+			return runGenerateSalt(stdout)
+		}
+		writeUsage(stderr)
+		return fmt.Errorf("unknown salt subcommand")
 	default:
 		writeUsage(stderr)
 		return fmt.Errorf("unknown subcommand: %s", args[0])
@@ -59,5 +65,6 @@ func writeUsage(output io.Writer) {
   beebuzzd serve
   beebuzzd healthcheck
   beebuzzd vapid generate
+  beebuzzd salt generate
 `)
 }

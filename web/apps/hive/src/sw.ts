@@ -16,7 +16,6 @@ import {
 
 declare const self: ServiceWorkerGlobalScope;
 
-const BEEBUZZ_DOMAIN = import.meta.env.VITE_BEEBUZZ_DOMAIN as string | undefined;
 const CACHE_PREFIX = 'beebuzz-hive-';
 const APP_CACHE = `${CACHE_PREFIX}${import.meta.env.VITE_BEEBUZZ_VERSION || 'dev'}`;
 const CORE_ASSETS = ['/', '/manifest.json', '/assets/manifest-icon-192.maskable.png'];
@@ -187,7 +186,7 @@ function recordDiagnostic(
 const runtimeDeps: ServiceWorkerRuntimeDeps = {
 	debug: false,
 	locationOrigin: self.location.origin,
-	beebuzzDomain: BEEBUZZ_DOMAIN,
+	beebuzzDomain: undefined,
 	now: () => Date.now(),
 	showNotification: (title: string, options?: NotificationOptions) =>
 		self.registration.showNotification(title, options),

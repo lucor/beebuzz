@@ -34,6 +34,7 @@
 	handle @dashboard {
 		root * /srv/build/dashboard
 		encode zstd gzip
+		header /config.js Cache-Control "no-store, no-cache, must-revalidate, max-age=0"
 
 		import security_headers
 		import frontend_csp
@@ -49,6 +50,7 @@
 	handle @hive {
 		root * /srv/build/hive
 		encode zstd gzip
+		header /config.js Cache-Control "no-store, no-cache, must-revalidate, max-age=0"
 
 		import security_headers
 		import hive_csp

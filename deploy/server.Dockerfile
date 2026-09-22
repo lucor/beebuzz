@@ -7,7 +7,7 @@ ARG VERSION=dev
 
 COPY go.mod go.sum ./
 RUN go mod download
-COPY main.go healthcheck.go vapid.go ./
+COPY main.go healthcheck.go vapid.go salt.go ./
 COPY docs/openapi.go docs/openapi.yaml ./docs/
 COPY internal ./internal
 

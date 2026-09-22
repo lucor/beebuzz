@@ -2,7 +2,6 @@
 /// <reference types="vite/client" />
 
 interface ImportMetaEnv {
-	readonly VITE_BEEBUZZ_DOMAIN: string;
 	readonly VITE_BEEBUZZ_DEBUG: boolean;
 }
 

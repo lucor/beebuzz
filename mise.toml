@@ -34,7 +34,7 @@ BEEBUZZ_MAILER_SMTP_PASSWORD = "dev"
 MP_SMTP_AUTH = "dev:dev"
 MP_SMTP_AUTH_ALLOW_INSECURE = "true"
 
-# Frontend defaults — VITE_BEEBUZZ_DOMAIN is now derived from BEEBUZZ_DOMAIN via Vite define
+# Frontend development serves runtime config from BEEBUZZ_DOMAIN.
 VITE_BEEBUZZ_DEBUG = true
 VITE_BEEBUZZ_VERSION = "dev"
 # VITE_BEEBUZZ_COMMIT is computed dynamically from git in .mise/setup-dev.sh for local dev,
@@ -78,11 +78,11 @@ run = "air -c ./.mise/.air.toml"
 
 [tasks.dev-dashboard]
 description = "Run the SvelteKit dashboard app with hot reload"
-run = "pnpm -C web/apps/dashboard dev"
+run = "source .mise/setup-dev.sh && pnpm -C web/apps/dashboard dev"
 
 [tasks.dev-hive]
 description = "Run the SvelteKit hive app with hot reload"
-run = "pnpm -C web/apps/hive dev"
+run = "source .mise/setup-dev.sh && pnpm -C web/apps/hive dev"
 
 [tasks.dev-caddy]
 description = "Run Caddy reverse proxy with lancert.dev TLS"
