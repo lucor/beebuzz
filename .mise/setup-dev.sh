@@ -70,3 +70,20 @@ if [ ! -r "$BEEBUZZ_TLS_CERT_FILE" ] || [ ! -r "$BEEBUZZ_TLS_KEY_FILE" ]; then
 fi
 
 echo "[setup-dev] Lancert certificate: $CERT_DIR"
+
+# Linux normally requires CAP_NET_BIND_SERVICE for unprivileged processes to
+# bind the HTTPS and HTTP ports used by the local development proxy.
+if [[ "$(uname -s)" == "Linux" ]]; then
+  CADDY_BIN="$(mise which caddy)"
+  CADDY_CAPABILITIES=""
+  if command -v getcap >/dev/null 2>&1; then
+    CADDY_CAPABILITIES="$(getcap "$CADDY_BIN" 2>/dev/null || true)"
+  fi
+
+  if [[ "$CADDY_CAPABILITIES" != *cap_net_bind_service* ]]; then
+    echo "Caddy needs permission to bind ports 80/443." >&2
+    echo "Run once:" >&2
+    echo "sudo setcap 'cap_net_bind_service=+ep' \"\$(mise which caddy)\"" >&2
+    return 1
+  fi
+fi
