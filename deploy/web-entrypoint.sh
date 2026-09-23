@@ -10,6 +10,8 @@ case "$domain" in
 		;;
 esac
 
-printf "window.__BEEBUZZ_CONFIG__ = { domain: '%s' };\n" "$domain" > /srv/build/config.js
+for app in dashboard hive; do
+	printf "window.__BEEBUZZ_CONFIG__ = { domain: '%s' };\n" "$domain" > "/srv/build/$app/config.js"
+done
 
 exec /usr/bin/caddy run --config /etc/caddy/Caddyfile --adapter caddyfile
