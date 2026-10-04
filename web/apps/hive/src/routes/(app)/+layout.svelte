@@ -27,6 +27,7 @@
 	import { notificationsStore } from '$lib/stores/notifications.svelte';
 	import { getVapidKey, registerServiceWorker } from '$lib/services/push';
 	import { deviceKeysRepository } from '$lib/services/device-keys-repository';
+	import { requestStoragePersistence } from '$lib/services/storage-persistence';
 	import { bootstrapAppShell } from '$lib/services/app-bootstrap';
 	import { syncRecentNotifications } from '$lib/services/notification-sync';
 	import { cleanupStalePairingState } from '$lib/services/startup-recovery';
@@ -459,6 +460,9 @@
 				await goto('/pair');
 				return;
 			}
+
+			// One-time best-effort request also covers installations that were already paired.
+			void requestStoragePersistence();
 
 			// Local cache loaded — shell is ready immediately.
 			ready = true;

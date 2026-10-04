@@ -19,6 +19,11 @@
 	import { unsubscribeFromPush } from '$lib/services/push';
 	import { cleanupStalePairingState } from '$lib/services/startup-recovery';
 	import {
+		getStoragePersistenceStatus,
+		requestStoragePersistence,
+		type StoragePersistenceStatus
+	} from '$lib/services/storage-persistence';
+	import {
 		Bell,
 		Link,
 		Globe,
@@ -29,7 +34,8 @@
 		CircleCheck,
 		CircleX,
 		CircleAlert,
-		TriangleAlert
+		TriangleAlert,
+		HardDrive
 	} from '@lucide/svelte';
 
 	const STATUS_PAGE_URL = 'https://status.beebuzz.app';
@@ -49,6 +55,8 @@
 	let backendUnavailable = $state(false);
 	let reconnecting = $state(false);
 	let disconnecting = $state(false);
+	let storagePersistenceStatus = $state<StoragePersistenceStatus>('unavailable');
+	let requestingStoragePersistence = $state(false);
 	let disconnectDialog = $state<HTMLDialogElement | undefined>(undefined);
 
 	let snapshot = $state<DeviceSnapshot>({
@@ -97,6 +105,19 @@
 		}
 	};
 
+	const refreshStoragePersistenceStatus = async () => {
+		storagePersistenceStatus = await getStoragePersistenceStatus();
+	};
+
+	const retryStoragePersistence = async () => {
+		requestingStoragePersistence = true;
+		try {
+			storagePersistenceStatus = await requestStoragePersistence({ retry: true });
+		} finally {
+			requestingStoragePersistence = false;
+		}
+	};
+
 	onMount(() => {
 		const init = async () => {
 			try {
@@ -104,6 +125,7 @@
 					await health.check();
 				}
 				await loadDeviceSnapshot();
+				await refreshStoragePersistenceStatus();
 			} catch (error) {
 				logger.warn('Device snapshot load failed (non-blocking)', { error: String(error) });
 				backendUnavailable = true;
@@ -248,6 +270,19 @@
 			tone: 'badge-success' as const,
 			icon: CircleCheck
 		};
+	});
+
+	const storageStatus = $derived.by(() => {
+		switch (storagePersistenceStatus) {
+			case 'persistent':
+				return { label: 'Persistent', tone: 'badge-success' as const, icon: CircleCheck };
+			case 'best-effort':
+				return { label: 'Best effort', tone: 'badge-warning' as const, icon: CircleAlert };
+			case 'unsupported':
+				return { label: 'Not supported', tone: 'badge-neutral' as const, icon: CircleAlert };
+			default:
+				return { label: 'Unavailable', tone: 'badge-neutral' as const, icon: CircleAlert };
+		}
 	});
 
 	/** Disconnects this device and sends the user back to the pairing flow. */
@@ -424,6 +459,32 @@
 							<pairingVerificationStatus.icon size={12} aria-hidden="true" />
 							{pairingVerificationStatus.label}
 						</span>
+					</div>
+
+					<!-- Browser storage persistence -->
+					<div
+						class="flex items-center justify-between gap-3 rounded-2xl border border-base-300 px-4 py-3"
+					>
+						<div class="flex items-center gap-3">
+							<HardDrive size={18} class="shrink-0 text-base-content/50" aria-hidden="true" />
+							<p class="font-medium text-base-content">Persistent storage</p>
+						</div>
+						<div class="flex items-center gap-2">
+							<span class={`badge ${storageStatus.tone} gap-1`}>
+								<storageStatus.icon size={12} aria-hidden="true" />
+								{storageStatus.label}
+							</span>
+							{#if storagePersistenceStatus === 'best-effort' || storagePersistenceStatus === 'unavailable'}
+								<button
+									type="button"
+									class="btn btn-ghost btn-xs"
+									onclick={() => void retryStoragePersistence()}
+									disabled={requestingStoragePersistence}
+								>
+									{requestingStoragePersistence ? 'Requesting...' : 'Retry'}
+								</button>
+							{/if}
+						</div>
 					</div>
 				</div>
 

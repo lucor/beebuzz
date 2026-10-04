@@ -43,6 +43,7 @@ import { paired } from '$lib/stores/paired.svelte';
 import { notificationsStore } from '$lib/stores/notifications.svelte';
 import { formatStartupError } from '$lib/services/startup-error';
 import { withTimeout } from '$lib/utils/async';
+import { requestStoragePersistence } from '$lib/services/storage-persistence';
 import { logger } from '@beebuzz/shared/logger';
 import { ApiError } from '@beebuzz/shared/errors';
 import type { CapabilityResult } from '$lib/services/capability';
@@ -231,6 +232,7 @@ const createOnboarding = () => {
 				'Paired device check'
 			);
 			if (alreadyPaired) {
+				void requestStoragePersistence();
 				const pushState = await withTimeout(
 					reconcilePushState(),
 					STARTUP_TIMEOUT_MS,
@@ -349,6 +351,7 @@ const createOnboarding = () => {
 			await finalizePendingStoredKeyPair(deviceId);
 			await deviceKeysRepository.storeDeviceCredentials(deviceId, deviceToken);
 			notificationsStore.activateDevice(deviceId);
+			void requestStoragePersistence();
 
 			await paired.check();
 			await notificationsStore.loadFromIndexedDB();
