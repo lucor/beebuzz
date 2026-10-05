@@ -52,7 +52,7 @@
 	} from '@lucide/svelte';
 	import type { PushMessage } from '@beebuzz/shared/types';
 
-	const GITHUB_RELEASES_URL = 'https://codeberg.org/beebuzz/cli/releases';
+	const RELEASES_URL = 'https://codeberg.org/beebuzz/beebuzz/releases';
 	const STARTUP_TIMEOUT_MS = 10000;
 
 	/** Runs a background task with a logged warning instead of throwing. */
@@ -740,7 +740,7 @@
 										</button>
 									</div>
 									<a
-										href={GITHUB_RELEASES_URL}
+										href={RELEASES_URL}
 										class="link link-hover mt-2 inline-flex items-center gap-1 text-sm font-medium md:hidden"
 										target="_blank"
 										rel="noopener noreferrer"
@@ -762,7 +762,7 @@
 												{activatingUpdate ? 'Updating...' : 'Update'}
 											</button>
 											<a
-												href={GITHUB_RELEASES_URL}
+												href={RELEASES_URL}
 												class="link link-hover inline-flex items-center gap-1 text-sm font-medium"
 												target="_blank"
 												rel="noopener noreferrer"
