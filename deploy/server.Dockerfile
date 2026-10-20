@@ -1,5 +1,5 @@
 # Stage 1: Build server
-FROM golang:1.27.1-alpine AS server-builder
+FROM golang:1.27.3-alpine AS server-builder
 WORKDIR /build
 
 ARG COMMIT_SHA=dev
@@ -16,7 +16,7 @@ RUN CGO_ENABLED=0 go build -trimpath \
     -o beebuzzd .
 
 # Stage 2: Runtime image
-FROM gcr.io/distroless/base-debian12
+FROM gcr.io/distroless/base-debian13
 WORKDIR /app
 
 ARG VERSION=dev
