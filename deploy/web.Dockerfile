@@ -28,7 +28,7 @@ ENV VITE_BEEBUZZ_DEBUG=$VITE_BEEBUZZ_DEBUG
 RUN pnpm run build
 
 # Stage 2: Caddy + static files
-FROM caddy:2.11-alpine
+FROM caddy:2.11.9-alpine
 
 ARG VERSION=dev
 ARG SOURCE_REPO=https://codeberg.org/beebuzz/beebuzz

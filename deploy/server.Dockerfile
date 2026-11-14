@@ -1,5 +1,5 @@
 # Stage 1: Build server
-FROM golang:1.27.3-alpine AS server-builder
+FROM golang:1.27.4-alpine AS server-builder
 WORKDIR /build
 
 ARG COMMIT_SHA=dev
